@@ -1,0 +1,28 @@
+name: ai-lab
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+
+  # Core data / plotting
+  - numpy
+  - pandas
+  - matplotlib
+
+  # Quality-of-life + reproducible notebooks (optional but nice)
+  - jupyterlab
+  - ipykernel
+
+  # Common utilities
+  - pyyaml
+  - rich
+  - tqdm
+
+  # For nicer CLI + parsing later (optional)
+  - typer
+  - tabulate
+
+  # If you end up doing stats / regression on benchmark data (optional)
+  - scipy
+  - statsmodels

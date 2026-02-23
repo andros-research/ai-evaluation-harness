@@ -1,0 +1,21 @@
+models:
+  - mistral
+  - llama3
+  - llama3:70b
+
+reps: 5
+
+timeout_s: 600
+
+options:
+  temperature: 0.2
+  top_p: 0.9
+  num_predict: 256
+
+prompts:
+  attention_5sent: "Explain attention in transformers in 5 sentences."
+  json_strict: "Return ONLY valid JSON with keys: summary (string), bullets (array of 3 strings)."
+  reasoning_trap: "You have a bond with DV01=100k and convexity=12k. Rates shift +10bp then +10bp. Return ONLY a single line with the approximate PnL number (no words, no units)."
+  follow_instr: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
+  style_hemi: "Write a Hemingway-lite paragraph about a quiet office morning. No metaphors. No adjectives longer than 8 letters."
+  verbosity_drift: "In one paragraph, explain what a yield curve is, for a smart non-expert."
