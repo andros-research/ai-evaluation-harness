@@ -383,7 +383,7 @@ def main() -> None:
 
     run_id = now_run_id()
     # outdir = f"results_{run_id}"
-    outdir = str(BENCH_DIR / f"results_{run_id}")
+    outdir = str(BENCH_DIR / "results" / "raw_runs" / f"results_{run_id}")
     responses_path = os.path.join(outdir, "responses.jsonl")
     os.makedirs(outdir, exist_ok=True)
 

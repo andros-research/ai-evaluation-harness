@@ -134,37 +134,39 @@ with tab_agg:
     if master.empty:
         st.error(f"No runs_master found. Expected: {AGG_PARQUET} or {AGG_CSV}")
         st.stop()
-        
-    # ---- Growth over time (lab growth) ----
-    g = master.copy()
+    
+    # ---- Growth table (daily) ----
+    growth_src = master.copy()
 
-    # Prefer run_timestamp_iso (run-level) if present; else fall back to ts; else parse run_id.
-    if "run_timestamp_iso" in g.columns:
-        g["t"] = pd.to_datetime(g["run_timestamp_iso"], errors="coerce")
-    elif "ts" in g.columns:
-        g["t"] = pd.to_datetime(g["ts"], errors="coerce")
+    # Ensure we have a run id for unique run counting
+    if "run_id" not in growth_src.columns and "run_id_from_dir" in growth_src.columns:
+        growth_src["run_id"] = growth_src["run_id_from_dir"]
+
+    # Prefer run_timestamp_iso if present, else fall back to run_date/date
+    if "run_timestamp_iso" in growth_src.columns and growth_src["run_timestamp_iso"].notna().any():
+        growth_src["dt"] = pd.to_datetime(growth_src["run_timestamp_iso"], errors="coerce")
+    elif "run_date" in growth_src.columns and growth_src["run_date"].notna().any():
+        growth_src["dt"] = pd.to_datetime(growth_src["run_date"], errors="coerce")
+    elif "date" in growth_src.columns and growth_src["date"].notna().any():
+        growth_src["dt"] = pd.to_datetime(growth_src["date"], errors="coerce")
     else:
-        # run_id like 2026-02-25_20-46-49
-        g["t"] = pd.to_datetime(g["run_id"].astype(str).str.replace("_", " "), errors="coerce")
+        growth_src["dt"] = pd.NaT
 
-    g = g.dropna(subset=["t"]).sort_values("t")
-    g["day"] = g["t"].dt.date
+    growth_src = growth_src.dropna(subset=["dt"]).copy()
+    growth_src["day"] = growth_src["dt"].dt.date.astype(str)
 
-    # Daily counts
     daily = (
-        g.groupby("day")
+        growth_src.groupby("day", as_index=False)
         .agg(
             rows=("day", "size"),
-            unique_runs=("run_id", "nunique"),
-            unique_models=("model", "nunique"),
-            unique_prompts=("prompt_id", "nunique"),
+            unique_runs=("run_id", "nunique") if "run_id" in growth_src.columns else ("day", "size"),
         )
-        .reset_index()
+        .sort_values("day")
     )
 
-    # Cumulative
     daily["cum_rows"] = daily["rows"].cumsum()
     daily["cum_unique_runs"] = daily["unique_runs"].cumsum()
+    
 
     # Normalize / safety: ensure expected cols exist (some early runs have blanks)
     for col in ["model", "prompt_id", "failure_type", "ok", "elapsed_s", "words", "words_per_s"]:
@@ -201,6 +203,74 @@ with tab_agg:
         m = m[m["ok"] == 1]
     elif ok_only == "Only failures":
         m = m[m["ok"] == 0]
+    
+    # -----------------------------------------------
+    # ------ Run health card + table (aggregate tab)
+    # -----------------------------------------------
+    st.subheader("Run Health (Filtered)")
+    total_rows = len(m)
+
+    ok_rate = m["ok"].mean() if total_rows and "ok" in m.columns else None
+    err_rate = (m["error"].fillna(0) != 0).mean() if total_rows and "error" in m.columns else None
+    exit_rate = (m["exit_code"].fillna(0) != 0).mean() if total_rows and "exit_code" in m.columns else None
+    fail_rate = (m["failure_type"].fillna("ok") != "ok").mean() if total_rows and "failure_type" in m.columns else None
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Rows", f"{total_rows:,}")
+    c2.metric("OK rate", f"{ok_rate:.2%}" if ok_rate is not None else "—")
+    c3.metric("Nonzero exit_code", f"{exit_rate:.2%}" if exit_rate is not None else "—")
+    c4.metric("Non-ok failure_type", f"{fail_rate:.2%}" if fail_rate is not None else "—")
+    
+    
+    st.subheader("Top Failure Hotspots")
+    hot = m.copy()
+    hot["failure_type"] = hot["failure_type"].fillna("unknown")
+    hot["is_fail"] = (hot["failure_type"] != "ok") | (hot["ok"].fillna(0) == 0)
+
+    group_cols = [c for c in ["prompt_id", "model"] if c in hot.columns]
+    if group_cols:
+        summary = (
+            hot.groupby(group_cols, as_index=False)
+            .agg(
+                rows=("is_fail", "size"),
+                fail_rate=("is_fail", "mean"),
+                avg_latency=("elapsed_s", "mean") if "elapsed_s" in hot.columns else ("is_fail", "size"),
+                avg_wps=("words_per_s", "mean") if "words_per_s" in hot.columns else ("is_fail", "size"),
+            )
+            .sort_values(["fail_rate", "rows"], ascending=[False, False])
+            .head(20)
+        )
+        st.dataframe(summary)
+    else:
+        st.info("Not enough columns to compute hotspots (need at least model and/or prompt_id).")
+    
+    
+    st.subheader("Lab Growth Over Time")
+
+    metric_choice = st.selectbox(
+        "Growth metric",
+        ["Cumulative rows", "Cumulative unique runs", "Daily rows", "Daily unique runs"],
+        index=0,
+        key="growth_metric",
+    )
+
+    ycol = {
+        "Cumulative rows": "cum_rows",
+        "Cumulative unique runs": "cum_unique_runs",
+        "Daily rows": "rows",
+        "Daily unique runs": "unique_runs",
+    }[metric_choice]
+
+    figG, axG = plt.subplots()
+    axG.plot(pd.to_datetime(daily["day"]), daily[ycol])
+    axG.set_xlabel("Date")
+    axG.set_ylabel(metric_choice)
+    axG.set_title(metric_choice)
+    axG.tick_params(axis="x", rotation=30)
+    st.pyplot(figG)
+
+    with st.expander("Growth table (daily)", expanded=False):
+        st.dataframe(daily)
 
     # KPIs
     col1, col2, col3, col4 = st.columns(4)
@@ -221,29 +291,3 @@ with tab_agg:
 
     st.subheader("Failure Type Breakdown (All Runs)")
     st.bar_chart(m["failure_type"].value_counts())
-
-    st.subheader("Lab Growth Over Time")
-
-    metric_choice = st.selectbox(
-        "Growth metric",
-        ["Cumulative rows", "Cumulative unique runs", "Daily rows", "Daily unique runs"],
-        index=0,
-        key="growth_metric",
-    )
-
-    ycol = {
-        "Cumulative rows": "cum_rows",
-        "Cumulative unique runs": "cum_unique_runs",
-        "Daily rows": "rows",
-        "Daily unique runs": "unique_runs",
-    }[metric_choice]
-
-    figG, axG = plt.subplots()
-    axG.plot(pd.to_datetime(daily["day"]), daily[ycol])
-    axG.set_xlabel("Date")
-    axG.set_ylabel(ycol)
-    axG.set_title(metric_choice)
-    st.pyplot(figG)
-
-    with st.expander("Growth table (daily)", expanded=False):
-        st.dataframe(daily)

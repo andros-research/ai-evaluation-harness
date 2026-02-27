@@ -1,0 +1,19 @@
+name: ai-lab
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - ipykernel
+  - scipy
+  - matplotlib
+  - rich
+  - tabulate
+  - typer
+  - pyyaml
+  - tqdm
+  - statsmodels
+  - pip
+  - jupyterlab
+prefix: /home/joe/miniforge3/envs/ai-lab

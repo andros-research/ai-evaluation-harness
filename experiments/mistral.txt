@@ -1,0 +1,6 @@
+ 1. Attention mechanisms in Transformers are a key component that helps the model focus on relevant parts of the input sequence when producing an output.
+2. They operate by assigning weights, or "scores," to different positions in the input sequence based on their importance for the current output position.
+3. The scores are calculated using dot products between the input and a query vector, which is generated from the context so far.
+4. These scores are then softmaxed to create weights that sum up to 1, ensuring proper distribution of attention across the input sequence.
+5. Finally, weighted sums of the input sequence are taken to generate the output for each position, effectively allowing the model to focus on different parts of the input as needed during decoding.
+
