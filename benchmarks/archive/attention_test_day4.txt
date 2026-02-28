@@ -1,0 +1,40 @@
+=== Experiment: Attention Explanation Test ===
+Date: 2026-02-16
+Location: Remote SSH (Laptop)
+Hardware: DGX Spark (128GB RAM)
+Models Tested:
+- mistral
+- llama3
+- llama3:70b
+
+Prompt:
+"Explain attention in transformers in 5 sentences."
+
+Observations:
+
+[Mistral]
+- Fast
+- Mechanical tone
+- Numbered sentences
+- Dense wording
+- Less math detail
+
+[Llama3]
+- Conversational
+- Prose-like
+- More explanatory
+- Moderate depth
+
+[Llama3:70B]
+- Slow token streaming but readable
+- Mathematical detail included
+- Structured but fluent
+- Best conceptual clarity so far
+
+Token Speed Notes:
+- All models readable in real-time
+- 70B = ideal reading pace (human-followable)
+
+Research Note:
+Topics unfamiliar → required re-reading after initial stream
+

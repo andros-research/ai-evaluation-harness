@@ -30,6 +30,91 @@ def find_result_folders(raw_runs_root: Path) -> list[Path]:
 
 REQUIRED_COLS = {"model", "prompt_id", "elapsed_s", "words", "failure_type", "words_per_s", "ok"}
 
+def normalize_master(master: pd.DataFrame) -> pd.DataFrame:
+    m = master.copy()
+
+    # Coerce numeric fields
+    for c in ["elapsed_s", "words_per_s", "words", "exit_code"]:
+        if c in m.columns:
+            m[c] = pd.to_numeric(m[c], errors="coerce")
+
+    # Strings
+    for c in ["failure_type", "error", "stderr", "model", "prompt_id", "run_id"]:
+        if c in m.columns:
+            m[c] = m[c].astype("string")
+
+    m["failure_type"] = m.get("failure_type", pd.Series([], dtype="string")).fillna("").str.strip()
+    m["error"] = m.get("error", pd.Series([], dtype="string")).fillna("").str.strip()
+    m["stderr"] = m.get("stderr", pd.Series([], dtype="string")).fillna("").str.strip()
+
+    # ok normalization (handles 1/0, True/False, "1"/"0", "true"/"false", NA)
+    if "ok" in m.columns:
+        ok_raw = m["ok"]
+        if str(ok_raw.dtype).startswith(("int", "float")):
+            m["is_ok"] = ok_raw.fillna(0).astype(float).eq(1.0)
+        else:
+            s = ok_raw.astype("string").fillna("").str.lower().str.strip()
+            m["is_ok"] = s.isin(["1", "true", "t", "yes", "y", "ok"])
+    else:
+        m["is_ok"] = pd.Series(False, index=m.index)
+
+    # exit code / error signals
+    m["has_nonzero_exit"] = m.get("exit_code", pd.Series(pd.NA, index=m.index)).fillna(0).astype(float).ne(0.0)
+    m["has_error_text"] = (m["error"] != "") | (m["stderr"] != "")
+
+    # failure_type indicates failure (treat anything non-empty and not "ok" as failure)
+    m["failure_type_is_bad"] = (m["failure_type"] != "") & (m["failure_type"].str.lower() != "ok")
+
+    # Final failure flag (robust)
+    m["is_failure"] = (~m["is_ok"]) | m["has_nonzero_exit"] | m["failure_type_is_bad"] | m["has_error_text"]
+
+    return m
+
+def make_worst_runs(m: pd.DataFrame) -> pd.DataFrame:
+    if "run_id" not in m.columns:
+        return pd.DataFrame()
+
+    g = (
+        m.groupby("run_id", as_index=False)
+        .agg(
+            rows=("run_id", "size"),
+            fail_rate=("is_failure", "mean"),
+            ok_rate=("is_ok", "mean"),
+            nonzero_exit_rate=("has_nonzero_exit", "mean"),
+            non_ok_failure_type_rate=("failure_type_is_bad", "mean"),
+            median_latency=("elapsed_s", "median"),
+            p95_latency=("elapsed_s", lambda x: x.quantile(0.95)),
+            median_wps=("words_per_s", "median"),
+            p05_wps=("words_per_s", lambda x: x.quantile(0.05)),
+            n_models=("model", "nunique"),
+            n_prompts=("prompt_id", "nunique"),
+        )
+    )
+
+    # Sort: worst-first
+    g = g.sort_values(
+        by=["fail_rate", "nonzero_exit_rate", "p95_latency", "p05_wps", "rows"],
+        ascending=[False, False, False, True, False],
+    )
+
+    return g
+
+def make_hotspots(m: pd.DataFrame) -> pd.DataFrame:
+    if not {"prompt_id", "model"}.issubset(set(m.columns)):
+        return pd.DataFrame()
+
+    h = (
+        m.groupby(["prompt_id", "model"], as_index=False)
+        .agg(
+            rows=("model", "size"),
+            fail_rate=("is_failure", "mean"),
+            median_latency=("elapsed_s", "median"),
+            median_wps=("words_per_s", "median"),
+        )
+        .sort_values(by=["fail_rate", "rows"], ascending=[False, False])
+    )
+
+    return h
 
 runs = find_result_folders(RAW_RUNS_ROOT)
 
@@ -198,6 +283,25 @@ with tab_agg:
 
     m = master.copy()
     m = m[m["model"].isin(agg_models) & m["prompt_id"].isin(agg_prompts)]
+    
+    masterN = normalize_master(master) # not currently used
+    mN = normalize_master(m)  # if you want filtered run health/hotspots
+
+    run_health = make_worst_runs(mN)     # filtered view
+    hotspots = make_hotspots(mN)         # filtered view
+
+    st.subheader("Run Health (Filtered)")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Rows", len(mN))
+    c2.metric("OK rate", f"{mN['is_ok'].mean():.2%}" if len(mN) else "—")
+    c3.metric("Nonzero exit_code", f"{mN['has_nonzero_exit'].mean():.2%}" if len(mN) else "—")
+    c4.metric("Non-ok failure_type", f"{mN['failure_type_is_bad'].mean():.2%}" if len(mN) else "—")
+
+    st.subheader("Worst Runs")
+    st.dataframe(run_health.head(20))
+
+    st.subheader("Top Failure Hotspots (prompt × model)")
+    st.dataframe(hotspots.head(30))
 
     if ok_only == "Only ok":
         m = m[m["ok"] == 1]
@@ -224,8 +328,8 @@ with tab_agg:
     
     st.subheader("Top Failure Hotspots")
     hot = m.copy()
-    hot["failure_type"] = hot["failure_type"].fillna("unknown")
-    hot["is_fail"] = (hot["failure_type"] != "ok") | (hot["ok"].fillna(0) == 0)
+    hot["failure_type"] = hot["failure_type"].fillna("ok")
+    hot["is_fail"] = (hot["ok"].fillna(0) == 0)
 
     group_cols = [c for c in ["prompt_id", "model"] if c in hot.columns]
     if group_cols:
