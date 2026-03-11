@@ -70,6 +70,20 @@ def normalize_master(master: pd.DataFrame) -> pd.DataFrame:
 
     return m
 
+def mean_boolish(df: pd.DataFrame, col: str):
+    if col not in df.columns or len(df) == 0:
+        return None
+    s = pd.to_numeric(df[col], errors="coerce")
+    if s.notna().sum() == 0:
+        return None
+    return s.mean()
+
+def checked_subset(df: pd.DataFrame) -> pd.DataFrame:
+    if "checks_total" not in df.columns:
+        return df.iloc[0:0].copy()
+    ct = pd.to_numeric(df["checks_total"], errors="coerce").fillna(0)
+    return df[ct > 0].copy()
+
 def make_worst_runs(m: pd.DataFrame) -> pd.DataFrame:
     if "run_id" not in m.columns:
         return pd.DataFrame()
@@ -189,11 +203,21 @@ with tab_run:
     st.subheader("Raw Metrics Snapshot")
     st.dataframe(df_filtered.head(50))
 
+    pipeline_rate = mean_boolish(df_filtered, "ok")
+    checks_df = checked_subset(df_filtered)
+    checks_rate = mean_boolish(checks_df, "checks_ok")
+    overall_rate = mean_boolish(df_filtered, "overall_ok")
+
+    # Single Run KPI block
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Rows", len(df_filtered))
-    col2.metric("Success Rate", f"{df_filtered['ok'].mean():.2%}" if len(df_filtered) else "—")
-    col3.metric("Avg Latency (s)", f"{df_filtered['elapsed_s'].mean():.2f}" if len(df_filtered) else "—")
-    col4.metric("Avg Words", f"{df_filtered['words'].mean():.1f}" if len(df_filtered) else "—")
+    col2.metric("Pipeline Success Rate", f"{pipeline_rate:.2%}" if pipeline_rate is not None else "—")
+    col3.metric("Checks Pass Rate", f"{checks_rate:.2%}" if checks_rate is not None else "—")
+    col4.metric("Overall Pass Rate", f"{overall_rate:.2%}" if overall_rate is not None else "—")
+    
+    col5, col6 = st.columns(2)
+    col5.metric("Avg Latency (s)", f"{df_filtered['elapsed_s'].mean():.2f}" if len(df_filtered) else "—")
+    col6.metric("Avg Words", f"{df_filtered['words'].mean():.1f}" if len(df_filtered) else "—")
 
     st.subheader("Latency Distribution by Model")
     fig1, ax1 = plt.subplots()
@@ -293,7 +317,7 @@ with tab_agg:
     st.subheader("Run Health (Filtered)")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Rows", len(mN))
-    c2.metric("OK rate", f"{mN['is_ok'].mean():.2%}" if len(mN) else "—")
+    c2.metric("Pipeline Success Rate", f"{mN['is_ok'].mean():.2%}" if len(mN) else "—")
     c3.metric("Nonzero exit_code", f"{mN['has_nonzero_exit'].mean():.2%}" if len(mN) else "—")
     c4.metric("Non-ok failure_type", f"{mN['failure_type_is_bad'].mean():.2%}" if len(mN) else "—")
 
@@ -321,7 +345,7 @@ with tab_agg:
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Rows", f"{total_rows:,}")
-    c2.metric("OK rate", f"{ok_rate:.2%}" if ok_rate is not None else "—")
+    c2.metric("Pipeline Success Rate", f"{ok_rate:.2%}" if ok_rate is not None else "—")
     c3.metric("Nonzero exit_code", f"{exit_rate:.2%}" if exit_rate is not None else "—")
     c4.metric("Non-ok failure_type", f"{fail_rate:.2%}" if fail_rate is not None else "—")
     
@@ -376,12 +400,21 @@ with tab_agg:
     with st.expander("Growth table (daily)", expanded=False):
         st.dataframe(daily)
 
-    # KPIs
+    # All Runs KPI block
+    pipeline_rate = mean_boolish(m, "ok")
+    checks_df = checked_subset(m)
+    checks_rate = mean_boolish(checks_df, "checks_ok")
+    overall_rate = mean_boolish(m, "overall_ok")
+
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Rows (filtered)", len(m))
-    col2.metric("Success Rate", f"{m['ok'].mean():.2%}" if len(m) else "—")
-    col3.metric("Avg Latency (s)", f"{m['elapsed_s'].mean():.2f}" if len(m) else "—")
-    col4.metric("Avg Words/sec", f"{m['words_per_s'].mean():.2f}" if len(m) else "—")
+    col2.metric("Pipeline Success Rate", f"{pipeline_rate:.2%}" if pipeline_rate is not None else "—")
+    col3.metric("Checks Pass Rate", f"{checks_rate:.2%}" if checks_rate is not None else "—")
+    col4.metric("Overall Pass Rate", f"{overall_rate:.2%}" if overall_rate is not None else "—")
+    
+    col5, col6 = st.columns(2)
+    col5.metric("Avg Latency (s)", f"{m['elapsed_s'].mean():.2f}" if len(m) else "—")
+    col6.metric("Avg Words/sec", f"{m['words_per_s'].mean():.2f}" if len(m) else "—")
 
     st.subheader("Latency by Model (All Runs)")
     figA, axA = plt.subplots()

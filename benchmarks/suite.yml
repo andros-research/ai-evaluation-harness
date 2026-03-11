@@ -8,7 +8,7 @@ reps: 5
 timeout_s: 600
 
 options:
-  temperature: 0.2
+  temperature: 0.0
   top_p: 0.9
   num_predict: 256
 
@@ -19,3 +19,22 @@ prompts:
   follow_instr: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
   style_hemi: "Write a Hemingway-lite paragraph about a quiet office morning. No metaphors. No adjectives longer than 8 letters."
   verbosity_drift: "In one paragraph, explain what a yield curve is, for a smart non-expert."
+
+checks:
+  attention_5sent:
+    - type: max_sentences
+      max: 5
+
+  json_strict:
+    - type: json_strict
+      required:
+        summary: string
+        bullets: array
+
+  follow_instr:
+    - type: follow_instr_2sent_wordcounts
+      s1_words: 8
+      s2_words: 12
+
+  reasoning_trap:
+    - type: numeric_only_final_line

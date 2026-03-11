@@ -1,144 +1,229 @@
+
 #!/usr/bin/env python3
-"""
-run_suite.py
-
-Research-grade(ish) local harness runner for Ollama models via HTTP API.
-
-- Reads suite.yml (optional) for models/prompts/options/reps
-- Falls back to a built-in default suite if suite.yml is missing
-- Executes each (prompt_id x model x rep) via POST /api/generate
-- Writes:
-    results_<ts>/
-        metrics.csv
-        metadata.json
-        <prompt_id>/
-            prompt.txt
-            <model>.rep01.txt
-            <model>.rep01.json
-            ...
-- Tracks failures properly (exit_code, stderr, error)
-"""
-
 from __future__ import annotations
 
+import argparse
 import csv
+import datetime as dt
 import json
 import os
 import re
+import sys
 import time
+import urllib.request
+import urllib.error
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import requests
+# Ensure experiment runs save to parent of parent
+from pathlib import Path
+import os
 
-try:
-    import yaml  # type: ignore
-except Exception:
-    yaml = None  # We'll handle missing pyyaml gracefully.
-
-
-# ----------------------------
-# Config defaults
-# ----------------------------
-
-DEFAULT_MODELS = ["mistral", "llama3", "llama3:70b"]
-
-DEFAULT_PROMPTS: Dict[str, str] = {
-    "attention_5sent": "Explain attention in transformers in 5 sentences.",
-    "json_strict": "Return ONLY valid JSON with keys: summary (string), bullets (array of 3 strings).",
-    "reasoning_trap": (
-        "You have a bond with DV01=100k and convexity=12k. Rates shift +10bp then +10bp. "
-        "Return ONLY a single line with the approximate PnL number (no words, no units)."
-    ),
-    "follow_instr": (
-        "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
-    ),
-    "style_hemi": (
-        "Write a Hemingway-lite paragraph about a quiet office morning. "
-        "No metaphors. No adjectives longer than 8 letters."
-    ),
-    "verbosity_drift": (
-        "In one paragraph, explain what a yield curve is, for a smart non-expert."
-    ),
-}
-
-DEFAULT_REPS = 3
-
-# API options that affect output behavior.
-DEFAULT_OPTIONS: Dict[str, Any] = {
-    "temperature": 0.2,
-    "top_p": 0.9,
-    "num_predict": 256,  # cap output tokens
-}
-
-DEFAULT_TIMEOUT_S = 600
-
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+BENCH_DIR = Path(__file__).resolve().parent          # /home/joe/ai-lab/benchmarks
+PROJECT_ROOT = BENCH_DIR.parent                     # /home/joe/ai-lab
+os.chdir(PROJECT_ROOT)
+print(f"Working directory set to: {PROJECT_ROOT}")
 
 
-# ----------------------------
-# Helpers
-# ----------------------------
+def resolve_config_path(p: str) -> Path:
+    """
+    Accept:
+      - absolute paths
+      - relative to CWD (repo root)
+      - relative to benchmarks/ (common case)
+      - relative to script dir (benchmarks/)
+    """
+    cand = Path(p)
+    if cand.is_absolute() and cand.exists():
+        return cand
 
-_SENT_SPLIT = re.compile(r"[.!?]+\s+")
+    # relative to current working dir (repo root)
+    cand1 = (Path.cwd() / p)
+    if cand1.exists():
+        return cand1
+
+    # relative to benchmarks directory
+    cand2 = (BENCH_DIR / p)
+    if cand2.exists():
+        return cand2
+
+    # last attempt: relative to script dir (same as BENCH_DIR)
+    cand3 = (Path(__file__).resolve().parent / p)
+    if cand3.exists():
+        return cand3
+
+    # if nothing worked, return the CWD-based path (for a good error)
+    return cand1
+
+def load_yaml(path: str | Path) -> Dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        raise RuntimeError("PyYAML not installed. Install with: conda install -y pyyaml")
+    path = Path(path)
+    with open(path, "r", encoding="utf-8") as f:
+        obj = yaml.safe_load(f)
+    if not isinstance(obj, dict):
+        raise ValueError("YAML root must be a mapping")
+    return obj
 
 
-def now_run_id() -> str:
-    # matches your prior style: results_YYYY-MM-DD_HH-MM-SS
-    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+# -------------------------
+# Day 6: Valid-run gating
+# -------------------------
+def classify_failure(exit_code: int, words: int, error: str = "", stderr: str = "", timed_out: bool = False) -> str:
+    if timed_out:
+        return "timeout"
+    if error:
+        return "error"
+    if stderr:
+        # only treat as failure if exit_code != 0; otherwise stderr could be warnings
+        if exit_code != 0:
+            return "stderr"
+    if exit_code != 0:
+        return "nonzero_exit"
+    if words <= 0:
+        return "empty_output"
+    return "ok"
+
+def compute_ok(exit_code: int, words: int) -> int:
+    return int(exit_code == 0 and words > 0)
 
 
-def safe_write_text(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+# -------------------------
+# Lightweight text stats
+# -------------------------
+_WORD_RE = re.compile(r"\S+")
 
+def count_words(s: str) -> int:
+    return len(_WORD_RE.findall(s or ""))
 
-def count_sentences(text: str) -> int:
-    t = text.strip()
-    if not t:
+def count_lines(s: str) -> int:
+    if not s:
         return 0
-    return len([s for s in _SENT_SPLIT.split(t) if s.strip()])
+    return s.count("\n") + 1
 
-
-def basic_counts(text: str) -> Dict[str, int]:
-    if not text:
-        return {"chars": 0, "words": 0, "lines": 0}
-    return {
-        "chars": len(text),
-        "words": len(text.split()),
-        "lines": text.count("\n") + 1,
-    }
-
-
-def slugify(s: str) -> str:
-    # keep it simple and stable: lowercase + safe chars
-    s = s.lower().strip()
+def safe_slug(s: str) -> str:
+    s = s.strip().lower()
     s = re.sub(r"[^a-z0-9_\-]+", "_", s)
-    s = re.sub(r"_+", "_", s)
-    return s.strip("_")
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s or "prompt"
 
 
+
+# -------------------------
+# Checks (only run when ok=1)
+# -------------------------
+def check_max_sentences(text: str, max_sentences: int) -> Tuple[bool, str]:
+    # naive but stable: split on .!? plus newlines
+    chunks = re.split(r"[.!?]+\s+|\n+", (text or "").strip())
+    sentences = [c for c in (c.strip() for c in chunks) if c]
+    ok = len(sentences) <= max_sentences
+    return ok, f"max_sentences_{max_sentences}={'OK' if ok else 'FAIL'}(sentences={len(sentences)})"
+
+def check_exact_sentences_and_wordcounts(text: str, s1_words: int, s2_words: int) -> Tuple[bool, str]:
+    # Sentence split for this constraint check.
+    chunks = re.split(r"[.!?]+\s+", (text or "").strip())
+    sentences = [c.strip() for c in chunks if c.strip()]
+    if len(sentences) != 2:
+        return False, f"exact_match=FAIL(sentences={len(sentences)})"
+    w1 = count_words(sentences[0])
+    w2 = count_words(sentences[1])
+    ok = (w1 == s1_words and w2 == s2_words)
+    return ok, f"exact_match={'OK' if ok else 'FAIL'}(w1={w1},w2={w2})"
+
+def check_json_strict(text: str, required: Dict[str, str]) -> Tuple[bool, str]:
+    # required: key -> type ("string","number","object","array","boolean")
+    try:
+        obj = json.loads(text)
+    except Exception as e:
+        return False, f"json_parse=FAIL({type(e).__name__})"
+    if not isinstance(obj, dict):
+        return False, "json_object=FAIL(not_object)"
+    for k, t in required.items():
+        if k not in obj:
+            return False, f"json_keys=FAIL(missing={k})"
+        v = obj[k]
+        if t == "string" and not isinstance(v, str):
+            return False, f"json_type=FAIL({k}!=string)"
+        if t == "number" and not isinstance(v, (int, float)):
+            return False, f"json_type=FAIL({k}!=number)"
+        if t == "object" and not isinstance(v, dict):
+            return False, f"json_type=FAIL({k}!=object)"
+        if t == "array" and not isinstance(v, list):
+            return False, f"json_type=FAIL({k}!=array)"
+        if t == "boolean" and not isinstance(v, bool):
+            return False, f"json_type=FAIL({k}!=boolean)"
+    return True, "json_strict=OK"
+
+def check_numeric_only_final_line(text: str) -> Tuple[bool, str]:
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    if not lines:
+        return False, "numeric_only=FAIL(empty)"
+    last = lines[-1]
+    ok = bool(re.fullmatch(r"[-+]?\d+(\.\d+)?", last))
+    return ok, f"numeric_only={'OK' if ok else 'FAIL'}"
+
+def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, int, str]:
+    """
+    suite supports either:
+      - suite['checks'][prompt_id] = list of check dicts
+      - prompt as dict with 'checks' field if prompts are structured
+    """
+    checks_spec: List[Dict[str, Any]] = []
+    if isinstance(suite.get("checks"), dict) and isinstance(suite["checks"].get(prompt_id), list):
+        checks_spec = suite["checks"][prompt_id]
+    # else no checks
+
+    if not checks_spec:
+        return 0, 0, "no_checks"
+
+    passed = 0
+    details: List[str] = []
+    total = 0
+
+    for chk in checks_spec:
+        total += 1
+        ctype = (chk.get("type") or "").strip()
+        ok = False
+        msg = "unknown_check"
+        if ctype == "max_sentences":
+            ok, msg = check_max_sentences(text, int(chk.get("max", 5)))
+        elif ctype == "follow_instr_2sent_wordcounts":
+            ok, msg = check_exact_sentences_and_wordcounts(text, int(chk.get("s1_words", 8)), int(chk.get("s2_words", 12)))
+        elif ctype == "json_strict":
+            required = chk.get("required", {"summary": "string", "bullets": "array"})
+            ok, msg = check_json_strict(text, required)
+        elif ctype == "numeric_only_final_line":
+            ok, msg = check_numeric_only_final_line(text)
+        else:
+            ok = False
+            msg = f"unknown_check=FAIL(type={ctype})"
+
+        if ok:
+            passed += 1
+        details.append(msg)
+
+    return passed, total, ";".join(details)
+
+
+# -------------------------
+# Ollama API
+# -------------------------
 @dataclass
-class RunResult:
+class OllamaResult:
+    response_text: str
+    raw_json: Dict[str, Any]
+    elapsed_s: float
     exit_code: int
-    stdout: str
     stderr: str
-    meta: Dict[str, Any]
+    error: str
+    timed_out: bool
 
 
-def ollama_generate(
-    model: str,
-    prompt: str,
-    options: Optional[Dict[str, Any]] = None,
-    timeout_s: int = DEFAULT_TIMEOUT_S,
-) -> RunResult:
-    """
-    Call Ollama generate API (non-streaming).
-    """
-    url = f"{OLLAMA_HOST}/api/generate"
-    payload: Dict[str, Any] = {
+def ollama_generate(host: str, model: str, prompt: str, options: Dict[str, Any], timeout_s: int) -> OllamaResult:
+    url = host.rstrip("/") + "/api/generate"
+    payload = {
         "model": model,
         "prompt": prompt,
         "stream": False,
@@ -146,211 +231,180 @@ def ollama_generate(
     if options:
         payload["options"] = options
 
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+
     t0 = time.time()
+    timed_out = False
+    stderr = ""
+    error = ""
+    exit_code = 0
+    raw: Dict[str, Any] = {}
+    text = ""
+
     try:
-        r = requests.post(url, json=payload, timeout=timeout_s)
-        elapsed = time.time() - t0
-
-        if r.status_code != 200:
-            return RunResult(
-                exit_code=2,
-                stdout="",
-                stderr=f"HTTP {r.status_code}: {r.text[:500]}",
-                meta={"elapsed_s": elapsed},
-            )
-
-        data = r.json()
-        text = data.get("response", "")
-        return RunResult(
-            exit_code=0,
-            stdout=text,
-            stderr="",
-            meta={"elapsed_s": elapsed, "raw": data},
-        )
-
-    except requests.Timeout:
-        elapsed = time.time() - t0
-        return RunResult(
-            exit_code=124,
-            stdout="",
-            stderr=f"Timeout after {timeout_s}s",
-            meta={"elapsed_s": elapsed},
-        )
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            body = resp.read()
+            raw = json.loads(body.decode("utf-8", errors="replace"))
+            text = (raw.get("response") or "")
+    except urllib.error.HTTPError as e:
+        exit_code = 1
+        error = f"HTTPError {e.code}"
+        try:
+            stderr = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            stderr = ""
+    except urllib.error.URLError as e:
+        exit_code = 1
+        # URLError wraps timeouts too
+        error = f"URLError {getattr(e, 'reason', e)}"
+        if "timed out" in str(error).lower():
+            timed_out = True
+    except TimeoutError:
+        exit_code = 1
+        timed_out = True
+        error = "timeout"
     except Exception as e:
-        elapsed = time.time() - t0
-        return RunResult(
-            exit_code=1,
-            stdout="",
-            stderr=f"Exception: {type(e).__name__}: {e}",
-            meta={"elapsed_s": elapsed},
-        )
+        exit_code = 1
+        error = f"{type(e).__name__}: {e}"
+
+    elapsed_s = time.time() - t0
+    return OllamaResult(
+        response_text=text,
+        raw_json=raw if isinstance(raw, dict) else {},
+        elapsed_s=elapsed_s,
+        exit_code=exit_code,
+        stderr=stderr,
+        error=error,
+        timed_out=timed_out,
+    )
 
 
-def load_suite_yaml(path: Path) -> Optional[Dict[str, Any]]:
-    if not path.exists():
-        return None
-    if yaml is None:
-        raise RuntimeError(
-            "suite.yml exists but PyYAML is not installed. "
-            "Install with: python -m pip install pyyaml"
-        )
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
-
-
-def normalize_models(x: Any) -> List[str]:
-    if x is None:
-        return DEFAULT_MODELS[:]
-    if isinstance(x, list):
-        return [str(m) for m in x]
-    raise ValueError("models must be a list")
-
-
-def normalize_prompts(x: Any) -> Dict[str, str]:
-    if x is None:
-        return dict(DEFAULT_PROMPTS)
-    if isinstance(x, dict):
-        return {slugify(str(k)): str(v) for k, v in x.items()}
-    raise ValueError("prompts must be a mapping of id -> text")
-
-
-def normalize_reps(x: Any) -> int:
-    if x is None:
-        return DEFAULT_REPS
-    r = int(x)
-    if r < 1:
-        raise ValueError("reps must be >= 1")
-    return r
-
-
-def normalize_options(x: Any) -> Dict[str, Any]:
-    if x is None:
-        return dict(DEFAULT_OPTIONS)
-    if isinstance(x, dict):
-        # merge defaults + overrides
-        merged = dict(DEFAULT_OPTIONS)
-        merged.update(x)
-        return merged
-    raise ValueError("options must be a mapping")
-
-
-# ----------------------------
-# Minimal checks (Day 5 style)
-# ----------------------------
-
-def check_json_strict(text: str) -> Tuple[int, int, str]:
-    """
-    Expect ONLY JSON with required keys.
-    """
-    total = 1
-    t = text.strip()
-    if not t:
-        return (0, total, "json=FAIL(empty)")
+# -------------------------
+# YAML loading (best effort)
+# -------------------------
+def load_yaml(path: str) -> Dict[str, Any]:
     try:
-        obj = json.loads(t)
-    except Exception as e:
-        return (0, total, f"json=FAIL(parse:{type(e).__name__})")
-    ok = isinstance(obj, dict) and "summary" in obj and "bullets" in obj
-    if not ok:
-        return (0, total, "json=FAIL(keys)")
-    if not isinstance(obj["summary"], str):
-        return (0, total, "json=FAIL(summary_type)")
-    if not (isinstance(obj["bullets"], list) and len(obj["bullets"]) == 3 and all(isinstance(b, str) for b in obj["bullets"])):
-        return (0, total, "json=FAIL(bullets_type)")
-    return (1, total, "json=OK")
+        import yaml  # type: ignore
+    except Exception:
+        raise RuntimeError("PyYAML not installed. Install with: conda install -y pyyaml")
+    with open(path, "r", encoding="utf-8") as f:
+        obj = yaml.safe_load(f)
+    if not isinstance(obj, dict):
+        raise ValueError("YAML root must be a mapping")
+    return obj
 
 
-def check_attention_5sent(text: str) -> Tuple[int, int, str]:
-    total = 1
-    n = count_sentences(text)
-    ok = (n > 0) and (n <= 5)
-    return (1 if ok else 0, total, f"max_sentences_5={'OK' if ok else 'FAIL'}(sentences={n})")
-
-
-def check_follow_instr(text: str) -> Tuple[int, int, str]:
+def normalize_prompts(prompts_obj: Any) -> Dict[str, str]:
     """
-    Exactly 2 sentences; sentence1=8 words; sentence2=12 words.
+    Accept:
+      prompts:
+        id1: "text"
+        id2: "text"
+    OR
+      prompts:
+        - id: id1
+          text: "..."
+        - id: id2
+          text: "..."
     """
-    total = 1
-    t = text.strip()
-    if not t:
-        return (0, total, "exact_match=FAIL(empty)")
-    # Split on sentence end. This is intentionally simple; good enough for first harness.
-    parts = re.split(r"[.!?]+", t)
-    parts = [p.strip() for p in parts if p.strip()]
-    if len(parts) != 2:
-        return (0, total, f"exact_match=FAIL(sentences={len(parts)})")
-    w1 = len(parts[0].split())
-    w2 = len(parts[1].split())
-    ok = (w1 == 8 and w2 == 12)
-    return (1 if ok else 0, total, f"exact_match={'OK' if ok else 'FAIL'}(w1={w1},w2={w2})")
+    if isinstance(prompts_obj, dict):
+        out: Dict[str, str] = {}
+        for k, v in prompts_obj.items():
+            if isinstance(v, str):
+                out[str(k)] = v
+            elif isinstance(v, dict) and isinstance(v.get("text"), str):
+                out[str(k)] = v["text"]
+            else:
+                raise ValueError("prompts must be mapping id -> text (or id -> {text:...})")
+        return out
+
+    if isinstance(prompts_obj, list):
+        out = {}
+        for item in prompts_obj:
+            if not isinstance(item, dict):
+                raise ValueError("prompt list entries must be mappings")
+            pid = item.get("id")
+            txt = item.get("text")
+            if not isinstance(pid, str) or not isinstance(txt, str):
+                raise ValueError("prompt list entries need {id: str, text: str}")
+            out[pid] = txt
+        return out
+
+    raise ValueError("prompts must be a mapping of id -> text (or a list of {id,text})")
 
 
-def check_reasoning_trap(text: str) -> Tuple[int, int, str]:
-    """
-    Numeric-only single-line output.
-    """
-    total = 1
-    t = text.strip()
-    if not t:
-        return (0, total, "numeric_only=FAIL(empty)")
-    # Allow signs, decimals
-    ok = bool(re.fullmatch(r"[+-]?\d+(\.\d+)?", t))
-    return (1 if ok else 0, total, f"numeric_only={'OK' if ok else 'FAIL'}")
+def now_run_id() -> str:
+    return dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-
-def run_checks(prompt_id: str, text: str, exit_code: int) -> Tuple[int, int, str]:
-    """
-    Returns: (passed, total, detail)
-    """
-    # If the model call failed, don't score content checks.
-    if exit_code != 0:
-        return (0, 0, "skipped_due_to_error")
-    if prompt_id == "json_strict":
-        return check_json_strict(text)
-    if prompt_id == "attention_5sent":
-        return check_attention_5sent(text)
-    if prompt_id == "follow_instr":
-        return check_follow_instr(text)
-    if prompt_id == "reasoning_trap":
-        return check_reasoning_trap(text)
-    # style_hemi / verbosity_drift: no strict checks yet
-    return (0, 0, "no_checks")
-
-
-# ----------------------------
-# Main runner
-# ----------------------------
 
 def main() -> None:
-    root = Path(__file__).resolve().parent
-    suite_path = root / "suite.yml"
+    # ap = argparse.ArgumentParser()
+    # ap.add_argument("--suite", default="suite.yml", help="Suite YAML file (prompts + optional checks)")
+    # ap.add_argument("--runner", default="", help="Optional runner YAML file (models/reps/options/timeout/host)")
+    # args = ap.parse_args()
 
-    suite = load_suite_yaml(suite_path) or {}
-    models = normalize_models(suite.get("models"))
+    # suite = load_yaml(args.suite)
+    # prompts = normalize_prompts(suite.get("prompts"))
+
+    # runner: Dict[str, Any] = {}
+    # if args.runner:
+    #     runner = load_yaml(args.runner)
+        
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--suite", default="suite.yml", help="Suite YAML file")
+    ap.add_argument("--runner", default="", help="Optional runner YAML file")
+    args = ap.parse_args()
+
+    BASE_DIR = Path(__file__).resolve().parent
+    SUITE_PATH = BASE_DIR / args.suite
+    suite = load_yaml(str(SUITE_PATH))
+    
+    suite_path = resolve_config_path(args.suite)
+    # suite = load_yaml(suite_path)
+    
     prompts = normalize_prompts(suite.get("prompts"))
-    reps = normalize_reps(suite.get("reps"))
-    options = normalize_options(suite.get("options"))
-    timeout_s = int(suite.get("timeout_s", DEFAULT_TIMEOUT_S))
+
+    runner: Dict[str, Any] = {}
+    runner_path: Path | None = None
+    if args.runner:
+        runner_path = resolve_config_path(args.runner)
+        runner = load_yaml(runner_path)
+
+    # Runner settings: fall back to suite.yml if present; then defaults
+    host = runner.get("ollama_host") or suite.get("ollama_host") or "http://127.0.0.1:11434"
+    models = runner.get("models") or suite.get("models") or ["mistral", "llama3"]
+    reps = int(runner.get("reps") or suite.get("reps") or 5)
+    timeout_s = int(runner.get("timeout_s") or suite.get("timeout_s") or 600)
+    options = runner.get("options") or suite.get("options") or {"temperature": 0.2, "top_p": 0.9, "num_predict": 256}
+
+    if not isinstance(models, list) or not all(isinstance(m, str) for m in models):
+        raise ValueError("models must be a list[str]")
 
     run_id = now_run_id()
-    outdir = root / f"results_{run_id}"
-    outdir.mkdir(parents=True, exist_ok=True)
+    # outdir = f"results_{run_id}"
+    outdir = str(BENCH_DIR / "results" / "raw_runs" / f"results_{run_id}")
+    responses_path = os.path.join(outdir, "responses.jsonl")
+    os.makedirs(outdir, exist_ok=True)
 
-    # Save metadata
-    metadata = {
+    # Persist metadata.json (paper trail)
+    meta = {
         "run_id": run_id,
-        "created_at": datetime.now().isoformat(timespec="seconds"),
-        "ollama_host": OLLAMA_HOST,
+        "created_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "ollama_host": host,
         "models": models,
         "reps": reps,
         "options": options,
         "timeout_s": timeout_s,
-        "suite_file": "suite.yml" if suite_path.exists() else None,
+        "suite_file": str(suite_path),
+        "runner_file": str(runner_path) if runner_path else "",
     }
-    safe_write_text(outdir / "metadata.json", json.dumps(metadata, indent=2))
+    with open(os.path.join(outdir, "metadata.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2)
 
-    metrics_path = outdir / "metrics.csv"
-    fields = [
+    # CSV (keep existing columns, append new ones at end)
+    metrics_path = os.path.join(outdir, "metrics.csv")
+    fieldnames = [
         "run_id",
         "ts",
         "prompt_id",
@@ -364,69 +418,136 @@ def main() -> None:
         "checks_passed",
         "checks_total",
         "checks_detail",
-        "exit_code",
+        "checks_ok",
+        "overall_ok",
         "stderr",
         "error",
+        "exit_code",
+        "ok",
+        "failure_type",
+        "response_hash",
     ]
 
-    with metrics_path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+    print(f"Running benchmark suite -> {outdir}")
+    with open(metrics_path, "w", newline="", encoding="utf-8") as csvf, \
+         open(responses_path, "a", encoding="utf-8") as respf:
+        w = csv.DictWriter(csvf, fieldnames=fieldnames)
         w.writeheader()
 
-        print(f"Running benchmark suite -> {outdir.name}")
-        for prompt_id, prompt_text in prompts.items():
-            prompt_id = slugify(prompt_id)
-            prompt_dir = outdir / f"{prompt_id}_"
-            prompt_dir.mkdir(parents=True, exist_ok=True)
-            safe_write_text(prompt_dir / "prompt.txt", prompt_text)
+        for pid, ptxt in prompts.items():
+            prompt_dir = os.path.join(outdir, safe_slug(pid) + "_")
+            os.makedirs(prompt_dir, exist_ok=True)
+            # Save prompt text for auditability
+            with open(os.path.join(prompt_dir, "prompt.txt"), "w", encoding="utf-8") as pf:
+                pf.write(ptxt)
 
-            print(f"Prompt: {prompt_id}")
+            print(f"Prompt: {pid}")
+
             for model in models:
                 print(f"  Model: {model}")
-                # Optional warmup per (prompt,model) — don’t log
-                _ = ollama_generate(model=model, prompt="warmup", options=options, timeout_s=timeout_s)
-
                 for rep in range(1, reps + 1):
-                    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                    res = ollama_generate(model=model, prompt=prompt_text, options=options, timeout_s=timeout_s)
+                    ts = dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-                    out_text = res.stdout or ""
-                    err_text = res.stderr or ""
+                    res = ollama_generate(host, model, ptxt, options, timeout_s)
+                    out_text = res.response_text or ""
+                    import hashlib
+                    def hash_text(s: str) -> str:
+                        return hashlib.sha256((s or "").encode("utf-8")).hexdigest()[:16]
+                    chars = len(out_text)
+                    words = count_words(out_text)
+                    lines = count_lines(out_text)
+                    words_per_s = (words / res.elapsed_s) if res.elapsed_s > 0 else 0.0
 
-                    # Write raw output + raw json metadata for debugging
-                    safe_write_text(prompt_dir / f"{model}.rep{rep:02d}.txt", out_text)
-                    safe_write_text(prompt_dir / f"{model}.rep{rep:02d}.json", json.dumps(res.meta.get("raw", {}), indent=2))
+                    ok = compute_ok(res.exit_code, words)
+                    failure_type = classify_failure(
+                        res.exit_code, words,
+                        error=res.error,
+                        stderr=res.stderr,
+                        timed_out=res.timed_out
+                    )
 
-                    counts = basic_counts(out_text)
-                    elapsed = float(res.meta.get("elapsed_s", 0.0))
-                    wps = (counts["words"] / elapsed) if elapsed > 0 else 0.0
+                    # Persist artifacts (always)
+                    rep_tag = f"rep{rep:02d}"
+                    base = f"{model}.{rep_tag}"
+                    txt_path = os.path.join(prompt_dir, base + ".txt")
+                    json_path = os.path.join(prompt_dir, base + ".json")
 
-                    passed, total, detail = run_checks(prompt_id, out_text, res.exit_code)
+                    with open(txt_path, "w", encoding="utf-8") as tf:
+                        tf.write(out_text)
+
+                    raw = res.raw_json if isinstance(res.raw_json, dict) else {}
+                    if raw:
+                        raw.setdefault("model", model)
+                        raw.setdefault("prompt_id", pid)
+                        raw.setdefault("rep", rep)
+                    with open(json_path, "w", encoding="utf-8") as jf:
+                        json.dump(raw if raw else {"model": model, "prompt_id": pid, "rep": rep, "response": out_text}, jf, indent=2)
+
+                    # Valid-run gating: only score checks if ok==1
+                    if ok:
+                        checks_passed, checks_total, checks_detail = run_checks(pid, out_text, suite)
+                    else:
+                        checks_passed, checks_total, checks_detail = 0, 0, "skipped_invalid_run"
+                    checks_ok = int(checks_total > 0 and checks_passed == checks_total)
+                    overall_ok = int(ok == 1 and (checks_total == 0 or checks_ok == 1))
+                    # Possibly stricter definition for later
+                    # overall_ok = int(ok == 1 and checks_ok == 1)
 
                     row = {
                         "run_id": run_id,
                         "ts": ts,
-                        "prompt_id": prompt_id,
+                        "prompt_id": pid,
                         "rep": rep,
                         "model": model,
-                        "elapsed_s": round(elapsed, 3),
-                        "chars": counts["chars"],
-                        "words": counts["words"],
-                        "lines": counts["lines"],
-                        "words_per_s": round(wps, 3),
-                        "checks_passed": passed,
-                        "checks_total": total,
-                        "checks_detail": detail,
+                        "elapsed_s": round(res.elapsed_s, 3),
+                        "chars": chars,
+                        "words": words,
+                        "lines": lines,
+                        "words_per_s": round(words_per_s, 3),
+                        "checks_passed": checks_passed,
+                        "checks_total": checks_total,
+                        "checks_detail": checks_detail,
+                        "checks_ok": checks_ok,
+                        "overall_ok": overall_ok,
+                        "stderr": (res.stderr or "").replace("\n", "\\n")[:5000],
+                        "error": (res.error or "")[:1000],
                         "exit_code": res.exit_code,
-                        "stderr": err_text[:200].replace("\n", "\\n"),
-                        "error": "" if res.exit_code == 0 else "ollama_generate_failed",
+                        "ok": ok,
+                        "failure_type": failure_type,
+                        "response_hash": hash_text(out_text),
                     }
+                    # inside the loops, after you compute row:
+                    resp_record = {
+                        "run_id": run_id,
+                        "ts": ts,
+                        "prompt_id": pid,
+                        "rep": rep,
+                        "model": model,
+                        "prompt": ptxt,              # optional (handy early on; can remove later)
+                        "response_text": out_text,
+                        "raw": raw,                  # full ollama JSON (if you want it)
+                        "elapsed_s": res.elapsed_s,
+                        "exit_code": res.exit_code,
+                        "ok": ok,
+                        "checks_ok": checks_ok,
+                        "overall_ok": overall_ok,
+                        "failure_type": failure_type,
+                        "stderr": res.stderr,
+                        "error": res.error,
+                        "timed_out": res.timed_out,
+                        "response_hash": hash_text(out_text),
+                    }
+                    respf.write(json.dumps(resp_record, ensure_ascii=False) + "\n")
+                    respf.flush()
                     w.writerow(row)
+                    csvf.flush()
 
-    print(f"Done. Results saved in {outdir.name}")
-    print(f"Metrics: {metrics_path}")
+    print(f"Done.\nMetrics: {os.path.abspath(metrics_path)}")
 
 
 if __name__ == "__main__":
-    main()
-
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Interrupted.", file=sys.stderr)
+        sys.exit(130)
