@@ -3,7 +3,7 @@ models:
   - llama3
   - llama3:70b
 
-reps: 1
+reps: 5
 
 timeout_s: 600
 

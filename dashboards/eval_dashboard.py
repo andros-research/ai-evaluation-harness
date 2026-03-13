@@ -130,10 +130,50 @@ def make_hotspots(m: pd.DataFrame) -> pd.DataFrame:
 
     return h
 
-runs = find_result_folders(RAW_RUNS_ROOT)
+def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
+    if not {"prompt_id", "model"}.issubset(df.columns):
+        return pd.DataFrame()
 
-# Patch: filter runs to “compatible runs only”
-REQUIRED_COLS = {"model", "prompt_id", "elapsed_s", "words", "failure_type", "words_per_s", "ok"}
+    d = df.copy()
+
+    # Safe numeric coercion
+    for col in ["ok", "checks_ok", "overall_ok", "elapsed_s", "words_per_s", "checks_total"]:
+        if col in d.columns:
+            d[col] = pd.to_numeric(d[col], errors="coerce")
+
+    # Only compute checks pass rate on rows that actually had checks
+    if "checks_total" in d.columns:
+        d["has_checks"] = d["checks_total"].fillna(0) > 0
+    else:
+        d["has_checks"] = False
+
+    grouped = (
+        d.groupby(["prompt_id", "model"], as_index=False)
+        .agg(
+            rows=("model", "size"),
+            pipeline_success_rate=("ok", "mean") if "ok" in d.columns else ("model", "size"),
+            overall_pass_rate=("overall_ok", "mean") if "overall_ok" in d.columns else ("model", "size"),
+            avg_latency=("elapsed_s", "mean") if "elapsed_s" in d.columns else ("model", "size"),
+            avg_wps=("words_per_s", "mean") if "words_per_s" in d.columns else ("model", "size"),
+        )
+    )
+
+    # checks pass rate calculated only on checked rows
+    if "checks_ok" in d.columns and "has_checks" in d.columns:
+        checks_only = d[d["has_checks"]].copy()
+        if len(checks_only):
+            checks_summary = (
+                checks_only.groupby(["prompt_id", "model"], as_index=False)
+                .agg(checks_pass_rate=("checks_ok", "mean"))
+            )
+            grouped = grouped.merge(checks_summary, on=["prompt_id", "model"], how="left")
+        else:
+            grouped["checks_pass_rate"] = pd.NA
+    else:
+        grouped["checks_pass_rate"] = pd.NA
+
+    grouped = grouped.sort_values(["prompt_id", "model"]).reset_index(drop=True)
+    return grouped
 
 def run_is_compatible(run_dir: Path) -> bool:
     metrics = run_dir / "metrics.csv"
@@ -218,6 +258,20 @@ with tab_run:
     col5, col6 = st.columns(2)
     col5.metric("Avg Latency (s)", f"{df_filtered['elapsed_s'].mean():.2f}" if len(df_filtered) else "—")
     col6.metric("Avg Words", f"{df_filtered['words'].mean():.1f}" if len(df_filtered) else "—")
+
+    st.subheader("Prompt × Model Summary")
+    pm_summary = make_prompt_model_summary(df_filtered)
+    if not pm_summary.empty:
+        show = pm_summary.copy()
+        for col in ["pipeline_success_rate", "checks_pass_rate", "overall_pass_rate"]:
+            if col in show.columns:
+                show[col] = show[col].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "—")
+        for col in ["avg_latency", "avg_wps"]:
+            if col in show.columns:
+                show[col] = show[col].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—")
+        st.dataframe(show)
+    else:
+        st.info("Not enough data to build prompt × model summary.")
 
     st.subheader("Latency Distribution by Model")
     fig1, ax1 = plt.subplots()
@@ -308,7 +362,6 @@ with tab_agg:
     m = master.copy()
     m = m[m["model"].isin(agg_models) & m["prompt_id"].isin(agg_prompts)]
     
-    masterN = normalize_master(master) # not currently used
     mN = normalize_master(m)  # if you want filtered run health/hotspots
 
     run_health = make_worst_runs(mN)     # filtered view
@@ -321,6 +374,20 @@ with tab_agg:
     c3.metric("Nonzero exit_code", f"{mN['has_nonzero_exit'].mean():.2%}" if len(mN) else "—")
     c4.metric("Non-ok failure_type", f"{mN['failure_type_is_bad'].mean():.2%}" if len(mN) else "—")
 
+    st.subheader("Prompt × Model Summary (All Runs)")
+    pm_summary_all = make_prompt_model_summary(m)
+    if not pm_summary_all.empty:
+        show = pm_summary_all.copy()
+        for col in ["pipeline_success_rate", "checks_pass_rate", "overall_pass_rate"]:
+            if col in show.columns:
+                show[col] = show[col].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "—")
+        for col in ["avg_latency", "avg_wps"]:
+            if col in show.columns:
+                show[col] = show[col].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—")
+        st.dataframe(show)
+    else:
+        st.info("Not enough data to build prompt × model summary.")
+
     st.subheader("Worst Runs")
     st.dataframe(run_health.head(20))
 
@@ -331,57 +398,15 @@ with tab_agg:
         m = m[m["ok"] == 1]
     elif ok_only == "Only failures":
         m = m[m["ok"] == 0]
-    
-    # -----------------------------------------------
-    # ------ Run health card + table (aggregate tab)
-    # -----------------------------------------------
-    st.subheader("Run Health (Filtered)")
-    total_rows = len(m)
 
-    ok_rate = m["ok"].mean() if total_rows and "ok" in m.columns else None
-    err_rate = (m["error"].fillna(0) != 0).mean() if total_rows and "error" in m.columns else None
-    exit_rate = (m["exit_code"].fillna(0) != 0).mean() if total_rows and "exit_code" in m.columns else None
-    fail_rate = (m["failure_type"].fillna("ok") != "ok").mean() if total_rows and "failure_type" in m.columns else None
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Rows", f"{total_rows:,}")
-    c2.metric("Pipeline Success Rate", f"{ok_rate:.2%}" if ok_rate is not None else "—")
-    c3.metric("Nonzero exit_code", f"{exit_rate:.2%}" if exit_rate is not None else "—")
-    c4.metric("Non-ok failure_type", f"{fail_rate:.2%}" if fail_rate is not None else "—")
-    
-    
-    st.subheader("Top Failure Hotspots")
-    hot = m.copy()
-    hot["failure_type"] = hot["failure_type"].fillna("ok")
-    hot["is_fail"] = (hot["ok"].fillna(0) == 0)
-
-    group_cols = [c for c in ["prompt_id", "model"] if c in hot.columns]
-    if group_cols:
-        summary = (
-            hot.groupby(group_cols, as_index=False)
-            .agg(
-                rows=("is_fail", "size"),
-                fail_rate=("is_fail", "mean"),
-                avg_latency=("elapsed_s", "mean") if "elapsed_s" in hot.columns else ("is_fail", "size"),
-                avg_wps=("words_per_s", "mean") if "words_per_s" in hot.columns else ("is_fail", "size"),
-            )
-            .sort_values(["fail_rate", "rows"], ascending=[False, False])
-            .head(20)
-        )
-        st.dataframe(summary)
-    else:
-        st.info("Not enough columns to compute hotspots (need at least model and/or prompt_id).")
-    
     
     st.subheader("Lab Growth Over Time")
-
     metric_choice = st.selectbox(
         "Growth metric",
         ["Cumulative rows", "Cumulative unique runs", "Daily rows", "Daily unique runs"],
         index=0,
         key="growth_metric",
     )
-
     ycol = {
         "Cumulative rows": "cum_rows",
         "Cumulative unique runs": "cum_unique_runs",
@@ -427,4 +452,6 @@ with tab_agg:
     st.pyplot(figB)
 
     st.subheader("Failure Type Breakdown (All Runs)")
-    st.bar_chart(m["failure_type"].value_counts())
+    fails = m[m["failure_type"] != "ok"]
+    st.bar_chart(fails["failure_type"].value_counts())
+    # st.bar_chart(m["failure_type"].value_counts())
