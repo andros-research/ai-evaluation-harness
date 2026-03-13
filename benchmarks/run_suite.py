@@ -120,9 +120,10 @@ _SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
 _WORD_TOKEN_RE = re.compile(r"\b[\w'-]+\b")
 
 def split_sentences_basic(text: str) -> List[str]:
-    text = (text or "").strip()
+    text = strip_leading_list_markers((text or "").strip())
     if not text:
         return []
+
     parts = _SENTENCE_END_RE.split(text)
     parts = [p.strip() for p in parts if p.strip()]
     return parts
@@ -148,6 +149,29 @@ def check_exact_sentences_and_wordcounts(text: str, s1_words: int, s2_words: int
 
     ok = (w1 == s1_words and w2 == s2_words)
     return ok, f"exact_match={'OK' if ok else 'FAIL'}(w1={w1},w2={w2},expected={s1_words}/{s2_words})"
+
+def strip_leading_list_markers(text: str) -> str:
+    """
+    Remove simple leading list markers at line starts, e.g.
+      1. text
+      2) text
+      - text
+      * text
+    This helps sentence counting avoid double-counting numbered lists.
+    """
+    lines = (text or "").splitlines()
+    cleaned = []
+    for ln in lines:
+        ln = re.sub(r"^\s*\d+[\.\)]\s+", "", ln)
+        ln = re.sub(r"^\s*[-*]\s+", "", ln)
+        cleaned.append(ln)
+    return "\n".join(cleaned)
+
+def check_exact_sentences(text: str, expected_sentences: int) -> Tuple[bool, str]:
+    sentences = split_sentences_basic(text)
+    n = len(sentences)
+    ok = (n == expected_sentences)
+    return ok, f"exact_sentences={'OK' if ok else 'FAIL'}(sentences={n},expected={expected_sentences})"
 
 def check_json_strict(text: str, required: Dict[str, str], rules: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
     """
@@ -224,6 +248,27 @@ def check_numeric_only_final_line(text: str) -> Tuple[bool, str]:
     ok = bool(re.fullmatch(r"[-+]?\d+(\.\d+)?", last))
     return ok, f"numeric_only={'OK' if ok else 'FAIL'}"
 
+def parse_final_numeric_line(text: str) -> Optional[float]:
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    if not lines:
+        return None
+    last = lines[-1]
+    if re.fullmatch(r"[-+]?\d+(\.\d+)?", last):
+        try:
+            return float(last)
+        except Exception:
+            return None
+    return None
+
+def check_numeric_final_line_with_tolerance(text: str, expected: float, tol: float) -> Tuple[bool, str]:
+    value = parse_final_numeric_line(text)
+    if value is None:
+        return False, "numeric_tolerance=FAIL(not_numeric)"
+
+    diff = abs(value - expected)
+    ok = diff <= tol
+    return ok, f"numeric_tolerance={'OK' if ok else 'FAIL'}(value={value:g},expected={expected:g},tol={tol:g})"
+
 def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, int, str]:
     """
     suite supports either:
@@ -249,6 +294,8 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
         msg = "unknown_check"
         if ctype == "max_sentences":
             ok, msg = check_max_sentences(text, int(chk.get("max", 5)))
+        elif ctype == "exact_sentences":
+            ok, msg = check_exact_sentences(text, int(chk.get("expected", 5)))
         elif ctype == "follow_instr_2sent_wordcounts":
             ok, msg = check_exact_sentences_and_wordcounts(text, int(chk.get("s1_words", 8)), int(chk.get("s2_words", 12)))
         elif ctype == "json_strict":
@@ -257,6 +304,12 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
             ok, msg = check_json_strict(text, required, rules)
         elif ctype == "numeric_only_final_line":
             ok, msg = check_numeric_only_final_line(text)
+        elif ctype == "numeric_final_line_tolerance":
+            ok, msg = check_numeric_final_line_with_tolerance(
+                text,
+                float(chk.get("expected", 0)),
+                float(chk.get("tol", 0)),
+            )
         else:
             ok = False
             msg = f"unknown_check=FAIL(type={ctype})"
@@ -384,29 +437,14 @@ def now_run_id() -> str:
 
 
 def main() -> None:
-    # ap = argparse.ArgumentParser()
-    # ap.add_argument("--suite", default="suite.yml", help="Suite YAML file (prompts + optional checks)")
-    # ap.add_argument("--runner", default="", help="Optional runner YAML file (models/reps/options/timeout/host)")
-    # args = ap.parse_args()
-
-    # suite = load_yaml(args.suite)
-    # prompts = normalize_prompts(suite.get("prompts"))
-
-    # runner: Dict[str, Any] = {}
-    # if args.runner:
-    #     runner = load_yaml(args.runner)
         
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="suite.yml", help="Suite YAML file")
     ap.add_argument("--runner", default="", help="Optional runner YAML file")
     args = ap.parse_args()
 
-    BASE_DIR = Path(__file__).resolve().parent
-    SUITE_PATH = BASE_DIR / args.suite
-    suite = load_yaml(str(SUITE_PATH))
-    
     suite_path = resolve_config_path(args.suite)
-    # suite = load_yaml(suite_path)
+    suite = load_yaml(str(suite_path))
     
     prompts = normalize_prompts(suite.get("prompts"))
 
