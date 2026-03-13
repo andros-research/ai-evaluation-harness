@@ -55,7 +55,10 @@ def resolve_config_path(p: str) -> Path:
     # if nothing worked, return the CWD-based path (for a good error)
     return cand1
 
-def load_yaml(path: str | Path) -> Dict[str, Any]:
+# -------------------------
+# YAML loading (best effort)
+# -------------------------
+def load_yaml(path: str) -> Dict[str, Any]:
     try:
         import yaml  # type: ignore
     except Exception:
@@ -66,7 +69,6 @@ def load_yaml(path: str | Path) -> Dict[str, Any]:
     if not isinstance(obj, dict):
         raise ValueError("YAML root must be a mapping")
     return obj
-
 
 # -------------------------
 # Day 6: Valid-run gating
@@ -114,6 +116,20 @@ def safe_slug(s: str) -> str:
 # -------------------------
 # Checks (only run when ok=1)
 # -------------------------
+_SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
+_WORD_TOKEN_RE = re.compile(r"\b[\w'-]+\b")
+
+def split_sentences_basic(text: str) -> List[str]:
+    text = (text or "").strip()
+    if not text:
+        return []
+    parts = _SENTENCE_END_RE.split(text)
+    parts = [p.strip() for p in parts if p.strip()]
+    return parts
+
+def count_words_clean(text: str) -> int:
+    return len(_WORD_TOKEN_RE.findall(text or ""))
+
 def check_max_sentences(text: str, max_sentences: int) -> Tuple[bool, str]:
     # naive but stable: split on .!? plus newlines
     chunks = re.split(r"[.!?]+\s+|\n+", (text or "").strip())
@@ -122,28 +138,44 @@ def check_max_sentences(text: str, max_sentences: int) -> Tuple[bool, str]:
     return ok, f"max_sentences_{max_sentences}={'OK' if ok else 'FAIL'}(sentences={len(sentences)})"
 
 def check_exact_sentences_and_wordcounts(text: str, s1_words: int, s2_words: int) -> Tuple[bool, str]:
-    # Sentence split for this constraint check.
-    chunks = re.split(r"[.!?]+\s+", (text or "").strip())
-    sentences = [c.strip() for c in chunks if c.strip()]
-    if len(sentences) != 2:
-        return False, f"exact_match=FAIL(sentences={len(sentences)})"
-    w1 = count_words(sentences[0])
-    w2 = count_words(sentences[1])
-    ok = (w1 == s1_words and w2 == s2_words)
-    return ok, f"exact_match={'OK' if ok else 'FAIL'}(w1={w1},w2={w2})"
+    sentences = split_sentences_basic(text)
 
-def check_json_strict(text: str, required: Dict[str, str]) -> Tuple[bool, str]:
-    # required: key -> type ("string","number","object","array","boolean")
+    if len(sentences) != 2:
+        return False, f"exact_match=FAIL(sentences={len(sentences)},expected=2)"
+
+    w1 = count_words_clean(sentences[0])
+    w2 = count_words_clean(sentences[1])
+
+    ok = (w1 == s1_words and w2 == s2_words)
+    return ok, f"exact_match={'OK' if ok else 'FAIL'}(w1={w1},w2={w2},expected={s1_words}/{s2_words})"
+
+def check_json_strict(text: str, required: Dict[str, str], rules: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
+    """
+    required: key -> type ("string","number","object","array","boolean")
+    rules: optional stricter rules, e.g.
+      {
+        "nonempty_strings": ["summary"],
+        "array_lengths": {"bullets": 3},
+        "array_item_types": {"bullets": "string"},
+        "nonempty_array_items": ["bullets"],
+      }
+    """
+    rules = rules or {}
+
     try:
         obj = json.loads(text)
     except Exception as e:
         return False, f"json_parse=FAIL({type(e).__name__})"
+
     if not isinstance(obj, dict):
         return False, "json_object=FAIL(not_object)"
+
     for k, t in required.items():
         if k not in obj:
             return False, f"json_keys=FAIL(missing={k})"
+
         v = obj[k]
+
         if t == "string" and not isinstance(v, str):
             return False, f"json_type=FAIL({k}!=string)"
         if t == "number" and not isinstance(v, (int, float)):
@@ -154,6 +186,34 @@ def check_json_strict(text: str, required: Dict[str, str]) -> Tuple[bool, str]:
             return False, f"json_type=FAIL({k}!=array)"
         if t == "boolean" and not isinstance(v, bool):
             return False, f"json_type=FAIL({k}!=boolean)"
+
+    # Optional stricter rules
+    for k in rules.get("nonempty_strings", []):
+        if k in obj and isinstance(obj[k], str) and not obj[k].strip():
+            return False, f"json_value=FAIL({k}=empty_string)"
+
+    for k, expected_len in rules.get("array_lengths", {}).items():
+        if k in obj and isinstance(obj[k], list) and len(obj[k]) != int(expected_len):
+            return False, f"json_array=FAIL({k}_len={len(obj[k])},expected={expected_len})"
+
+    for k, item_type in rules.get("array_item_types", {}).items():
+        if k in obj and isinstance(obj[k], list):
+            for i, item in enumerate(obj[k]):
+                if item_type == "string" and not isinstance(item, str):
+                    return False, f"json_array=FAIL({k}[{i}]!=string)"
+                if item_type == "number" and not isinstance(item, (int, float)):
+                    return False, f"json_array=FAIL({k}[{i}]!=number)"
+                if item_type == "object" and not isinstance(item, dict):
+                    return False, f"json_array=FAIL({k}[{i}]!=object)"
+                if item_type == "boolean" and not isinstance(item, bool):
+                    return False, f"json_array=FAIL({k}[{i}]!=boolean)"
+
+    for k in rules.get("nonempty_array_items", []):
+        if k in obj and isinstance(obj[k], list):
+            for i, item in enumerate(obj[k]):
+                if isinstance(item, str) and not item.strip():
+                    return False, f"json_array=FAIL({k}[{i}]=empty_string)"
+
     return True, "json_strict=OK"
 
 def check_numeric_only_final_line(text: str) -> Tuple[bool, str]:
@@ -193,7 +253,8 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
             ok, msg = check_exact_sentences_and_wordcounts(text, int(chk.get("s1_words", 8)), int(chk.get("s2_words", 12)))
         elif ctype == "json_strict":
             required = chk.get("required", {"summary": "string", "bullets": "array"})
-            ok, msg = check_json_strict(text, required)
+            rules = chk.get("rules", {})
+            ok, msg = check_json_strict(text, required, rules)
         elif ctype == "numeric_only_final_line":
             ok, msg = check_numeric_only_final_line(text)
         else:
@@ -278,22 +339,6 @@ def ollama_generate(host: str, model: str, prompt: str, options: Dict[str, Any],
         error=error,
         timed_out=timed_out,
     )
-
-
-# -------------------------
-# YAML loading (best effort)
-# -------------------------
-def load_yaml(path: str) -> Dict[str, Any]:
-    try:
-        import yaml  # type: ignore
-    except Exception:
-        raise RuntimeError("PyYAML not installed. Install with: conda install -y pyyaml")
-    with open(path, "r", encoding="utf-8") as f:
-        obj = yaml.safe_load(f)
-    if not isinstance(obj, dict):
-        raise ValueError("YAML root must be a mapping")
-    return obj
-
 
 def normalize_prompts(prompts_obj: Any) -> Dict[str, str]:
     """

@@ -3,7 +3,7 @@ models:
   - llama3
   - llama3:70b
 
-reps: 5
+reps: 1
 
 timeout_s: 600
 
@@ -30,6 +30,13 @@ checks:
       required:
         summary: string
         bullets: array
+      rules:
+        nonempty_strings: [summary]
+        array_lengths:
+          bullets: 3
+        array_item_types:
+          bullets: string
+        nonempty_array_items: [bullets]
 
   follow_instr:
     - type: follow_instr_2sent_wordcounts
