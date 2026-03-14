@@ -1,5 +1,5 @@
-suite_name: suite_core_candidate
-experiment_name: march13_manual_dev
+suite_name: suite_core
+experiment_name: baseline_core_temp0
 
 models:
   - mistral
