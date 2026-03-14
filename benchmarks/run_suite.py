@@ -455,6 +455,8 @@ def main() -> None:
         runner = load_yaml(runner_path)
 
     # Runner settings: fall back to suite.yml if present; then defaults
+    suite_name = runner.get("suite_name") or suite.get("suite_name") or Path(suite_path).stem
+    experiment_name = runner.get("experiment_name") or suite.get("experiment_name") or ""
     host = runner.get("ollama_host") or suite.get("ollama_host") or "http://127.0.0.1:11434"
     models = runner.get("models") or suite.get("models") or ["mistral", "llama3"]
     reps = int(runner.get("reps") or suite.get("reps") or 5)
@@ -474,6 +476,8 @@ def main() -> None:
     meta = {
         "run_id": run_id,
         "created_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "suite_name": suite_name,
+        "experiment_name": experiment_name,
         "ollama_host": host,
         "models": models,
         "reps": reps,
@@ -490,6 +494,8 @@ def main() -> None:
     fieldnames = [
         "run_id",
         "ts",
+        "suite_name",
+        "experiment_name",
         "prompt_id",
         "rep",
         "model",
@@ -579,6 +585,8 @@ def main() -> None:
                     row = {
                         "run_id": run_id,
                         "ts": ts,
+                        "suite_name": suite_name,
+                        "experiment_name": experiment_name,
                         "prompt_id": pid,
                         "rep": rep,
                         "model": model,
@@ -604,6 +612,8 @@ def main() -> None:
                         "run_id": run_id,
                         "ts": ts,
                         "prompt_id": pid,
+                        "suite_name": suite_name,
+                        "experiment_name": experiment_name,
                         "rep": rep,
                         "model": model,
                         "prompt": ptxt,              # optional (handy early on; can remove later)
