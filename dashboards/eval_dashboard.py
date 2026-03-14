@@ -130,6 +130,19 @@ def make_hotspots(m: pd.DataFrame) -> pd.DataFrame:
 
     return h
 
+def normalize_prompt_id_series(s: pd.Series) -> pd.Series:
+    return (
+        s.astype("string")
+        .str.strip()
+        .str.replace(r"_+$", "", regex=True)  # remove trailing underscores
+        .str.replace(r"\s+", "_", regex=True)
+    )
+    
+def format_heatmap_labels(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    return df.applymap(lambda x: f"{x:.0%}" if pd.notna(x) else "")
+
 def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
     if not {"prompt_id", "model"}.issubset(df.columns):
         return pd.DataFrame()
@@ -146,6 +159,9 @@ def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
         d["has_checks"] = d["checks_total"].fillna(0) > 0
     else:
         d["has_checks"] = False
+    
+    # Prompt-id normalizer
+    d["prompt_id"] = normalize_prompt_id_series(d["prompt_id"])
 
     grouped = (
         d.groupby(["prompt_id", "model"], as_index=False)
@@ -172,6 +188,11 @@ def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
     else:
         grouped["checks_pass_rate"] = pd.NA
 
+    # Make sure pass-rate columns are numeric even after merges to make heatmap more robust
+    for col in ["pipeline_success_rate", "checks_pass_rate", "overall_pass_rate", "avg_latency", "avg_wps"]:
+        if col in grouped.columns:
+            grouped[col] = pd.to_numeric(grouped[col], errors="coerce")
+
     grouped = grouped.sort_values(["prompt_id", "model"]).reset_index(drop=True)
     return grouped
 
@@ -185,6 +206,15 @@ def run_is_compatible(run_dir: Path) -> bool:
         return REQUIRED_COLS.issubset(set(df0.columns))
     except Exception:
         return False
+
+def make_passrate_heatmap(pm_summary: pd.DataFrame, value_col: str = "overall_pass_rate") -> pd.DataFrame:
+    if pm_summary.empty:
+        return pd.DataFrame()
+    if value_col not in pm_summary.columns:
+        return pd.DataFrame()
+
+    heat = pm_summary.pivot(index="prompt_id", columns="model", values=value_col)
+    return heat.sort_index()
 
 @st.cache_data(show_spinner=False)
 def load_agg() -> pd.DataFrame:
@@ -272,6 +302,42 @@ with tab_run:
         st.dataframe(show)
     else:
         st.info("Not enough data to build prompt × model summary.")
+    
+    st.subheader("Prompt × Model Pass-Rate Heatmap")
+    heat_value_col = st.selectbox(
+        "Heatmap metric (Single Run)",
+        ["overall_pass_rate", "checks_pass_rate", "pipeline_success_rate"],
+        index=0,
+        key="heatmap_metric_run",
+    )
+
+    heat_run = make_passrate_heatmap(pm_summary, heat_value_col)
+    if not heat_run.empty:
+        figH1, axH1 = plt.subplots(figsize=(8, max(3, 0.6 * len(heat_run))))
+        annot_run = format_heatmap_labels(heat_run)
+
+        hm = sns.heatmap(
+            heat_run,
+            annot=annot_run,
+            fmt="",
+            cmap="YlGn",
+            vmin=0.0,
+            vmax=1.0,
+            linewidths=0.5,
+            linecolor="white",
+            ax=axH1,
+        )
+
+        cbar = hm.collections[0].colorbar
+        cbar.set_ticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        cbar.set_ticklabels(["0%", "25%", "50%", "75%", "100%"])
+        
+        axH1.set_xlabel("Model")
+        axH1.set_ylabel("Prompt")
+        axH1.set_title(f"{heat_value_col} by prompt × model")
+        st.pyplot(figH1)
+    else:
+        st.info("Not enough data to build pass-rate heatmap.")
 
     st.subheader("Latency Distribution by Model")
     fig1, ax1 = plt.subplots()
@@ -297,6 +363,9 @@ with tab_agg:
     if master.empty:
         st.error(f"No runs_master found. Expected: {AGG_PARQUET} or {AGG_CSV}")
         st.stop()
+    
+    # Prompt-id normalizer
+    master["prompt_id"] = normalize_prompt_id_series(master["prompt_id"])
     
     # ---- Growth table (daily) ----
     growth_src = master.copy()
@@ -387,6 +456,42 @@ with tab_agg:
         st.dataframe(show)
     else:
         st.info("Not enough data to build prompt × model summary.")
+
+    st.subheader("Prompt × Model Pass-Rate Heatmap (All Runs)")
+    heat_value_col_all = st.selectbox(
+        "Heatmap metric (All Runs)",
+        ["overall_pass_rate", "checks_pass_rate", "pipeline_success_rate"],
+        index=0,
+        key="heatmap_metric_all",
+    )
+
+    heat_all = make_passrate_heatmap(pm_summary_all, heat_value_col_all)
+    if not heat_all.empty:
+        figH2, axH2 = plt.subplots(figsize=(8, max(3, 0.6 * len(heat_all))))
+        annot_run = format_heatmap_labels(heat_all)
+
+        hm = sns.heatmap(
+            heat_all,
+            annot=annot_run,
+            fmt="",
+            cmap="YlGn",
+            vmin=0.0,
+            vmax=1.0,
+            linewidths=0.5,
+            linecolor="white",
+            ax=axH2,
+        )
+
+        cbar = hm.collections[0].colorbar
+        cbar.set_ticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        cbar.set_ticklabels(["0%", "25%", "50%", "75%", "100%"])
+        
+        axH2.set_xlabel("Model")
+        axH2.set_ylabel("Prompt")
+        axH2.set_title(f"{heat_value_col_all} by prompt × model")
+        st.pyplot(figH2)
+    else:
+        st.info("Not enough data to build pass-rate heatmap.")
 
     st.subheader("Worst Runs")
     st.dataframe(run_health.head(20))
