@@ -253,6 +253,15 @@ with tab_run:
     metrics_path = Path(selected_run) / "metrics.csv"
     df = pd.read_csv(metrics_path)
     st.sidebar.write(f"Loaded: {metrics_path}")
+    
+    # Expose metadata in the Single Run tab
+    suite_val = df["suite_name"].dropna().astype("string").unique().tolist() if "suite_name" in df.columns else []
+    experiment_val = df["experiment_name"].dropna().astype("string").unique().tolist() if "experiment_name" in df.columns else []
+
+    suite_display = suite_val[0] if len(suite_val) == 1 else ", ".join(suite_val) if suite_val else "—"
+    experiment_display = experiment_val[0] if len(experiment_val) == 1 else ", ".join(experiment_val) if experiment_val else "—"
+
+    st.caption(f"Suite: {suite_display} | Experiment: {experiment_display}")
 
     models = st.sidebar.multiselect(
         "Models",
@@ -334,7 +343,10 @@ with tab_run:
         
         axH1.set_xlabel("Model")
         axH1.set_ylabel("Prompt")
-        axH1.set_title(f"{heat_value_col} by prompt × model")
+        axH1.set_title(
+            f"{heat_value_col} by prompt × model\n"
+            f"[suite={suite_display} | experiment={experiment_display}]"
+        )
         st.pyplot(figH1)
     else:
         st.info("Not enough data to build pass-rate heatmap.")
@@ -401,7 +413,10 @@ with tab_agg:
     
 
     # Normalize / safety: ensure expected cols exist (some early runs have blanks)
-    for col in ["model", "prompt_id", "failure_type", "ok", "elapsed_s", "words", "words_per_s"]:
+    for col in [
+    "model", "prompt_id", "failure_type", "ok", "elapsed_s", "words", "words_per_s",
+    "suite_name", "experiment_name"
+    ]:
         if col not in master.columns:
             master[col] = pd.NA
 
@@ -425,11 +440,37 @@ with tab_agg:
         default=sorted(master["prompt_id"].dropna().unique()),
         key="prompts_agg",
     )
+    
+    # Aggregate sidebar filters for suite run name and experiment name
+    agg_suites = st.sidebar.multiselect(
+        "Agg: Suites",
+        options=sorted(master["suite_name"].dropna().astype("string").unique()),
+        default=sorted(master["suite_name"].dropna().astype("string").unique()),
+        key="suites_agg",
+    )
+
+    agg_experiments = st.sidebar.multiselect(
+        "Agg: Experiments",
+        options=sorted(master["experiment_name"].dropna().astype("string").unique()),
+        default=sorted(master["experiment_name"].dropna().astype("string").unique()),
+        key="experiments_agg",
+    )
 
     ok_only = st.sidebar.selectbox("Agg: Outcomes", ["All", "Only ok", "Only failures"], index=0)
 
     m = master.copy()
-    m = m[m["model"].isin(agg_models) & m["prompt_id"].isin(agg_prompts)]
+    m = m[
+        m["model"].isin(agg_models)
+        & m["prompt_id"].isin(agg_prompts)
+        & m["suite_name"].astype("string").isin(agg_suites)
+        & m["experiment_name"].astype("string").isin(agg_experiments)
+    ]
+    
+    # Show selected suite/experiment context in the aggregate tab
+    suite_label = ", ".join(agg_suites) if agg_suites else "—"
+    experiment_label = ", ".join(agg_experiments) if agg_experiments else "—"
+    st.caption(f"Filtered to suites: {suite_label}")
+    st.caption(f"Filtered to experiments: {experiment_label}")
     
     mN = normalize_master(m)  # if you want filtered run health/hotspots
 
@@ -488,7 +529,10 @@ with tab_agg:
         
         axH2.set_xlabel("Model")
         axH2.set_ylabel("Prompt")
-        axH2.set_title(f"{heat_value_col_all} by prompt × model")
+        axH2.set_title(
+            f"{heat_value_col_all} by prompt × model\n"
+            f"[suite={suite_label} | experiment={experiment_label}]"
+        )
         st.pyplot(figH2)
     else:
         st.info("Not enough data to build pass-rate heatmap.")
