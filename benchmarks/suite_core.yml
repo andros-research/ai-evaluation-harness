@@ -51,3 +51,13 @@ checks:
     - type: numeric_final_line_tolerance
       expected: -2000000
       tol: 25000
+
+  verbosity_drift:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 6
+    - type: word_count_range
+      min: 50
+      max: 140

@@ -173,6 +173,27 @@ def check_exact_sentences(text: str, expected_sentences: int) -> Tuple[bool, str
     ok = (n == expected_sentences)
     return ok, f"exact_sentences={'OK' if ok else 'FAIL'}(sentences={n},expected={expected_sentences})"
 
+def split_paragraphs_basic(text: str) -> List[str]:
+    parts = re.split(r"\n\s*\n", (text or "").strip())
+    return [p.strip() for p in parts if p.strip()]
+
+def check_exact_paragraphs(text: str, expected_paragraphs: int) -> Tuple[bool, str]:
+    paragraphs = split_paragraphs_basic(text)
+    n = len(paragraphs)
+    ok = (n == expected_paragraphs)
+    return ok, f"exact_paragraphs={'OK' if ok else 'FAIL'}(paragraphs={n},expected={expected_paragraphs})"
+
+def check_sentence_count_range(text: str, min_sentences: int, max_sentences: int) -> Tuple[bool, str]:
+    sentences = split_sentences_basic(text)
+    n = len(sentences)
+    ok = (min_sentences <= n <= max_sentences)
+    return ok, f"sentence_range={'OK' if ok else 'FAIL'}(sentences={n},min={min_sentences},max={max_sentences})"
+
+def check_word_count_range(text: str, min_words: int, max_words: int) -> Tuple[bool, str]:
+    n = count_words_clean(text)
+    ok = (min_words <= n <= max_words)
+    return ok, f"word_range={'OK' if ok else 'FAIL'}(words={n},min={min_words},max={max_words})"
+
 def check_json_strict(text: str, required: Dict[str, str], rules: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
     """
     required: key -> type ("string","number","object","array","boolean")
@@ -296,8 +317,26 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
             ok, msg = check_max_sentences(text, int(chk.get("max", 5)))
         elif ctype == "exact_sentences":
             ok, msg = check_exact_sentences(text, int(chk.get("expected", 5)))
+        elif ctype == "exact_paragraphs":
+            ok, msg = check_exact_paragraphs(text, int(chk.get("expected", 1)))
+        elif ctype == "sentence_count_range":
+            ok, msg = check_sentence_count_range(
+                text,
+                int(chk.get("min", 1)),
+                int(chk.get("max", 9999)),
+            )
+        elif ctype == "word_count_range":
+            ok, msg = check_word_count_range(
+                text,
+                int(chk.get("min", 1)),
+                int(chk.get("max", 999999)),
+            )
         elif ctype == "follow_instr_2sent_wordcounts":
-            ok, msg = check_exact_sentences_and_wordcounts(text, int(chk.get("s1_words", 8)), int(chk.get("s2_words", 12)))
+            ok, msg = check_exact_sentences_and_wordcounts(
+                text,
+                int(chk.get("s1_words", 8)),
+                int(chk.get("s2_words", 12)),
+            )
         elif ctype == "json_strict":
             required = chk.get("required", {"summary": "string", "bullets": "array"})
             rules = chk.get("rules", {})
