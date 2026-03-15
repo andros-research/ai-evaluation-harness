@@ -194,6 +194,13 @@ def check_word_count_range(text: str, min_words: int, max_words: int) -> Tuple[b
     ok = (min_words <= n <= max_words)
     return ok, f"word_range={'OK' if ok else 'FAIL'}(words={n},min={min_words},max={max_words})"
 
+def check_long_word_count_max(text: str, max_len: int, max_count: int) -> Tuple[bool, str]:
+    words = _WORD_TOKEN_RE.findall(text or "")
+    long_words = [w for w in words if len(w) > max_len]
+    n = len(long_words)
+    ok = (n <= max_count)
+    return ok, f"long_words={'OK' if ok else 'FAIL'}(count={n},max_len={max_len},max_count={max_count})"
+
 def check_json_strict(text: str, required: Dict[str, str], rules: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
     """
     required: key -> type ("string","number","object","array","boolean")
@@ -330,6 +337,12 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
                 text,
                 int(chk.get("min", 1)),
                 int(chk.get("max", 999999)),
+            )
+        elif ctype == "long_word_count_max":
+            ok, msg = check_long_word_count_max(
+                text,
+                int(chk.get("max_len", 8)),
+                int(chk.get("max_count", 3)),
             )
         elif ctype == "follow_instr_2sent_wordcounts":
             ok, msg = check_exact_sentences_and_wordcounts(

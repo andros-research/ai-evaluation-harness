@@ -52,6 +52,16 @@ checks:
       expected: -2000000
       tol: 25000
 
+  style_hemi:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 6
+    - type: long_word_count_max
+      max_len: 8
+      max_count: 3
+
   verbosity_drift:
     - type: exact_paragraphs
       expected: 1
