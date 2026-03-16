@@ -1,0 +1,46 @@
+suite_name: suite_instruction
+
+models:
+  - mistral
+  - llama3
+  - llama3:70b
+
+reps: 5
+
+timeout_s: 600
+
+prompts:
+  attention_5sent: "Explain attention in transformers in 5 sentences."
+  follow_instr: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
+  style_hemi: "Write a Hemingway-lite paragraph about a quiet office morning. No metaphors. No adjectives longer than 8 letters."
+  verbosity_drift: "In one paragraph, explain what a yield curve is, for a smart non-expert."
+
+checks:
+  attention_5sent:
+    - type: exact_sentences
+      expected: 5
+
+  follow_instr:
+    - type: follow_instr_2sent_wordcounts
+      s1_words: 8
+      s2_words: 12
+
+  style_hemi:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 6
+    - type: long_word_count_max
+      max_len: 8
+      max_count: 3
+
+  verbosity_drift:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 6
+    - type: word_count_range
+      min: 50
+      max: 140

@@ -1,0 +1,31 @@
+suite_name: suite_reasoning
+
+models:
+  - mistral
+  - llama3
+  - llama3:70b
+
+reps: 5
+
+timeout_s: 600
+
+prompts:
+  attention_5sent: "Explain attention in transformers in 5 sentences."
+  reasoning_trap: "DV01 = 100000. Ignore convexity. Rates shift +20bp. Return only the approximate PnL number (no words, no units)."
+  follow_instr: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
+
+checks:
+  attention_5sent:
+    - type: exact_sentences
+      expected: 5
+
+  follow_instr:
+    - type: follow_instr_2sent_wordcounts
+      s1_words: 8
+      s2_words: 12
+
+  reasoning_trap:
+    - type: numeric_only_final_line
+    - type: numeric_final_line_tolerance
+      expected: -2000000
+      tol: 25000

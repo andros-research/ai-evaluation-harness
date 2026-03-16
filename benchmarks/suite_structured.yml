@@ -1,0 +1,34 @@
+suite_name: suite_structured
+
+models:
+  - mistral
+  - llama3
+  - llama3:70b
+
+reps: 5
+
+timeout_s: 600
+
+prompts:
+  json_strict: "Return ONLY valid JSON with keys: summary (string), bullets (array of 3 strings)."
+  follow_instr: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
+
+checks:
+
+  json_strict:
+    - type: json_strict
+      required:
+        summary: string
+        bullets: array
+      rules:
+        nonempty_strings: [summary]
+        array_lengths:
+          bullets: 3
+        array_item_types:
+          bullets: string
+        nonempty_array_items: [bullets]
+
+  follow_instr:
+    - type: follow_instr_2sent_wordcounts
+      s1_words: 8
+      s2_words: 12

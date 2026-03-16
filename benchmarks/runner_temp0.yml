@@ -1,0 +1,6 @@
+experiment_name: temp0
+
+options:
+  temperature: 0.0
+  top_p: 0.9
+  num_predict: 256
