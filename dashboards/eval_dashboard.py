@@ -148,11 +148,6 @@ def format_delta_labels(df: pd.DataFrame) -> pd.DataFrame:
         return df
     return df.applymap(lambda x: f"{x:+.0%}" if pd.notna(x) else "")
 
-def fmt_signed_pct(x):
-    if pd.isna(x):
-        return "—"
-    return f"{x:+.2%}"
-
 def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
     if not {"prompt_id", "model"}.issubset(df.columns):
         return pd.DataFrame()
@@ -226,83 +221,115 @@ def make_passrate_heatmap(pm_summary: pd.DataFrame, value_col: str = "overall_pa
     heat = pm_summary.pivot(index="prompt_id", columns="model", values=value_col)
     return heat.sort_index()
 
-def make_experiment_metric_summary(
-    df: pd.DataFrame,
-    suite_name: str,
-    experiment_name: str,
-) -> pd.DataFrame:
-    """
-    Prompt x model summary for one suite + one experiment.
-    """
-    if df.empty:
-        return pd.DataFrame()
-
+def make_experiment_metric_summary(df: pd.DataFrame) -> pd.DataFrame:
     required = {"suite_name", "experiment_name", "prompt_id", "model"}
     if not required.issubset(df.columns):
         return pd.DataFrame()
 
     d = df.copy()
+
+    for col in ["ok", "checks_ok", "overall_ok", "elapsed_s", "words_per_s", "checks_total"]:
+        if col in d.columns:
+            d[col] = pd.to_numeric(d[col], errors="coerce")
+
     d["prompt_id"] = normalize_prompt_id_series(d["prompt_id"])
 
-    d = d[
-        (d["suite_name"].astype("string") == str(suite_name))
-        & (d["experiment_name"].astype("string") == str(experiment_name))
-    ].copy()
+    if "checks_total" in d.columns:
+        d["has_checks"] = d["checks_total"].fillna(0) > 0
+    else:
+        d["has_checks"] = False
 
-    if d.empty:
-        return pd.DataFrame()
+    grouped = (
+        d.groupby(["suite_name", "experiment_name", "prompt_id", "model"], as_index=False)
+        .agg(
+            rows=("model", "size"),
+            pipeline_success_rate=("ok", "mean"),
+            overall_pass_rate=("overall_ok", "mean"),
+            avg_latency=("elapsed_s", "mean"),
+            avg_wps=("words_per_s", "mean"),
+        )
+    )
 
-    return make_prompt_model_summary(d)
+    if "checks_ok" in d.columns:
+        checks_only = d[d["has_checks"]].copy()
+        if len(checks_only):
+            checks_summary = (
+                checks_only.groupby(
+                    ["suite_name", "experiment_name", "prompt_id", "model"],
+                    as_index=False
+                )
+                .agg(checks_pass_rate=("checks_ok", "mean"))
+            )
+            grouped = grouped.merge(
+                checks_summary,
+                on=["suite_name", "experiment_name", "prompt_id", "model"],
+                how="left",
+            )
+        else:
+            grouped["checks_pass_rate"] = pd.NA
+    else:
+        grouped["checks_pass_rate"] = pd.NA
 
+    for col in ["pipeline_success_rate", "checks_pass_rate", "overall_pass_rate", "avg_latency", "avg_wps"]:
+        if col in grouped.columns:
+            grouped[col] = pd.to_numeric(grouped[col], errors="coerce")
+
+    return grouped.sort_values(
+        ["suite_name", "experiment_name", "prompt_id", "model"]
+    ).reset_index(drop=True)
 
 def make_experiment_delta_table(
-    df: pd.DataFrame,
+    experiment_summary: pd.DataFrame,
     suite_name: str,
     baseline_experiment: str,
     comparison_experiment: str,
-    metric_col: str = "checks_pass_rate",
+    metric_col: str,
 ) -> pd.DataFrame:
-    """
-    Build a prompt x model delta table for one suite:
-      delta = comparison - baseline
-
-    Returns columns:
-      prompt_id, model, baseline_pass_rate, comparison_pass_rate, delta_pass_rate
-    """
-    baseline_summary = make_experiment_metric_summary(df, suite_name, baseline_experiment)
-    comparison_summary = make_experiment_metric_summary(df, suite_name, comparison_experiment)
-
-    if baseline_summary.empty or comparison_summary.empty:
+    if experiment_summary.empty or metric_col not in experiment_summary.columns:
         return pd.DataFrame()
 
-    if metric_col not in baseline_summary.columns or metric_col not in comparison_summary.columns:
+    cols = ["suite_name", "experiment_name", "prompt_id", "model", metric_col]
+    d = experiment_summary[cols].copy()
+
+    d = d[d["suite_name"].astype("string") == str(suite_name)].copy()
+
+    base = d[d["experiment_name"].astype("string") == str(baseline_experiment)].copy()
+    comp = d[d["experiment_name"].astype("string") == str(comparison_experiment)].copy()
+
+    if base.empty or comp.empty:
         return pd.DataFrame()
 
-    base = baseline_summary[["prompt_id", "model", metric_col]].rename(
-        columns={metric_col: "baseline_pass_rate"}
-    )
-    comp = comparison_summary[["prompt_id", "model", metric_col]].rename(
-        columns={metric_col: "comparison_pass_rate"}
+    base = base.rename(columns={metric_col: "baseline_pass_rate"})
+    comp = comp.rename(columns={metric_col: "comparison_pass_rate"})
+
+    merged = base.merge(
+        comp,
+        on=["suite_name", "prompt_id", "model"],
+        how="outer",
     )
 
-    merged = base.merge(comp, on=["prompt_id", "model"], how="outer")
-
-    merged["baseline_pass_rate"] = pd.to_numeric(merged["baseline_pass_rate"], errors="coerce")
-    merged["comparison_pass_rate"] = pd.to_numeric(merged["comparison_pass_rate"], errors="coerce")
+    merged["baseline_pass_rate"] = pd.to_numeric(
+        merged["baseline_pass_rate"], errors="coerce"
+    ).fillna(0.0)
+    merged["comparison_pass_rate"] = pd.to_numeric(
+        merged["comparison_pass_rate"], errors="coerce"
+    ).fillna(0.0)
     merged["delta_pass_rate"] = merged["comparison_pass_rate"] - merged["baseline_pass_rate"]
+    merged["abs_delta"] = merged["delta_pass_rate"].abs()
 
-    merged = merged.sort_values(["prompt_id", "model"]).reset_index(drop=True)
+    merged = merged[
+        ["prompt_id", "model", "baseline_pass_rate", "comparison_pass_rate", "delta_pass_rate", "abs_delta"]
+    ].sort_values(
+        ["abs_delta", "prompt_id", "model"],
+        ascending=[False, True, True],
+    ).reset_index(drop=True)
+
     return merged
-
 
 def make_delta_heatmap(delta_table: pd.DataFrame) -> pd.DataFrame:
     if delta_table.empty:
         return pd.DataFrame()
-    if "delta_pass_rate" not in delta_table.columns:
-        return pd.DataFrame()
-
-    heat = delta_table.pivot(index="prompt_id", columns="model", values="delta_pass_rate")
-    return heat.sort_index()
+    return delta_table.pivot(index="prompt_id", columns="model", values="delta_pass_rate").sort_index()
 
 @st.cache_data(show_spinner=False)
 def load_agg() -> pd.DataFrame:
@@ -553,6 +580,7 @@ with tab_agg:
         & m["suite_name"].astype("string").isin(agg_suites)
         & m["experiment_name"].astype("string").isin(agg_experiments)
     ]
+    experiment_summary_all = make_experiment_metric_summary(m)
     
     # Show selected suite/experiment context in the aggregate tab
     suite_label = ", ".join(agg_suites) if agg_suites else "—"
@@ -571,7 +599,10 @@ with tab_agg:
     compare_src = compare_src[
         compare_src["model"].isin(agg_models)
         & compare_src["prompt_id"].isin(agg_prompts)
+        & compare_src["suite_name"].astype("string").isin(agg_suites)
     ].copy()
+    
+    experiment_summary_compare = make_experiment_metric_summary(compare_src)
 
     available_compare_suites = sorted(
         compare_src["suite_name"].dropna().astype("string").unique()
@@ -627,7 +658,7 @@ with tab_agg:
             )
 
             delta_table = make_experiment_delta_table(
-                compare_src,
+                experiment_summary_compare,
                 suite_name=comparison_suite,
                 baseline_experiment=baseline_experiment,
                 comparison_experiment=comparison_experiment,
@@ -640,14 +671,19 @@ with tab_agg:
                     f"within suite={comparison_suite}"
                 )
 
-                show_delta = delta_table.copy()
-                show_delta["baseline_pass_rate"] = show_delta["baseline_pass_rate"].apply(
-                    lambda x: f"{x:.2%}" if pd.notna(x) else "—"
-                )
-                show_delta["comparison_pass_rate"] = show_delta["comparison_pass_rate"].apply(
-                    lambda x: f"{x:.2%}" if pd.notna(x) else "—"
-                )
-                show_delta["delta_pass_rate"] = show_delta["delta_pass_rate"].apply(fmt_signed_pct)
+                show_delta = delta_table.drop(columns=["abs_delta"], errors="ignore").copy()
+
+                for col in ["baseline_pass_rate", "comparison_pass_rate"]:
+                    if col in show_delta.columns:
+                        show_delta[col] = show_delta[col].apply(
+                            lambda x: f"{x:.2%}" if pd.notna(x) else "—"
+                        )
+
+                if "delta_pass_rate" in show_delta.columns:
+                    show_delta["delta_pass_rate"] = show_delta["delta_pass_rate"].apply(
+                        lambda x: f"{x:+.2%}" if pd.notna(x) else "—"
+                    )
+                # st.dataframe(show_delta)
 
                 st.dataframe(show_delta, use_container_width=True)
 
@@ -703,6 +739,7 @@ with tab_agg:
 
     st.subheader("Prompt × Model Summary (All Runs)")
     pm_summary_all = make_prompt_model_summary(m)
+    
     if not pm_summary_all.empty:
         show = pm_summary_all.copy()
         for col in ["pipeline_success_rate", "checks_pass_rate", "overall_pass_rate"]:
