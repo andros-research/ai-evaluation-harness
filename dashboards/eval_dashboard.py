@@ -143,6 +143,16 @@ def format_heatmap_labels(df: pd.DataFrame) -> pd.DataFrame:
         return df
     return df.applymap(lambda x: f"{x:.0%}" if pd.notna(x) else "")
 
+def format_delta_labels(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    return df.applymap(lambda x: f"{x:+.0%}" if pd.notna(x) else "")
+
+def fmt_signed_pct(x):
+    if pd.isna(x):
+        return "—"
+    return f"{x:+.2%}"
+
 def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
     if not {"prompt_id", "model"}.issubset(df.columns):
         return pd.DataFrame()
@@ -214,6 +224,84 @@ def make_passrate_heatmap(pm_summary: pd.DataFrame, value_col: str = "overall_pa
         return pd.DataFrame()
 
     heat = pm_summary.pivot(index="prompt_id", columns="model", values=value_col)
+    return heat.sort_index()
+
+def make_experiment_metric_summary(
+    df: pd.DataFrame,
+    suite_name: str,
+    experiment_name: str,
+) -> pd.DataFrame:
+    """
+    Prompt x model summary for one suite + one experiment.
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    required = {"suite_name", "experiment_name", "prompt_id", "model"}
+    if not required.issubset(df.columns):
+        return pd.DataFrame()
+
+    d = df.copy()
+    d["prompt_id"] = normalize_prompt_id_series(d["prompt_id"])
+
+    d = d[
+        (d["suite_name"].astype("string") == str(suite_name))
+        & (d["experiment_name"].astype("string") == str(experiment_name))
+    ].copy()
+
+    if d.empty:
+        return pd.DataFrame()
+
+    return make_prompt_model_summary(d)
+
+
+def make_experiment_delta_table(
+    df: pd.DataFrame,
+    suite_name: str,
+    baseline_experiment: str,
+    comparison_experiment: str,
+    metric_col: str = "checks_pass_rate",
+) -> pd.DataFrame:
+    """
+    Build a prompt x model delta table for one suite:
+      delta = comparison - baseline
+
+    Returns columns:
+      prompt_id, model, baseline_pass_rate, comparison_pass_rate, delta_pass_rate
+    """
+    baseline_summary = make_experiment_metric_summary(df, suite_name, baseline_experiment)
+    comparison_summary = make_experiment_metric_summary(df, suite_name, comparison_experiment)
+
+    if baseline_summary.empty or comparison_summary.empty:
+        return pd.DataFrame()
+
+    if metric_col not in baseline_summary.columns or metric_col not in comparison_summary.columns:
+        return pd.DataFrame()
+
+    base = baseline_summary[["prompt_id", "model", metric_col]].rename(
+        columns={metric_col: "baseline_pass_rate"}
+    )
+    comp = comparison_summary[["prompt_id", "model", metric_col]].rename(
+        columns={metric_col: "comparison_pass_rate"}
+    )
+
+    merged = base.merge(comp, on=["prompt_id", "model"], how="outer")
+
+    merged["baseline_pass_rate"] = pd.to_numeric(merged["baseline_pass_rate"], errors="coerce")
+    merged["comparison_pass_rate"] = pd.to_numeric(merged["comparison_pass_rate"], errors="coerce")
+    merged["delta_pass_rate"] = merged["comparison_pass_rate"] - merged["baseline_pass_rate"]
+
+    merged = merged.sort_values(["prompt_id", "model"]).reset_index(drop=True)
+    return merged
+
+
+def make_delta_heatmap(delta_table: pd.DataFrame) -> pd.DataFrame:
+    if delta_table.empty:
+        return pd.DataFrame()
+    if "delta_pass_rate" not in delta_table.columns:
+        return pd.DataFrame()
+
+    heat = delta_table.pivot(index="prompt_id", columns="model", values="delta_pass_rate")
     return heat.sort_index()
 
 @st.cache_data(show_spinner=False)
@@ -414,8 +502,8 @@ with tab_agg:
 
     # Normalize / safety: ensure expected cols exist (some early runs have blanks)
     for col in [
-    "model", "prompt_id", "failure_type", "ok", "elapsed_s", "words", "words_per_s",
-    "suite_name", "experiment_name"
+        "model", "prompt_id", "failure_type", "ok", "elapsed_s", "words", "words_per_s",
+        "suite_name", "experiment_name"
     ]:
         if col not in master.columns:
             master[col] = pd.NA
@@ -471,6 +559,135 @@ with tab_agg:
     experiment_label = ", ".join(agg_experiments) if agg_experiments else "—"
     st.caption(f"Filtered to suites: {suite_label}")
     st.caption(f"Filtered to experiments: {experiment_label}")
+
+    # -------------------------
+    # Comparison UI block
+    # -------------------------   
+    st.subheader("Experiment Comparison (within suite)")
+
+    # Comparison should operate off master, constrained by current model/prompt filters,
+    # but not accidentally constrained by Agg: Experiments multiselect.
+    compare_src = master.copy()
+    compare_src = compare_src[
+        compare_src["model"].isin(agg_models)
+        & compare_src["prompt_id"].isin(agg_prompts)
+    ].copy()
+
+    available_compare_suites = sorted(
+        compare_src["suite_name"].dropna().astype("string").unique()
+    )
+
+    if available_compare_suites:
+        default_compare_suite = available_compare_suites[0]
+        if len(agg_suites) == 1 and agg_suites[0] in available_compare_suites:
+            default_compare_suite = agg_suites[0]
+
+        comparison_suite = st.selectbox(
+            "Comparison suite",
+            options=available_compare_suites,
+            index=available_compare_suites.index(default_compare_suite),
+            key="comparison_suite",
+        )
+
+        suite_compare_src = compare_src[
+            compare_src["suite_name"].astype("string") == str(comparison_suite)
+        ].copy()
+
+        available_experiments = sorted(
+            suite_compare_src["experiment_name"].dropna().astype("string").unique()
+        )
+
+        if len(available_experiments) >= 2:
+            default_baseline = "temp0" if "temp0" in available_experiments else available_experiments[0]
+            remaining = [x for x in available_experiments if x != default_baseline]
+            default_comparison = "temp03" if "temp03" in remaining else remaining[0]
+
+            ccmp1, ccmp2, ccmp3 = st.columns(3)
+
+            baseline_experiment = ccmp1.selectbox(
+                "Baseline experiment",
+                options=available_experiments,
+                index=available_experiments.index(default_baseline),
+                key="baseline_experiment",
+            )
+
+            comparison_options = [x for x in available_experiments if x != baseline_experiment]
+            comparison_experiment = ccmp2.selectbox(
+                "Comparison experiment",
+                options=comparison_options,
+                index=comparison_options.index(default_comparison) if default_comparison in comparison_options else 0,
+                key="comparison_experiment",
+            )
+
+            comparison_metric = ccmp3.selectbox(
+                "Comparison metric",
+                options=["checks_pass_rate", "overall_pass_rate"],
+                index=0,
+                key="comparison_metric",
+            )
+
+            delta_table = make_experiment_delta_table(
+                compare_src,
+                suite_name=comparison_suite,
+                baseline_experiment=baseline_experiment,
+                comparison_experiment=comparison_experiment,
+                metric_col=comparison_metric,
+            )
+
+            if not delta_table.empty:
+                st.caption(
+                    f"Delta = {comparison_experiment} - {baseline_experiment} "
+                    f"within suite={comparison_suite}"
+                )
+
+                show_delta = delta_table.copy()
+                show_delta["baseline_pass_rate"] = show_delta["baseline_pass_rate"].apply(
+                    lambda x: f"{x:.2%}" if pd.notna(x) else "—"
+                )
+                show_delta["comparison_pass_rate"] = show_delta["comparison_pass_rate"].apply(
+                    lambda x: f"{x:.2%}" if pd.notna(x) else "—"
+                )
+                show_delta["delta_pass_rate"] = show_delta["delta_pass_rate"].apply(fmt_signed_pct)
+
+                st.dataframe(show_delta, use_container_width=True)
+
+                delta_heat = make_delta_heatmap(delta_table)
+                if not delta_heat.empty:
+                    figD, axD = plt.subplots(figsize=(8, max(3, 0.6 * len(delta_heat))))
+                    annot_delta = format_delta_labels(delta_heat)
+
+                    hmD = sns.heatmap(
+                        delta_heat,
+                        annot=annot_delta,
+                        fmt="",
+                        cmap="RdYlGn",
+                        center=0.0,
+                        vmin=-1.0,
+                        vmax=1.0,
+                        linewidths=0.5,
+                        linecolor="white",
+                        ax=axD,
+                    )
+
+                    cbar = hmD.collections[0].colorbar
+                    cbar.set_ticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                    cbar.set_ticklabels(["-100%", "-50%", "0%", "+50%", "+100%"])
+
+                    axD.set_xlabel("Model")
+                    axD.set_ylabel("Prompt")
+                    axD.set_title(
+                        f"{comparison_metric} delta by prompt × model\n"
+                        f"[suite={comparison_suite} | {comparison_experiment} - {baseline_experiment}]"
+                    )
+                    st.pyplot(figD)
+                else:
+                    st.info("Not enough data to build delta heatmap.")
+            else:
+                st.info("No comparable prompt × model rows found for this suite/experiment pair.")
+        else:
+            st.info("Need at least two experiments within the selected suite to compare.")
+    else:
+        st.info("No suites available for comparison.")
     
     mN = normalize_master(m)  # if you want filtered run health/hotspots
 
