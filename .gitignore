@@ -29,3 +29,18 @@ benchmarks/**/results_*/
 
 # Optional: keep sample data only
 data/
+
+# ---- Additional generated benchmark artifacts ----
+benchmarks/results/raw_runs/
+benchmarks/results/aggregated/
+benchmarks/results/narratives/
+
+# ---- Local scratch / optional dirs ----
+models/
+notebooks/
+
+# ---- Keep curated docs/images tracked ----
+!docs/images/
+!docs/images/*.png
+!docs/images/*.jpg
+!docs/images/*.jpeg
