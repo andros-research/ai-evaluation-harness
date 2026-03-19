@@ -1,0 +1,9 @@
+ 1. Attention mechanisms in Transformers are a crucial component that allows the model to focus on relevant information within input sequences while processing them.
+
+2. The self-attention mechanism enables each position in the sequence to be aware of its relevance to all other positions, creating a weighted context for understanding the relationships between words or tokens.
+
+3. During the attention computation process, the model calculates scores indicating the importance of each input token for every other token, based on their similarity or compatibility.
+
+4. The softmax function is applied to these scores to produce weights that sum up to 1, ensuring proper distribution of focus across the sequence.
+
+5. By incorporating attention mechanisms, Transformer models can better capture long-range dependencies and improve their ability to handle complex tasks such as machine translation, summarization, and question answering.

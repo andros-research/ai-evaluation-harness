@@ -1,0 +1,9 @@
+ 1. Attention in Transformers is a mechanism that allows the model to focus on specific parts of the input sequence when processing each position, rather than considering all positions equally.
+
+2. This mechanism is implemented through an Attention layer, which calculates the attention scores for every pair of input positions based on their compatibility.
+
+3. The compatibility score is typically determined using a weighted sum of dot products between the input vectors of the two positions and optional additional learnable parameters.
+
+4. The softmax function is applied to these scores to obtain normalized attention weights, which indicate the relative importance of each position in the context of the current position being processed.
+
+5. These attention weights are then used to compute a weighted sum of the input vectors from all positions to produce an attention vector, which is concatenated with the original input and passed through another feed-forward network before being added to the output of other positional encodings in the Transformer model.

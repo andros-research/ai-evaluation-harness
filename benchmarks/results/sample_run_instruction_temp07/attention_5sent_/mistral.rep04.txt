@@ -1,0 +1,9 @@
+ 1. Attention mechanisms in Transformers are a way for the model to focus on specific parts of the input sequence when producing an output, rather than considering all inputs equally at each step.
+
+2. This is achieved by calculating a weighted sum of input values, where the weights represent the attention the model pays to each input. These weights are determined through softmax functions and scoring functions (like dot-product or scaled dot-product).
+
+3. The attention mechanism can be categorized into three types: Scaled Dot-Product Attention, Additive Attention, and Multi-Head Attention, with the Multi-Head Attention being most commonly used in modern Transformer models like BERT and RoBERTa.
+
+4. By allowing the model to selectively focus on relevant parts of the input, attention mechanisms help improve the efficiency and effectiveness of Transformers, making them especially useful for tasks involving long sequences such as text generation, translation, and summarization.
+
+5. The attention weights can be visualized as a heatmap, revealing which parts of the input sequence receive more or less attention at each step during the output production process.

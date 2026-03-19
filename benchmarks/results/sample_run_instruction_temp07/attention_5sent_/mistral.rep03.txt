@@ -1,0 +1,9 @@
+ 1. Attention mechanisms in Transformers are a key component that allows the model to focus on relevant parts of the input data while processing.
+
+2. They enable the model to weigh the importance of each word or token when generating an output, thereby improving the contextual understanding and accuracy of predictions.
+
+3. Attention operates by calculating a score for every pair of words in the input sequence, determining how much one word should influence another during encoding or decoding.
+
+4. The scores are typically computed using a dot-product or additive attention mechanism, which may involve self-attention (attending to different positions within the same sequence) or cross-attention (attending to positions in both the input and output sequences).
+
+5. By allowing the model to dynamically adjust its focus during each step of processing, attention mechanisms significantly enhance Transformers' ability to handle long-range dependencies and generate more accurate translations, summaries, and other natural language tasks.

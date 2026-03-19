@@ -1,0 +1,9 @@
+ 1. Attention in Transformers is a mechanism that allows the model to selectively focus on specific parts of the input data during the processing, thereby improving the model's understanding and interpretation of complex sequences.
+
+2. It operates by assigning different weights or scores to each word in the input sequence relative to the current position being processed, allowing the model to prioritize relevant information when generating an output.
+
+3. This is achieved through the use of a softmax function, which normalizes the attention scores so that they sum up to one. The higher the score, the more focus the model places on that particular word in the input sequence.
+
+4. The attention mechanism can be divided into three main types: Scaled Dot-Product Attention, Multi-Head Attention, and Additive Attention, each with its unique way of calculating and applying the attention scores.
+
+5. By using attention, Transformer models can efficiently process long sequences and capture dependencies between distant words within those sequences, making them particularly useful for tasks like machine translation, text summarization, and language modeling.
