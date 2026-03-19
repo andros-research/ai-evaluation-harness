@@ -1,6 +1,8 @@
 # ai-evaluation-harness
 
-A reproducible evaluation harness for studying LLM behavior through controlled prompt suites, repeated runs, and comparative experiment analysis.
+A reproducible evaluation harness for studying LLM behavior through controlled prompt suites, repeated runs, and comparative experiment analysis — designed for local model experimentation and systematic behavioral measurement.
+
+This project is designed to systematically measure how local LLM behavior changes under controlled inference conditions (e.g., temperature sweeps), with a focus on identifying tradeoffs across competing constraints like structure, instruction following, and verbosity.
 
 ## v1.0 milestone
 
@@ -30,38 +32,69 @@ The goal of this project is to build a practical local-model evaluation lab for 
 
 Temperature is treated here not just as “randomness,” but as a behavioral control knob that can shift model performance across competing dimensions.
 
+## How this can be used
+
+From a risk perspective, this harness can be used to map how model behavior shifts under controlled inference changes (e.g., temperature sweeps), similar to stress testing a system across different regimes. 
+
+For example, a model that performs well on structured outputs at low temperature may degrade in instruction-following or verbosity control as temperature rises. By running repeated evaluations across prompt types and aggregating results, the harness surfaces these tradeoffs explicitly, allowing a user to identify stable operating regions and failure modes.
+
+In practice, this can inform model selection, prompt design, and guardrail strategies by making behavioral reliability measurable rather than anecdotal.
+
 ## Repository layout
 
-benchmarks/   Core benchmark suites, runners, aggregation, and analysis helpers
-dashboards/   Streamlit dashboard for evaluation analytics
-docs/         Research notes, images, and project documentation
-experiments/  Scratch / future experimental work
+```
+benchmarks/
+  Core benchmark suites, runners, aggregation, and analysis helpers
+
+dashboards/
+  Streamlit dashboard for evaluation analytics
+
+docs/
+  Research notes, images, and project documentation
+
+experiments/
+  Scratch / future experimental work
+```
 
 ## Quick start
 
 1. Create the environment
-`conda env create -f environment.yml`
-`conda activate ai-lab`
+```bash
+conda env create -f environment.yml
+conda activate ai-lab
+```
 
 2. Run a benchmark suite
 From the repository root:
-`cd benchmarks`
-`python run_suite.py --suite suite_instruction.yml --runner runner_temp0.yml`
+```bash
+cd benchmarks
+python run_suite.py --suite suite_instruction.yml --runner runner_temp0.yml
+```
 
 3. Aggregate outputs
-`python aggregate_runs.py`
+```bash
+python aggregate_runs.py
+```
 This produces the aggregated `runs_master` artifacts used by the dashboard and later analysis steps.
 
 4. Launch the dashboard
 From the repository root:
-`streamlit run dashboards/eval_dashboard.py`
+```bash
+streamlit run dashboards/eval_dashboard.py
+```
 
 ## Dashboard preview
 
-Within-suite experiment comparison
-Screenshot to be added under `docs/images`
-Prompt × model pass-rate heatmap
-Screenshot to be added under `docs/images`
+### Prompt × model pass-rate heatmap
+<p align="center">
+  <img src="docs/images/dashboard-passrate-heatmap.png" width="800"/>
+</p>
+Pass-rate heatmap across prompt × model combinations, showing constraint-specific degradation patterns across temperature sweeps.
+
+### Within-suite experiment comparison
+<p align="center">
+  <img src="docs/images/dashboard-experiment-comparison.png" width="800"/>
+</p>
 
 ## Example early findings
 
