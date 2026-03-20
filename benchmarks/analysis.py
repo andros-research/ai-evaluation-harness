@@ -121,34 +121,68 @@ def make_experiment_delta_table(
     comp = d[d["experiment_name"].astype("string") == str(comparison_experiment)].copy()
 
     if base.empty:
-        raise ValueError(f"No rows found for baseline experiment '{baseline_experiment}' in suite '{suite_name}'")
+        raise ValueError(
+            f"No rows found for baseline experiment '{baseline_experiment}' in suite '{suite_name}'"
+        )
     if comp.empty:
-        raise ValueError(f"No rows found for comparison experiment '{comparison_experiment}' in suite '{suite_name}'")
+        raise ValueError(
+            f"No rows found for comparison experiment '{comparison_experiment}' in suite '{suite_name}'"
+        )
     if metric_col not in d.columns:
         raise ValueError(f"Metric '{metric_col}' not found in experiment summary")
 
-    base = base[["prompt_id", "model", metric_col]].rename(columns={metric_col: "baseline_pass_rate"})
-    comp = comp[["prompt_id", "model", metric_col]].rename(columns={metric_col: "comparison_pass_rate"})
+    base = base[["prompt_id", "model", metric_col]].rename(
+        columns={metric_col: "baseline_pass_rate"}
+    )
+    comp = comp[["prompt_id", "model", metric_col]].rename(
+        columns={metric_col: "comparison_pass_rate"}
+    )
 
-    merged = base.merge(comp, on=["prompt_id", "model"], how="outer")
+    merged = base.merge(comp, on=["prompt_id", "model"], how="outer", indicator=True)
 
-    merged["baseline_pass_rate"] = pd.to_numeric(merged["baseline_pass_rate"], errors="coerce").fillna(0.0)
-    merged["comparison_pass_rate"] = pd.to_numeric(merged["comparison_pass_rate"], errors="coerce").fillna(0.0)
-    merged["delta_pass_rate"] = merged["comparison_pass_rate"] - merged["baseline_pass_rate"]
-    merged["abs_delta"] = merged["delta_pass_rate"].abs()
+    merged["baseline_present"] = merged["_merge"].isin(["both", "left_only"])
+    merged["comparison_present"] = merged["_merge"].isin(["both", "right_only"])
+
+    merged["baseline_pass_rate"] = pd.to_numeric(
+        merged["baseline_pass_rate"], errors="coerce"
+    )
+    merged["comparison_pass_rate"] = pd.to_numeric(
+        merged["comparison_pass_rate"], errors="coerce"
+    )
+
+    merged["values_present"] = (
+        merged["baseline_pass_rate"].notna() & merged["comparison_pass_rate"].notna()
+    )
+
+    merged["delta_pass_rate"] = pd.NA
+    merged.loc[merged["values_present"], "delta_pass_rate"] = (
+        merged.loc[merged["values_present"], "comparison_pass_rate"]
+        - merged.loc[merged["values_present"], "baseline_pass_rate"]
+    )
+
+    merged["abs_delta"] = pd.NA
+    merged.loc[merged["values_present"], "abs_delta"] = (
+        merged.loc[merged["values_present"], "delta_pass_rate"].abs()
+    )
+
+    merged = merged.drop(columns=["_merge"])
 
     return merged.sort_values(
         ["abs_delta", "prompt_id", "model"],
         ascending=[False, True, True],
+        na_position="last",
     ).reset_index(drop=True)
-
+    
 
 def label_cell_behavior(
-    baseline: float,
-    comparison: float,
-    delta: float,
+    baseline: float | None,
+    comparison: float | None,
+    delta: float | None,
     eps: float = 1e-9,
 ) -> str:
+    if baseline is None or comparison is None or delta is None:
+        return "missing_comparison"
+
     if abs(delta) <= eps:
         if baseline == 0.0 and comparison == 0.0:
             return "stable_always_fail"
@@ -160,7 +194,10 @@ def label_cell_behavior(
     return "degrades"
 
 
-def make_narrative_payload(
+def maybe_float(value: Any) -> float | None:
+    return None if pd.isna(value) else float(value)
+
+def make_analysis_payload(
     experiment_summary: pd.DataFrame,
     suite_name: str,
     baseline_experiment: str,
@@ -181,14 +218,16 @@ def make_narrative_payload(
     ].copy()
 
     if baseline_rows.empty:
-        raise ValueError(f"No rows found for baseline experiment '{baseline_experiment}' in suite '{suite_name}'")
+        raise ValueError(
+            f"No rows found for baseline experiment '{baseline_experiment}' in suite '{suite_name}'"
+        )
 
     for _, row in baseline_rows.iterrows():
         key = (str(row["prompt_id"]), str(row["model"]))
         cells[key] = {
             "prompt_id": str(row["prompt_id"]),
             "model": str(row["model"]),
-            "baseline_pass_rate": float(row[metric_col]) if pd.notna(row[metric_col]) else 0.0,
+            "baseline_pass_rate": maybe_float(row[metric_col]),
             "comparison_pass_rates": {},
             "deltas": {},
             "labels": {},
@@ -211,39 +250,37 @@ def make_narrative_payload(
             model = str(row["model"])
             key = (prompt_id, model)
 
+            baseline_rate = maybe_float(row["baseline_pass_rate"])
+            comp_rate = maybe_float(row["comparison_pass_rate"])
+            delta = maybe_float(row["delta_pass_rate"])
+            label = label_cell_behavior(
+                baseline=baseline_rate,
+                comparison=comp_rate,
+                delta=delta,
+            )
+
             if key not in cells:
                 cells[key] = {
                     "prompt_id": prompt_id,
                     "model": model,
-                    "baseline_pass_rate": float(row["baseline_pass_rate"]),
+                    "baseline_pass_rate": baseline_rate,
                     "comparison_pass_rates": {},
                     "deltas": {},
                     "labels": {},
                 }
 
-            comp_rate = float(row["comparison_pass_rate"])
-            delta = float(row["delta_pass_rate"])
-
             cells[key]["comparison_pass_rates"][comp_name] = comp_rate
             cells[key]["deltas"][f"{comp_name}_vs_{baseline_experiment}"] = delta
-            cells[key]["labels"][f"{comp_name}_vs_{baseline_experiment}"] = label_cell_behavior(
-                baseline=float(row["baseline_pass_rate"]),
-                comparison=comp_rate,
-                delta=delta,
-            )
+            cells[key]["labels"][f"{comp_name}_vs_{baseline_experiment}"] = label
 
             comparison_cells.append(
                 {
                     "prompt_id": prompt_id,
                     "model": model,
-                    "baseline_pass_rate": float(row["baseline_pass_rate"]),
+                    "baseline_pass_rate": baseline_rate,
                     "comparison_pass_rate": comp_rate,
                     "delta_pass_rate": delta,
-                    "label": label_cell_behavior(
-                        baseline=float(row["baseline_pass_rate"]),
-                        comparison=comp_rate,
-                        delta=delta,
-                    ),
+                    "label": label,
                 }
             )
 
