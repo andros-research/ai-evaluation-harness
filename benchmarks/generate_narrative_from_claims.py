@@ -67,20 +67,28 @@ Rules:
 - If multiple claims repeat the same pattern, compress them into a concise observation.
 - Prefer specific references to prompt_id, model, and experiment names.
 - Keep hypotheses minimal and cautious.
+- Every bullet in Observations, Tradeoffs, and Invariances must include one or more supporting claim IDs.
+- Format claim references exactly as: [CLAIMS: claim_id_1, claim_id_2]
+- Always use [CLAIMS: ...] even for a single claim.
+- Place the [CLAIMS: ...] block at the end of the bullet only.
+- Do not place claim references at the beginning or middle of a bullet.
+- Do not write any empirical statement without at least one [CLAIMS: ...] block.
+- Cautions may omit claim IDs if they are clearly meta-cautions about interpretation limits.
+- Preserve experiment names exactly as written (e.g. temp03, temp07). Do not rewrite them as numeric temperatures unless they are copied exactly from the claims.
 
 Output exactly in this structure:
 
 Observations:
-- ...
+- <observation sentence> [CLAIMS: claim_id_1, claim_id_2]
 
 Tradeoffs:
-- ...
+- <tradeoff sentence> [CLAIMS: claim_id_3, claim_id_4]
 
 Invariances:
-- ...
+- <invariance sentence> [CLAIMS: claim_id_5, claim_id_6]
 
 Cautions:
-- ...
+- <meta-caution sentence>
 """
 
     payload = json.dumps(summary, indent=2)
@@ -110,6 +118,9 @@ def run_ollama(model: str, prompt: str, temperature: float, num_predict: int) ->
         env=env,
         check=False,
     )
+    
+    if not result.stdout.strip():
+        raise RuntimeError("ollama returned empty output")
 
     if result.returncode != 0:
         raise RuntimeError(
