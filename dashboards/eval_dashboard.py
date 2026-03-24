@@ -3,6 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+import json
+import re
+from typing import Any
 
 st.set_page_config(layout="wide")
 st.title("LLM Evaluation Dashboard (Phase 1)")
@@ -16,6 +19,7 @@ RAW_RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "raw_runs"
 AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 AGG_PARQUET = AGG_ROOT / "runs_master.parquet"
 AGG_CSV = AGG_ROOT / "runs_master.csv"
+NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
 
 # -------------------------
 # Helpers
@@ -331,6 +335,43 @@ def make_delta_heatmap(delta_table: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     return delta_table.pivot(index="prompt_id", columns="model", values="delta_pass_rate").sort_index()
 
+
+def find_narrative_files(narratives_root: Path, suffix: str) -> list[Path]:
+    if not narratives_root.exists():
+        return []
+    return sorted(narratives_root.glob(f"*{suffix}"))
+
+def load_json_file(path: Path) -> dict[str, Any]:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def narrative_label_from_path(path: Path) -> str:
+    return path.name
+
+def normalize_audit_text(s: str) -> str:
+    s = re.sub(r"\[CLAIMS:\s*[^\]]+\]", "", s)
+    s = re.sub(r"\s+", " ", s.strip().lower())
+    return s
+
+
+def default_audit_path_from_parsed(parsed_path: Path) -> Path:
+    stem = parsed_path.stem.replace("__parsed_narrative", "")
+    return parsed_path.parent / f"{stem}__audit.json"
+
+
+def index_audit_items(audit_payload: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    out: dict[tuple[str, str], dict[str, Any]] = {}
+    for item in audit_payload.get("audit_items", []):
+        key = (
+            str(item.get("section", "")).strip().lower(),
+            normalize_audit_text(str(item.get("text", ""))),
+        )
+        out[key] = item
+    return out
+
 @st.cache_data(show_spinner=False)
 def load_agg() -> pd.DataFrame:
     if AGG_PARQUET.exists():
@@ -343,7 +384,9 @@ def load_agg() -> pd.DataFrame:
 # -------------------------
 # Tabs
 # -------------------------
-tab_run, tab_agg = st.tabs(["Single Run", "All Runs (runs_master)"])
+tab_run, tab_agg, tab_trace = st.tabs(
+    ["Single Run", "All Runs (runs_master)", "Narrative Traceability"]
+)
 
 with tab_run:
     runs_all = find_result_folders(RAW_RUNS_ROOT)
@@ -858,3 +901,139 @@ with tab_agg:
     fails = m[m["failure_type"] != "ok"]
     st.bar_chart(fails["failure_type"].value_counts())
     # st.bar_chart(m["failure_type"].value_counts())
+
+with tab_trace:
+    st.subheader("Narrative Traceability")
+
+    parsed_files = find_narrative_files(NARRATIVES_ROOT, "__parsed_narrative.json")
+
+    if not parsed_files:
+        st.info("No parsed narrative artifacts found yet.")
+    else:
+        selected_parsed_path = st.selectbox(
+            "Select parsed narrative artifact",
+            options=[str(p) for p in parsed_files],
+            format_func=lambda x: Path(x).name,
+            key="parsed_narrative_select",
+        )
+
+        parsed_path = Path(selected_parsed_path)
+        parsed_payload = load_json_file(parsed_path)
+
+        audit_path = default_audit_path_from_parsed(parsed_path)
+        audit_payload = load_json_file(audit_path) if audit_path.exists() else {}
+        audit_index = index_audit_items(audit_payload) if audit_payload else {}
+
+        st.caption(
+            f"Suite: {parsed_payload.get('suite_name', '—')} | "
+            f"Metric: {parsed_payload.get('metric', '—')} | "
+            f"Baseline: {parsed_payload.get('baseline_experiment', '—')}"
+        )
+
+        summary = parsed_payload.get("summary", {})
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Narrative items", summary.get("n_items", "—"))
+        c2.metric("With claim refs", summary.get("n_items_with_claim_refs", "—"))
+        c3.metric("Missing claim refs", summary.get("n_items_missing_claim_refs", "—"))
+        c4.metric("Unknown claim IDs", summary.get("n_unknown_claim_ids", "—"))
+
+        if audit_payload:
+            st.markdown("### Audit Summary")
+            audit_summary = audit_payload.get("summary", {})
+            ac1, ac2, ac3, ac4 = st.columns(4)
+            ac1.metric("Fidelity score", audit_payload.get("fidelity_score", "—"))
+            ac2.metric("Supported", audit_summary.get("n_supported", "—"))
+            ac3.metric("Flagged", audit_summary.get("n_flagged", "—"))
+            ac4.metric("Meta cautions", audit_summary.get("n_meta_cautions", "—"))
+        else:
+            st.info("No matching audit artifact found for this parsed narrative.")
+
+        items = parsed_payload.get("items", [])
+
+        if not items:
+            st.info("No parsed narrative items found.")
+        else:
+            item_labels = [
+                f"{i['item_id']}. [{i['section']}] {i['clean_text'][:100]}"
+                for i in items
+            ]
+
+            selected_idx = st.selectbox(
+                "Select narrative bullet",
+                options=list(range(len(items))),
+                format_func=lambda i: item_labels[i],
+                key="trace_item_select",
+            )
+
+            item = items[selected_idx]
+
+            audit_key = (
+                str(item.get("section", "")).strip().lower(),
+                normalize_audit_text(str(item.get("clean_text", ""))),
+            )
+            audit_item = audit_index.get(audit_key)
+
+            left, right = st.columns([1.1, 1.4])
+
+            with left:
+                st.markdown("### Narrative Bullet")
+                st.write(f"**Section:** {item.get('section', '—')}")
+                st.write(f"**Clean text:** {item.get('clean_text', '')}")
+                st.write(f"**Raw text:** {item.get('raw_text', '')}")
+
+                st.write("**Claim IDs:**")
+                st.code("\n".join(item.get("claim_ids", [])) if item.get("claim_ids") else "—")
+
+                if item.get("unknown_claim_ids"):
+                    st.warning(f"Unknown claim IDs: {item['unknown_claim_ids']}")
+
+                st.markdown("### Audit Status")
+
+                if audit_item:
+                    supported = audit_item.get("supported")
+                    issue_type = audit_item.get("issue_type", "—")
+                    notes = audit_item.get("notes", "")
+
+                    if supported is True:
+                        st.success(f"Supported · {issue_type}")
+                    elif supported is False:
+                        st.error(f"Flagged · {issue_type}")
+                    else:
+                        st.info(f"Meta / excluded · {issue_type}")
+
+                    if notes:
+                        st.write(f"**Notes:** {notes}")
+
+                    matched_claim_ids = audit_item.get("matched_claim_ids", [])
+                    if matched_claim_ids:
+                        st.write("**Audit matched claim IDs:**")
+                        st.code("\n".join(matched_claim_ids))
+                else:
+                    st.warning("No audit item matched this bullet.")
+
+            with right:
+                st.markdown("### Linked Claims")
+                linked_claims = item.get("linked_claims", [])
+
+                if not linked_claims:
+                    st.info("No linked claims for this bullet.")
+                else:
+                    for claim in linked_claims:
+                        with st.expander(claim.get("claim_id", "claim"), expanded=False):
+                            cc1, cc2 = st.columns(2)
+                            cc1.write(f"**prompt_id:** {claim.get('prompt_id', '—')}")
+                            cc2.write(f"**model:** {claim.get('model', '—')}")
+
+                            cc3, cc4 = st.columns(2)
+                            cc3.write(f"**baseline_experiment:** {claim.get('baseline_experiment', '—')}")
+                            cc4.write(f"**comparison_experiment:** {claim.get('comparison_experiment', '—')}")
+
+                            cc5, cc6, cc7 = st.columns(3)
+                            cc5.write(f"**baseline_value:** {claim.get('baseline_value', '—')}")
+                            cc6.write(f"**comparison_value:** {claim.get('comparison_value', '—')}")
+                            cc7.write(f"**delta_value:** {claim.get('delta_value', '—')}")
+
+                            cc8, cc9, cc10 = st.columns(3)
+                            cc8.write(f"**label:** {claim.get('label', '—')}")
+                            cc9.write(f"**claim_strength:** {claim.get('claim_strength', '—')}")
+                            cc10.write(f"**claim_type:** {claim.get('claim_type', '—')}")
