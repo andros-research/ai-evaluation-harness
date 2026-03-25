@@ -962,6 +962,17 @@ with tab_audit:
         ]:
             if col in a.columns:
                 a[col] = a[col].astype("string").fillna("")
+                # Derived diagnostics
+                a["has_claim_refs"] = a["n_claim_ids"].fillna(0) > 0
+                a["is_meta_section"] = a["section"].str.lower().isin(["cautions", "meta", "meta_caution"])
+
+                a["zero_overlap_empirical"] = (
+                    (a["audit_status"] == "supported")
+                    & (a["claim_id_overlap_ratio"].fillna(0) == 0)
+                    & (a["has_claim_refs"])
+                    & (~a["is_meta_section"])
+                )
+                
 
         # -------------------------
         # Sidebar-style filters (in-tab)
@@ -1109,6 +1120,25 @@ with tab_audit:
         # Support-discipline diagnostics
         # -------------------------
         st.markdown("### Support Discipline Diagnostics")
+        
+        st.markdown("#### Zero-Overlap Empirical Bullets")
+        zoe = a_filt[a_filt["zero_overlap_empirical"]].copy()
+
+        zoe_cols = [
+            "suite_name",
+            "model",
+            "prompt_id",
+            "section",
+            "bullet_text",
+            "claim_ids",
+            "matched_claim_ids",
+            "unused_cited_claim_ids",
+            "extra_matched_claim_ids",
+            "claim_id_overlap_ratio",
+        ]
+        zoe_cols = [c for c in zoe_cols if c in zoe.columns]
+
+        st.dataframe(zoe[zoe_cols], use_container_width=True)
 
         diag1, diag2 = st.columns(2)
 
