@@ -8,18 +8,19 @@ import re
 from typing import Any
 
 st.set_page_config(layout="wide")
-st.title("LLM Evaluation Dashboard (Phase 1)")
+st.title("AI Evaluation Harness Dashboard")
 
 # -------------------------
 # Auto-load latest results (benchmarks/results_*)
 # -------------------------
-REPO_ROOT = Path(__file__).resolve().parents[1]          # /home/joe/ai-lab
-# RESULTS_ROOT = REPO_ROOT / "benchmarks"                 # /home/joe/ai-lab/benchmarks
+REPO_ROOT = Path(__file__).resolve().parents[1]
 RAW_RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "raw_runs"
 AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 AGG_PARQUET = AGG_ROOT / "runs_master.parquet"
 AGG_CSV = AGG_ROOT / "runs_master.csv"
 NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
+AUDIT_ITEMS_CSV = AGG_ROOT / "audit_items.csv"
+AUDIT_SUMMARY_JSON = AGG_ROOT / "audit_summary.json"
 
 # -------------------------
 # Helpers
@@ -372,6 +373,12 @@ def index_audit_items(audit_payload: dict[str, Any]) -> dict[tuple[str, str], di
         out[key] = item
     return out
 
+def fmt_pct(x: Any) -> str:
+    try:
+        return f"{float(x):.2%}"
+    except Exception:
+        return "—"
+
 @st.cache_data(show_spinner=False)
 def load_agg() -> pd.DataFrame:
     if AGG_PARQUET.exists():
@@ -381,11 +388,24 @@ def load_agg() -> pd.DataFrame:
     return pd.DataFrame()
 
 
+@st.cache_data(show_spinner=False)
+def load_audit_items() -> pd.DataFrame:
+    if AUDIT_ITEMS_CSV.exists():
+        return pd.read_csv(AUDIT_ITEMS_CSV)
+    return pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
+def load_audit_summary() -> dict[str, Any]:
+    if AUDIT_SUMMARY_JSON.exists():
+        return load_json_file(AUDIT_SUMMARY_JSON)
+    return {}
+
 # -------------------------
 # Tabs
 # -------------------------
-tab_run, tab_agg, tab_trace = st.tabs(
-    ["Single Run", "All Runs (runs_master)", "Narrative Traceability"]
+tab_run, tab_agg, tab_audit, tab_trace = st.tabs(
+    ["Single Run", "All Runs (runs_master)", "Audit Analytics", "Narrative Traceability"]
 )
 
 with tab_run:
@@ -902,6 +922,283 @@ with tab_agg:
     st.bar_chart(fails["failure_type"].value_counts())
     # st.bar_chart(m["failure_type"].value_counts())
 
+with tab_audit:
+    st.subheader("Audit Analytics")
+
+    audit_items = load_audit_items()
+    audit_summary = load_audit_summary()
+
+    if audit_items.empty:
+        st.info("No audit_items.csv found yet. Run summarize_audits.py first.")
+    else:
+        # -------------------------
+        # Normalize audit fields
+        # -------------------------
+        a = audit_items.copy()
+
+        for col in [
+            "claim_id_overlap_ratio",
+            "claim_id_overlap_count",
+            "n_claim_ids",
+            "n_matched_claim_ids",
+            "n_unknown_claim_ids",
+            "n_extra_matched_claim_ids",
+            "n_unused_cited_claim_ids",
+            "fidelity_score_artifact",
+        ]:
+            if col in a.columns:
+                a[col] = pd.to_numeric(a[col], errors="coerce")
+
+        for col in [
+            "audit_status",
+            "issue_type",
+            "suite_name",
+            "model",
+            "prompt_id",
+            "section",
+            "artifact_name",
+            "bullet_text",
+            "notes",
+        ]:
+            if col in a.columns:
+                a[col] = a[col].astype("string").fillna("")
+
+        # -------------------------
+        # Sidebar-style filters (in-tab)
+        # -------------------------
+        st.markdown("### Filters")
+        f1, f2, f3, f4 = st.columns(4)
+
+        selected_statuses = f1.multiselect(
+            "Audit status",
+            options=sorted(a["audit_status"].dropna().unique().tolist()),
+            default=sorted(a["audit_status"].dropna().unique().tolist()),
+            key="audit_status_filter",
+        )
+
+        selected_suites = f2.multiselect(
+            "Suites",
+            options=sorted(a["suite_name"].dropna().unique().tolist()),
+            default=sorted(a["suite_name"].dropna().unique().tolist()),
+            key="audit_suite_filter",
+        )
+
+        selected_models = f3.multiselect(
+            "Models",
+            options=sorted(a["model"].dropna().unique().tolist()),
+            default=sorted(a["model"].dropna().unique().tolist()),
+            key="audit_model_filter",
+        )
+
+        selected_prompts = f4.multiselect(
+            "Prompts",
+            options=sorted(a["prompt_id"].dropna().unique().tolist()),
+            default=sorted(a["prompt_id"].dropna().unique().tolist()),
+            key="audit_prompt_filter",
+        )
+
+        a_filt = a[
+            a["audit_status"].isin(selected_statuses)
+            & a["suite_name"].isin(selected_suites)
+            & a["model"].isin(selected_models)
+            & a["prompt_id"].isin(selected_prompts)
+        ].copy()
+
+        # -------------------------
+        # KPIs
+        # -------------------------
+        status_counts = a_filt["audit_status"].value_counts()
+
+        total_bullets = len(a_filt)
+        supported_count = int(status_counts.get("supported", 0))
+        flagged_count = int(status_counts.get("flagged", 0))
+        meta_count = int(status_counts.get("meta_caution", 0))
+
+        mean_overlap_ratio = (
+            a_filt["claim_id_overlap_ratio"].dropna().mean()
+            if "claim_id_overlap_ratio" in a_filt.columns and len(a_filt)
+            else None
+        )
+        bullets_with_extra = int(
+            (a_filt["n_extra_matched_claim_ids"].fillna(0) > 0).sum()
+        ) if "n_extra_matched_claim_ids" in a_filt.columns else 0
+        bullets_with_unused = int(
+            (a_filt["n_unused_cited_claim_ids"].fillna(0) > 0).sum()
+        ) if "n_unused_cited_claim_ids" in a_filt.columns else 0
+
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Total bullets", total_bullets)
+        k2.metric("Supported", supported_count)
+        k3.metric("Flagged", flagged_count)
+        k4.metric("Meta cautions", meta_count)
+
+        k5, k6, k7 = st.columns(3)
+        k5.metric("Mean overlap ratio", fmt_pct(mean_overlap_ratio) if mean_overlap_ratio is not None else "—")
+        k6.metric("Bullets w/ extra matched claims", bullets_with_extra)
+        k7.metric("Bullets w/ unused cited claims", bullets_with_unused)
+
+        if audit_summary:
+            st.caption(
+                f"Support mode: {audit_summary.get('support_mode', '—')}"
+            )
+
+        # -------------------------
+        # Status + issue breakdown
+        # -------------------------
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.markdown("### Status Breakdown")
+            st.bar_chart(status_counts)
+
+        with c2:
+            st.markdown("### Issue Type Breakdown")
+            flagged_only = a_filt[a_filt["audit_status"] == "flagged"].copy()
+            if not flagged_only.empty and "issue_type" in flagged_only.columns:
+                issue_counts = (
+                    flagged_only["issue_type"]
+                    .replace("", pd.NA)
+                    .dropna()
+                    .value_counts()
+                )
+                if len(issue_counts):
+                    st.bar_chart(issue_counts)
+                else:
+                    st.info("No flagged issue types in current filter.")
+            else:
+                st.info("No flagged bullets in current filter.")
+
+        # -------------------------
+        # Grouped tables
+        # -------------------------
+        st.markdown("### Flagged Counts by Suite / Model / Prompt")
+
+        g1, g2, g3 = st.columns(3)
+
+        with g1:
+            flagged_by_suite = (
+                a_filt[a_filt["audit_status"] == "flagged"]
+                .groupby("suite_name", as_index=False)
+                .size()
+                .rename(columns={"size": "flagged_count"})
+                .sort_values("flagged_count", ascending=False)
+            )
+            st.dataframe(flagged_by_suite, use_container_width=True)
+
+        with g2:
+            flagged_by_model = (
+                a_filt[a_filt["audit_status"] == "flagged"]
+                .groupby("model", as_index=False)
+                .size()
+                .rename(columns={"size": "flagged_count"})
+                .sort_values("flagged_count", ascending=False)
+            )
+            st.dataframe(flagged_by_model, use_container_width=True)
+
+        with g3:
+            flagged_by_prompt = (
+                a_filt[a_filt["audit_status"] == "flagged"]
+                .groupby("prompt_id", as_index=False)
+                .size()
+                .rename(columns={"size": "flagged_count"})
+                .sort_values("flagged_count", ascending=False)
+            )
+            st.dataframe(flagged_by_prompt, use_container_width=True)
+
+        # -------------------------
+        # Support-discipline diagnostics
+        # -------------------------
+        st.markdown("### Support Discipline Diagnostics")
+
+        diag1, diag2 = st.columns(2)
+
+        with diag1:
+            st.markdown("#### Top Extra-Matched Bullets")
+            extra_cols = [
+                "suite_name",
+                "model",
+                "prompt_id",
+                "section",
+                "bullet_text",
+                "claim_id_overlap_ratio",
+                "n_claim_ids",
+                "n_matched_claim_ids",
+                "n_extra_matched_claim_ids",
+                "extra_matched_claim_ids",
+            ]
+            extra_cols = [c for c in extra_cols if c in a_filt.columns]
+
+            top_extra = (
+                a_filt.sort_values(
+                    ["n_extra_matched_claim_ids", "claim_id_overlap_ratio"],
+                    ascending=[False, True],
+                )[extra_cols]
+                .head(20)
+            )
+            st.dataframe(top_extra, use_container_width=True)
+
+        with diag2:
+            st.markdown("#### Zero-Overlap Bullets")
+            zero_cols = [
+                "suite_name",
+                "model",
+                "prompt_id",
+                "section",
+                "bullet_text",
+                "claim_ids",
+                "matched_claim_ids",
+                "unused_cited_claim_ids",
+                "extra_matched_claim_ids",
+                "claim_id_overlap_ratio",
+            ]
+            zero_cols = [c for c in zero_cols if c in a_filt.columns]
+
+            zero_overlap = a_filt[a_filt["claim_id_overlap_ratio"].fillna(0) == 0].copy()
+            st.dataframe(
+                zero_overlap[zero_cols].head(20),
+                use_container_width=True,
+            )
+
+        # -------------------------
+        # Artifact-level summary
+        # -------------------------
+        st.markdown("### Artifact-Level Summary")
+
+        artifact_cols = [
+            "artifact_name",
+            "suite_name",
+            "fidelity_score_artifact",
+            "audit_status",
+            "n_extra_matched_claim_ids",
+            "n_unused_cited_claim_ids",
+        ]
+        artifact_cols = [c for c in artifact_cols if c in a_filt.columns]
+
+        artifact_summary = (
+            a_filt.groupby(["artifact_name", "suite_name"], as_index=False)
+            .agg(
+                bullets=("artifact_name", "size"),
+                fidelity_score=("fidelity_score_artifact", "max"),
+                supported=("audit_status", lambda s: (s == "supported").sum()),
+                flagged=("audit_status", lambda s: (s == "flagged").sum()),
+                meta_caution=("audit_status", lambda s: (s == "meta_caution").sum()),
+                mean_overlap_ratio=("claim_id_overlap_ratio", "mean"),
+                total_extra_matched=("n_extra_matched_claim_ids", "sum"),
+                total_unused_cited=("n_unused_cited_claim_ids", "sum"),
+            )
+            .sort_values(
+                ["total_extra_matched", "mean_overlap_ratio"],
+                ascending=[False, True],
+            )
+        )
+        st.dataframe(artifact_summary, use_container_width=True)
+
+        # -------------------------
+        # Full audit row table
+        # -------------------------
+        st.markdown("### Full Audit Item Table")
+        st.dataframe(a_filt, use_container_width=True)
+
 with tab_trace:
     st.subheader("Narrative Traceability")
 
@@ -917,12 +1214,7 @@ with tab_trace:
             key="parsed_narrative_select",
         )
 
-        parsed_path = Path(selected_parsed_path)
-        parsed_payload = load_json_file(parsed_path)
-
-        audit_path = default_audit_path_from_parsed(parsed_path)
-        audit_payload = load_json_file(audit_path) if audit_path.exists() else {}
-        audit_index = index_audit_items(audit_payload) if audit_payload else {}
+        parsed_payload = load_json_file(Path(selected_parsed_path))
 
         st.caption(
             f"Suite: {parsed_payload.get('suite_name', '—')} | "
@@ -936,17 +1228,6 @@ with tab_trace:
         c2.metric("With claim refs", summary.get("n_items_with_claim_refs", "—"))
         c3.metric("Missing claim refs", summary.get("n_items_missing_claim_refs", "—"))
         c4.metric("Unknown claim IDs", summary.get("n_unknown_claim_ids", "—"))
-
-        if audit_payload:
-            st.markdown("### Audit Summary")
-            audit_summary = audit_payload.get("summary", {})
-            ac1, ac2, ac3, ac4 = st.columns(4)
-            ac1.metric("Fidelity score", audit_payload.get("fidelity_score", "—"))
-            ac2.metric("Supported", audit_summary.get("n_supported", "—"))
-            ac3.metric("Flagged", audit_summary.get("n_flagged", "—"))
-            ac4.metric("Meta cautions", audit_summary.get("n_meta_cautions", "—"))
-        else:
-            st.info("No matching audit artifact found for this parsed narrative.")
 
         items = parsed_payload.get("items", [])
 
@@ -967,12 +1248,6 @@ with tab_trace:
 
             item = items[selected_idx]
 
-            audit_key = (
-                str(item.get("section", "")).strip().lower(),
-                normalize_audit_text(str(item.get("clean_text", ""))),
-            )
-            audit_item = audit_index.get(audit_key)
-
             left, right = st.columns([1.1, 1.4])
 
             with left:
@@ -980,36 +1255,11 @@ with tab_trace:
                 st.write(f"**Section:** {item.get('section', '—')}")
                 st.write(f"**Clean text:** {item.get('clean_text', '')}")
                 st.write(f"**Raw text:** {item.get('raw_text', '')}")
-
-                st.write("**Claim IDs:**")
+                st.write(f"**Claim IDs:**")
                 st.code("\n".join(item.get("claim_ids", [])) if item.get("claim_ids") else "—")
 
                 if item.get("unknown_claim_ids"):
                     st.warning(f"Unknown claim IDs: {item['unknown_claim_ids']}")
-
-                st.markdown("### Audit Status")
-
-                if audit_item:
-                    supported = audit_item.get("supported")
-                    issue_type = audit_item.get("issue_type", "—")
-                    notes = audit_item.get("notes", "")
-
-                    if supported is True:
-                        st.success(f"Supported · {issue_type}")
-                    elif supported is False:
-                        st.error(f"Flagged · {issue_type}")
-                    else:
-                        st.info(f"Meta / excluded · {issue_type}")
-
-                    if notes:
-                        st.write(f"**Notes:** {notes}")
-
-                    matched_claim_ids = audit_item.get("matched_claim_ids", [])
-                    if matched_claim_ids:
-                        st.write("**Audit matched claim IDs:**")
-                        st.code("\n".join(matched_claim_ids))
-                else:
-                    st.warning("No audit item matched this bullet.")
 
             with right:
                 st.markdown("### Linked Claims")
