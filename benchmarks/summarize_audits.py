@@ -133,6 +133,8 @@ def row_from_items(
     matched_claim_ids = safe_list(audit_item.get("matched_claim_ids"))
 
     overlap_info = compute_claim_overlap(claim_ids, matched_claim_ids)
+    
+    strict_ref_info = compute_strict_ref_diagnostics(claim_ids, matched_claim_ids)
 
     summary = (
         audit_payload.get("summary", {})
@@ -214,6 +216,13 @@ def row_from_items(
         "n_meta_cautions_artifact": summary.get("n_meta_cautions", ""),
         "n_supported_artifact": summary.get("n_supported", ""),
         "n_flagged_artifact": summary.get("n_flagged", ""),
+        
+        # strict-ref diagnostics
+        "strict_ref_claim_count": strict_ref_info["strict_ref_claim_count"],
+        "strict_ref_overlap_count": strict_ref_info["strict_ref_overlap_count"],
+        "strict_ref_overlap_ratio": strict_ref_info["strict_ref_overlap_ratio"],
+        "strict_ref_supported": strict_ref_info["strict_ref_supported"],
+        "strict_ref_support_regime": strict_ref_info["strict_ref_support_regime"],
     }
     return row
 
@@ -230,6 +239,8 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         and row["issue_type"]
         and row["issue_type"] != "meta_caution"
     )
+    
+    strict_ref_regime_counts = Counter()
 
     artifacts = {}
     fidelity_by_suite_accum: dict[str, list[float]] = defaultdict(list)
@@ -243,6 +254,10 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     total_unused_cited = 0
     bullets_with_extra_matched = 0
     bullets_with_unused_cited = 0
+    
+    strict_ref_overlap_ratios = []
+    strict_ref_supported_count = 0
+    heuristic_only_supported_count = 0
 
     for row in rows:
         artifact_name = str(row["artifact_name"])
@@ -292,6 +307,17 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             bullets_with_extra_matched += 1
         if int(row.get("n_unused_cited_claim_ids", 0) or 0) > 0:
             bullets_with_unused_cited += 1
+            
+        try:
+            strict_ref_overlap_ratios.append(float(row["strict_ref_overlap_ratio"]))
+        except (TypeError, ValueError):
+            pass
+
+        if row.get("strict_ref_supported") is True:
+            strict_ref_supported_count += 1
+
+        if row.get("strict_ref_support_regime") == "heuristic_only_supported":
+            heuristic_only_supported_count += 1
 
     fidelity_by_suite = {
         k: round(sum(v) / len(v), 4) for k, v in sorted(fidelity_by_suite_accum.items()) if v
@@ -373,6 +399,7 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
         "top_flagged_bullets": top_flagged_bullets,
         "top_extra_matched_bullets": top_extra_matched_bullets,
+        "strict_ref_regime_counts": dict(strict_ref_regime_counts),
     }
 
 
@@ -411,6 +438,40 @@ def build_rows(narratives_dir: Path) -> list[dict[str, Any]]:
 
     return rows
 
+def compute_strict_ref_diagnostics(
+    claim_ids: list[Any], matched_claim_ids: list[Any]
+) -> dict[str, Any]:
+    cited = list_set(claim_ids)
+    matched = list_set(matched_claim_ids)
+
+    overlap = cited & matched
+
+    strict_ref_claim_count = len(cited)
+    strict_ref_overlap_count = len(overlap)
+
+    strict_ref_overlap_ratio = 0.0
+    if strict_ref_claim_count > 0:
+        strict_ref_overlap_ratio = strict_ref_overlap_count / strict_ref_claim_count
+
+    strict_ref_supported = strict_ref_overlap_count > 0
+
+    if strict_ref_claim_count == 0:
+        strict_ref_support_regime = "no_cited_refs"
+    elif strict_ref_supported:
+        if strict_ref_overlap_ratio == 1.0:
+            strict_ref_support_regime = "trace_supported"
+        else:
+            strict_ref_support_regime = "partially_trace_supported"
+    else:
+        strict_ref_support_regime = "heuristic_only_supported"
+
+    return {
+        "strict_ref_claim_count": strict_ref_claim_count,
+        "strict_ref_overlap_count": strict_ref_overlap_count,
+        "strict_ref_overlap_ratio": round(strict_ref_overlap_ratio, 4),
+        "strict_ref_supported": strict_ref_supported,
+        "strict_ref_support_regime": strict_ref_support_regime,
+    }
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
