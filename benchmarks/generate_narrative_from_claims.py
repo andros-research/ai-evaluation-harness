@@ -75,6 +75,10 @@ Rules:
 - Do not write any empirical statement without at least one [CLAIMS: ...] block.
 - Cautions may omit claim IDs if they are clearly meta-cautions about interpretation limits.
 - Preserve experiment names exactly as written (e.g. temp03, temp07). Do not rewrite them as numeric temperatures unless they are copied exactly from the claims.
+- Every claim ID cited in [CLAIMS: ...] must appear verbatim in the supplied selected_claims list.
+- Never invent, infer, or extrapolate claim IDs.
+- If no suitable selected claim supports an invariance, omit the invariance bullet rather than fabricating support.
+- If no supported claim exists for a section, omit that bullet rather than filling the section with a weak or inferred statement.
 
 Output exactly in this structure:
 
