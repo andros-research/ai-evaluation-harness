@@ -85,17 +85,26 @@ def select_claims_for_narrative(
 
     selected: List[dict[str, Any]] = []
 
-    # 1️⃣ Always include all strong deltas
+    # Always include all strong deltas
     selected.extend(strong_delta)
 
-    # 2️⃣ Add medium deltas (capped)
+    # Add medium deltas (capped)
     selected.extend(medium_delta[:max_medium_delta])
 
-    # 3️⃣ Add stable claims (balanced mix)
+    # Add stable claims (balanced mix) keeping count of n_invariant
+    n_invariant = 1 if stable_invariant else 0
+    remaining_stable = max_stable - n_invariant
+
+    n_floor = remaining_stable // 2
+    n_ceiling = remaining_stable - n_floor
+
     stable_combined = (
-        stable_floor[: max_stable // 2]
-        + stable_ceiling[: max_stable // 2]
+        stable_floor[:n_floor]
+        + stable_ceiling[:n_ceiling]
     )
+
+    if n_invariant:
+        stable_combined += stable_invariant[:1]
 
     # If still room, include invariant
     if len(stable_combined) < max_stable:
@@ -104,12 +113,12 @@ def select_claims_for_narrative(
 
     selected.extend(stable_combined)
 
-    # 4️⃣ Fill remaining space with weak deltas if needed
+    # Fill remaining space with weak deltas if needed
     if len(selected) < max_total_claims:
         remaining = max_total_claims - len(selected)
         selected.extend(weak_delta[:remaining])
 
-    # 5️⃣ Final trim (safety)
+    # Final trim (safety)
     selected = selected[:max_total_claims]
 
     return {
