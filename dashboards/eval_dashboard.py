@@ -1007,12 +1007,20 @@ with tab_audit:
             default=sorted(a["prompt_id"].dropna().unique().tolist()),
             key="audit_prompt_filter",
         )
+        
+        selected_support_regimes = st.multiselect(
+            "Support regimes",
+            options=sorted(a["strict_ref_support_regime"].dropna().unique().tolist()),
+            default=sorted(a["strict_ref_support_regime"].dropna().unique().tolist()),
+            key="audit_support_regime_filter",
+        )
 
         a_filt = a[
             a["audit_status"].isin(selected_statuses)
             & a["suite_name"].isin(selected_suites)
             & a["model"].isin(selected_models)
             & a["prompt_id"].isin(selected_prompts)
+            & a["strict_ref_support_regime"].isin(selected_support_regimes)
         ].copy()
 
         # -------------------------
@@ -1037,11 +1045,25 @@ with tab_audit:
             (a_filt["n_unused_cited_claim_ids"].fillna(0) > 0).sum()
         ) if "n_unused_cited_claim_ids" in a_filt.columns else 0
 
+        # Support-regime KPI row
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("Total bullets", total_bullets)
         k2.metric("Supported", supported_count)
         k3.metric("Flagged", flagged_count)
         k4.metric("Meta cautions", meta_count)
+        
+        regime_counts = a_filt["strict_ref_support_regime"].value_counts()
+
+        trace_supported_count = int(regime_counts.get("trace_supported", 0))
+        partial_trace_count = int(regime_counts.get("partially_trace_supported", 0))
+        heuristic_only_count = int(regime_counts.get("heuristic_only_supported", 0))
+        no_cited_refs_count = int(regime_counts.get("no_cited_refs", 0))
+
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("Trace-supported", trace_supported_count)
+        r2.metric("Partially trace-supported", partial_trace_count)
+        r3.metric("Heuristic-only supported", heuristic_only_count)
+        r4.metric("No cited refs", no_cited_refs_count)
 
         k5, k6, k7 = st.columns(3)
         k5.metric("Mean overlap ratio", fmt_pct(mean_overlap_ratio) if mean_overlap_ratio is not None else "—")
@@ -1078,6 +1100,15 @@ with tab_audit:
                     st.info("No flagged issue types in current filter.")
             else:
                 st.info("No flagged bullets in current filter.")
+
+        # Support-regime bar chart
+        st.markdown("### Support Regime Breakdown")
+        if "strict_ref_support_regime" in a_filt.columns:
+            regime_counts = a_filt["strict_ref_support_regime"].replace("", pd.NA).dropna().value_counts()
+            if len(regime_counts):
+                st.bar_chart(regime_counts)
+            else:
+                st.info("No support-regime data in current filter.")
 
         # -------------------------
         # Grouped tables
@@ -1120,6 +1151,31 @@ with tab_audit:
         # Support-discipline diagnostics
         # -------------------------
         st.markdown("### Support Discipline Diagnostics")
+        
+        
+        st.markdown("### Heuristic-Only Supported Bullets")
+        hos = a_filt[a_filt["strict_ref_support_regime"] == "heuristic_only_supported"].copy()
+
+        hos_cols = [
+            "suite_name",
+            "model",
+            "prompt_id",
+            "section",
+            "bullet_text",
+            "claim_ids",
+            "matched_claim_ids",
+            "unused_cited_claim_ids",
+            "extra_matched_claim_ids",
+            "strict_ref_overlap_ratio",
+            "claim_id_overlap_ratio",
+        ]
+        hos_cols = [c for c in hos_cols if c in hos.columns]
+
+        if len(hos):
+            st.dataframe(hos[hos_cols], use_container_width=True)
+        else:
+            st.info("No heuristic-only supported bullets in current filter.")
+        
         
         st.markdown("#### Zero-Overlap Empirical Bullets")
         zoe = a_filt[a_filt["zero_overlap_empirical"]].copy()
@@ -1212,13 +1268,17 @@ with tab_audit:
                 supported=("audit_status", lambda s: (s == "supported").sum()),
                 flagged=("audit_status", lambda s: (s == "flagged").sum()),
                 meta_caution=("audit_status", lambda s: (s == "meta_caution").sum()),
+                trace_supported=("strict_ref_support_regime", lambda s: (s == "trace_supported").sum()),
+                partially_trace_supported=("strict_ref_support_regime", lambda s: (s == "partially_trace_supported").sum()),
+                heuristic_only_supported=("strict_ref_support_regime", lambda s: (s == "heuristic_only_supported").sum()),
+                no_cited_refs=("strict_ref_support_regime", lambda s: (s == "no_cited_refs").sum()),
                 mean_overlap_ratio=("claim_id_overlap_ratio", "mean"),
+                mean_strict_ref_overlap_ratio=("strict_ref_overlap_ratio", "mean"),
                 total_extra_matched=("n_extra_matched_claim_ids", "sum"),
-                total_unused_cited=("n_unused_cited_claim_ids", "sum"),
             )
             .sort_values(
-                ["total_extra_matched", "mean_overlap_ratio"],
-                ascending=[False, True],
+                ["heuristic_only_supported", "total_extra_matched", "mean_strict_ref_overlap_ratio"],
+                ascending=[False, False, True],
             )
         )
         st.dataframe(artifact_summary, use_container_width=True)
