@@ -47,13 +47,19 @@ def split_narrative_sections(narrative_text: str) -> list[dict[str, str]]:
 
     return items
 
+import re
+
+def normalize_claim_id(s: str) -> str:
+    s = re.sub(r"\s+", "", s)
+    s = s.strip().strip("'\"").rstrip("].,;:").lstrip("[")
+    return s
 
 def extract_claim_ids(text: str) -> list[str]:
     blocks = CLAIMS_BLOCK_RE.findall(text)
     claim_ids: list[str] = []
 
     for block in blocks:
-        parts = [p.strip() for p in block.split(",")]
+        parts = [normalize_claim_id(p.strip()) for p in block.split(",")]
         claim_ids.extend([p for p in parts if p])
 
     # preserve order, dedupe
@@ -73,7 +79,9 @@ def strip_claim_blocks(text: str) -> str:
 
 
 def index_selected_claims(selected_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    claims = selected_payload.get("selected_claims", [])
+    claims = selected_payload.get("selected_claims")
+    if claims is None:
+        claims = selected_payload.get("validated_claims", [])
     return {
         str(c["claim_id"]): c
         for c in claims
