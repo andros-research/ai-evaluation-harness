@@ -10,6 +10,8 @@ from typing import Any
 
 NARRATIVES_DIR = Path("benchmarks/results/narratives")
 AGGREGATED_DIR = Path("benchmarks/results/aggregated")
+CLAIM_COVERAGE_CSV = AGGREGATED_DIR / "claim_coverage.csv"
+CLAIM_COVERAGE_SUMMARY_JSON = AGGREGATED_DIR / "claim_coverage_summary.json"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -73,6 +75,227 @@ def compute_claim_overlap(
     }
 
 
+def index_claims_by_id(claims: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {
+        str(c["claim_id"]): c
+        for c in claims
+        if isinstance(c, dict) and "claim_id" in c
+    }
+
+
+def get_selected_claims_list(selected_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    claims = selected_payload.get("selected_claims")
+    if isinstance(claims, list):
+        return claims
+
+    # Fallback if a broader claims-style artifact is ever passed accidentally
+    claims = selected_payload.get("validated_claims")
+    if isinstance(claims, list):
+        return claims
+
+    return []
+
+
+def collect_used_claim_ids(parsed_items: list[dict[str, Any]]) -> tuple[set[str], dict[str, int], dict[str, set[str]]]:
+    used_ids: list[str] = []
+    sections_by_claim: dict[str, set[str]] = {}
+
+    for item in parsed_items:
+        section = str(item.get("section", "")).strip()
+        claim_ids = safe_list(item.get("claim_ids"))
+
+        for cid in claim_ids:
+            cid_str = str(cid).strip()
+            if not cid_str:
+                continue
+            used_ids.append(cid_str)
+            sections_by_claim.setdefault(cid_str, set()).add(section)
+
+    counts = Counter(used_ids)
+    return set(used_ids), dict(counts), sections_by_claim
+
+
+def build_claim_coverage_rows(
+    *,
+    parsed_payload: dict[str, Any],
+    selected_payload: dict[str, Any],
+    parsed_path: Path,
+    selected_claims_path: Path,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+
+    parsed_items = safe_list(parsed_payload.get("items"))
+    selected_claims = get_selected_claims_list(selected_payload)
+
+    used_ids, used_counts, sections_by_claim = collect_used_claim_ids(parsed_items)
+
+    for claim in selected_claims:
+        claim_id = str(claim.get("claim_id", "")).strip()
+        if not claim_id:
+            continue
+
+        times_cited = int(used_counts.get(claim_id, 0))
+        used_in_narrative = times_cited > 0
+        sections_used = sorted(sections_by_claim.get(claim_id, set()))
+
+        row = {
+            "artifact_name": parsed_path.name.replace("__parsed_narrative.json", ""),
+            "parsed_path": str(parsed_path),
+            "selected_claims_path": str(selected_claims_path),
+
+            "suite_name": parsed_payload.get("suite_name", ""),
+            "metric": parsed_payload.get("metric", ""),
+            "baseline_experiment": parsed_payload.get("baseline_experiment", ""),
+            "comparison_experiments": stringify_list(
+                safe_list(parsed_payload.get("comparison_experiments"))
+            ),
+
+            "claim_id": claim_id,
+            "model": claim.get("model", ""),
+            "prompt_id": claim.get("prompt_id", ""),
+            "claim_type": claim.get("claim_type", ""),
+            "claim_strength": claim.get("claim_strength", ""),
+            "label": claim.get("label", ""),
+
+            "used_in_narrative": used_in_narrative,
+            "times_cited": times_cited,
+            "sections_used": stringify_list(sections_used),
+            "n_sections_used": len(sections_used),
+        }
+        rows.append(row)
+
+    return rows
+
+
+def summarize_claim_coverage_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    total_selected_claims = len(rows)
+    total_used_claims = sum(1 for row in rows if row.get("used_in_narrative") is True)
+    total_unused_claims = total_selected_claims - total_used_claims
+
+    usage_ratio = (
+        round(total_used_claims / total_selected_claims, 4)
+        if total_selected_claims > 0 else 0.0
+    )
+
+    artifacts: dict[str, dict[str, Any]] = {}
+    usage_by_suite_accum: dict[str, list[float]] = defaultdict(list)
+
+    for row in rows:
+        artifact_name = str(row["artifact_name"])
+        artifacts.setdefault(
+            artifact_name,
+            {
+                "suite_name": row["suite_name"],
+                "selected_claim_count": 0,
+                "used_claim_count": 0,
+            },
+        )
+
+        artifacts[artifact_name]["selected_claim_count"] += 1
+        if row.get("used_in_narrative") is True:
+            artifacts[artifact_name]["used_claim_count"] += 1
+
+    artifact_summaries = []
+    for artifact_name, meta in sorted(artifacts.items()):
+        selected_claim_count = int(meta["selected_claim_count"])
+        used_claim_count = int(meta["used_claim_count"])
+        unused_claim_count = selected_claim_count - used_claim_count
+        used_claim_ratio = (
+            round(used_claim_count / selected_claim_count, 4)
+            if selected_claim_count > 0 else 0.0
+        )
+
+        artifact_summary = {
+            "artifact_name": artifact_name,
+            "suite_name": meta["suite_name"],
+            "selected_claim_count": selected_claim_count,
+            "used_claim_count": used_claim_count,
+            "unused_claim_count": unused_claim_count,
+            "used_claim_ratio": used_claim_ratio,
+        }
+        artifact_summaries.append(artifact_summary)
+
+        suite_name = str(meta["suite_name"])
+        if suite_name:
+            usage_by_suite_accum[suite_name].append(used_claim_ratio)
+
+    usage_by_suite = {
+        suite: round(sum(vals) / len(vals), 4)
+        for suite, vals in sorted(usage_by_suite_accum.items())
+        if vals
+    }
+
+    top_unused_claims = []
+    for row in rows:
+        if row.get("used_in_narrative") is True:
+            continue
+        top_unused_claims.append(
+            {
+                "artifact_name": row["artifact_name"],
+                "suite_name": row["suite_name"],
+                "claim_id": row["claim_id"],
+                "model": row["model"],
+                "prompt_id": row["prompt_id"],
+                "claim_type": row["claim_type"],
+                "claim_strength": row["claim_strength"],
+                "label": row["label"],
+            }
+        )
+
+    top_unused_claims = top_unused_claims[:50]
+
+    top_reused_claims = []
+    for row in sorted(rows, key=lambda r: int(r.get("times_cited", 0) or 0), reverse=True):
+        if int(row.get("times_cited", 0) or 0) <= 1:
+            continue
+        top_reused_claims.append(
+            {
+                "artifact_name": row["artifact_name"],
+                "suite_name": row["suite_name"],
+                "claim_id": row["claim_id"],
+                "model": row["model"],
+                "prompt_id": row["prompt_id"],
+                "times_cited": row["times_cited"],
+                "sections_used": row["sections_used"].split("|") if row["sections_used"] else [],
+            }
+        )
+
+    top_reused_claims = top_reused_claims[:50]
+
+    return {
+        "total_selected_claims": total_selected_claims,
+        "total_used_claims": total_used_claims,
+        "total_unused_claims": total_unused_claims,
+        "used_claim_ratio": usage_ratio,
+        "usage_by_suite": usage_by_suite,
+        "artifact_summaries": artifact_summaries,
+        "top_unused_claims": top_unused_claims,
+        "top_reused_claims": top_reused_claims,
+    }
+    
+
+def build_claim_coverage_rows_for_all_artifacts(narratives_dir: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    artifact_pairs = extract_artifact_paths(narratives_dir)
+
+    for pair in artifact_pairs:
+        parsed_path = pair["parsed_path"]
+        selected_claims_path = pair["selected_claims_path"]
+
+        parsed_payload = load_json(parsed_path)
+        selected_payload = load_json(selected_claims_path)
+
+        artifact_rows = build_claim_coverage_rows(
+            parsed_payload=parsed_payload,
+            selected_payload=selected_payload,
+            parsed_path=parsed_path,
+            selected_claims_path=selected_claims_path,
+        )
+        rows.extend(artifact_rows)
+
+    return rows
+
+
 def infer_model_from_linked_claims(linked_claims: list[dict[str, Any]]) -> str:
     models = sorted(
         {str(c.get("model")) for c in linked_claims if c.get("model") is not None}
@@ -97,7 +320,7 @@ def infer_prompt_from_linked_claims(linked_claims: list[dict[str, Any]]) -> str:
 
 def extract_artifact_paths(narratives_dir: Path) -> list[dict[str, Path]]:
     """
-    Find parsed narrative artifacts and pair them with sibling audit JSONs.
+    Find parsed narrative artifacts and pair them with sibling audit + selected-claims JSONs.
     """
     artifact_pairs: list[dict[str, Path]] = []
 
@@ -105,13 +328,20 @@ def extract_artifact_paths(narratives_dir: Path) -> list[dict[str, Path]]:
         audit_path = parsed_path.with_name(
             parsed_path.name.replace("__parsed_narrative.json", "__audit.json")
         )
+        selected_claims_path = parsed_path.with_name(
+            parsed_path.name.replace("__parsed_narrative.json", "__selected_claims.json")
+        )
+
         if not audit_path.exists():
+            continue
+        if not selected_claims_path.exists():
             continue
 
         artifact_pairs.append(
             {
                 "parsed_path": parsed_path,
                 "audit_path": audit_path,
+                "selected_claims_path": selected_claims_path,
             }
         )
 
@@ -400,6 +630,13 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "top_flagged_bullets": top_flagged_bullets,
         "top_extra_matched_bullets": top_extra_matched_bullets,
         "strict_ref_regime_counts": dict(strict_ref_regime_counts),
+        "strict_ref_diagnostics": {
+            "mean_strict_ref_overlap_ratio": round(
+                sum(strict_ref_overlap_ratios) / len(strict_ref_overlap_ratios), 4
+            ) if strict_ref_overlap_ratios else 0.0,
+            "strict_ref_supported_bullets": strict_ref_supported_count,
+            "heuristic_only_supported_bullets": heuristic_only_supported_count,
+        },
     }
 
 
@@ -492,6 +729,16 @@ def parse_args() -> argparse.Namespace:
         default=str(AGGREGATED_DIR / "audit_summary.json"),
         help="Output JSON path for summary metrics.",
     )
+    parser.add_argument(
+        "--claim-coverage-csv",
+        default=str(AGGREGATED_DIR / "claim_coverage.csv"),
+        help="Output CSV path for claim-level coverage rows.",
+    )
+    parser.add_argument(
+        "--claim-coverage-json",
+        default=str(AGGREGATED_DIR / "claim_coverage_summary.json"),
+        help="Output JSON path for claim coverage summary metrics.",
+    )
     return parser.parse_args()
 
 
@@ -501,16 +748,28 @@ def main() -> None:
     narratives_dir = Path(args.narratives_dir).resolve()
     output_csv = Path(args.output_csv).resolve()
     output_json = Path(args.output_json).resolve()
+    claim_coverage_csv = Path(args.claim_coverage_csv).resolve()
+    claim_coverage_json = Path(args.claim_coverage_json).resolve()
 
+    # Audit rows / summary
     rows = build_rows(narratives_dir)
     summary = summarize_rows(rows)
 
     save_csv(rows, output_csv)
     save_json(summary, output_json)
 
+    # Claim coverage rows / summary
+    claim_coverage_rows = build_claim_coverage_rows_for_all_artifacts(narratives_dir)
+    claim_coverage_summary = summarize_claim_coverage_rows(claim_coverage_rows)
+
+    save_csv(claim_coverage_rows, claim_coverage_csv)
+    save_json(claim_coverage_summary, claim_coverage_json)
+
     print(f"Scanned narratives dir: {narratives_dir}")
     print(f"Saved audit items CSV: {output_csv}")
     print(f"Saved audit summary JSON: {output_json}")
+    print(f"Saved claim coverage CSV: {claim_coverage_csv}")
+    print(f"Saved claim coverage summary JSON: {claim_coverage_json}")
     print(
         "Artifacts={total_artifacts} | Bullets={total_bullets} | "
         "Supported={supported} | Flagged={flagged} | Meta={meta}".format(
@@ -519,6 +778,15 @@ def main() -> None:
             supported=summary.get("status_counts", {}).get("supported", 0),
             flagged=summary.get("status_counts", {}).get("flagged", 0),
             meta=summary.get("status_counts", {}).get("meta_caution", 0),
+        )
+    )
+    print(
+        "SelectedClaims={total_selected} | UsedClaims={used} | UnusedClaims={unused} | "
+        "UsedRatio={ratio}".format(
+            total_selected=claim_coverage_summary.get("total_selected_claims", 0),
+            used=claim_coverage_summary.get("total_used_claims", 0),
+            unused=claim_coverage_summary.get("total_unused_claims", 0),
+            ratio=claim_coverage_summary.get("used_claim_ratio", 0.0),
         )
     )
 
