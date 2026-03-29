@@ -1394,6 +1394,14 @@ with tab_audit:
                 st.dataframe(artifact_coverage, use_container_width=True)
             else:
                 st.info("No artifact-level claim coverage available in current filter.")
+            
+            # Used-claim-ratio bar chart by artifact
+            st.markdown("### Used-Claim Ratio by Artifact")
+
+            if not artifact_coverage.empty:
+                chart_df = artifact_coverage.set_index("artifact_name")[["used_claim_ratio"]]
+                st.bar_chart(chart_df)
+                
 
             # -------------------------
             # Unused claims
@@ -1414,11 +1422,18 @@ with tab_audit:
             unused_cols = [c for c in unused_cols if c in unused_claims.columns]
 
             if len(unused_claims):
+                strength_order = {"strong": 3, "medium": 2, "weak": 1}
+                unused_claims["_strength_rank"] = (
+                    unused_claims["claim_strength"].astype("string").str.lower().map(strength_order).fillna(0)
+                )
+
                 st.dataframe(
-                    unused_claims[unused_cols].sort_values(
-                        ["suite_name", "model", "prompt_id", "claim_strength"],
-                        ascending=[True, True, True, False],
-                    ),
+                    unused_claims[unused_cols + ["_strength_rank"]]
+                    .sort_values(
+                        ["suite_name", "_strength_rank", "model", "prompt_id"],
+                        ascending=[True, False, True, True],
+                    )
+                    .drop(columns=["_strength_rank"]),
                     use_container_width=True,
                 )
             else:
@@ -1430,6 +1445,10 @@ with tab_audit:
             st.markdown("### Reused Claims")
 
             reused_claims = cc_filt[cc_filt["times_cited"].fillna(0) > 1].copy()
+            reused_claims["reuse_intensity"] = (
+                reused_claims["times_cited"].fillna(0)
+                / reused_claims["n_sections_used"].replace(0, pd.NA)
+            )
             reused_cols = [
                 "suite_name",
                 "artifact_name",
@@ -1437,6 +1456,8 @@ with tab_audit:
                 "model",
                 "prompt_id",
                 "times_cited",
+                "n_sections_used",
+                "reuse_intensity",
                 "sections_used",
                 "claim_type",
                 "claim_strength",
@@ -1446,8 +1467,8 @@ with tab_audit:
             if len(reused_claims):
                 st.dataframe(
                     reused_claims[reused_cols].sort_values(
-                        ["times_cited", "suite_name", "model"],
-                        ascending=[False, True, True],
+                        ["reuse_intensity", "times_cited", "suite_name", "model"],
+                        ascending=[False, False, True, True],
                     ),
                     use_container_width=True,
                 )
