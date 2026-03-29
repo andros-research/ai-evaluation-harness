@@ -76,9 +76,16 @@ Rules:
 - Cautions may omit claim IDs if they are clearly meta-cautions about interpretation limits.
 - Preserve experiment names exactly as written (e.g. temp03, temp07). Do not rewrite them as numeric temperatures unless they are copied exactly from the claims.
 - Every claim ID cited in [CLAIMS: ...] must appear verbatim in the supplied selected_claims list.
-- Never invent, infer, or extrapolate claim IDs.
+- Never invent, infer, extrapolate, rewrite, or transform claim IDs.
+- Do not create new claim IDs by combining two existing claims into a synthetic comparison form.
+- If you describe a comparison between temp03 and temp07 in prose, cite the underlying selected claim IDs exactly as provided, even if those IDs are baseline-relative to temp0.
+- Copy claim IDs exactly from the supplied selected_claims list. Do not generate claim IDs from naming patterns.
 - If no suitable selected claim supports an invariance, omit the invariance bullet rather than fabricating support.
 - If no supported claim exists for a section, omit that bullet rather than filling the section with a weak or inferred statement.
+- If a comparative statement would require a claim ID that does not exist verbatim in selected_claims, keep the prose grounded but cite only the real selected claim IDs.
+- Before writing each [CLAIMS: ...] block, verify that every cited claim ID appears exactly in the supplied selected_claims list.
+- Meta-cautions may omit claim IDs when they describe interpretation limits, sample-size limitations, or scope boundaries rather than empirical findings.
+- Do not attach [CLAIMS: ...] to a meta-caution unless the cited IDs are real selected_claims and directly support the statement.
 
 Output exactly in this structure:
 
