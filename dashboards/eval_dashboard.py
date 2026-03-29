@@ -21,6 +21,8 @@ AGG_CSV = AGG_ROOT / "runs_master.csv"
 NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
 AUDIT_ITEMS_CSV = AGG_ROOT / "audit_items.csv"
 AUDIT_SUMMARY_JSON = AGG_ROOT / "audit_summary.json"
+CLAIM_COVERAGE_CSV = AGG_ROOT / "claim_coverage.csv"
+CLAIM_COVERAGE_SUMMARY_JSON = AGG_ROOT / "claim_coverage_summary.json"
 
 # -------------------------
 # Helpers
@@ -399,6 +401,20 @@ def load_audit_items() -> pd.DataFrame:
 def load_audit_summary() -> dict[str, Any]:
     if AUDIT_SUMMARY_JSON.exists():
         return load_json_file(AUDIT_SUMMARY_JSON)
+    return {}
+
+
+@st.cache_data(show_spinner=False)
+def load_claim_coverage() -> pd.DataFrame:
+    if CLAIM_COVERAGE_CSV.exists():
+        return pd.read_csv(CLAIM_COVERAGE_CSV)
+    return pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
+def load_claim_coverage_summary() -> dict[str, Any]:
+    if CLAIM_COVERAGE_SUMMARY_JSON.exists():
+        return load_json_file(CLAIM_COVERAGE_SUMMARY_JSON)
     return {}
 
 # -------------------------
@@ -927,6 +943,9 @@ with tab_audit:
 
     audit_items = load_audit_items()
     audit_summary = load_audit_summary()
+    
+    claim_coverage = load_claim_coverage()
+    claim_coverage_summary = load_claim_coverage_summary()
 
     if audit_items.empty:
         st.info("No audit_items.csv found yet. Run summarize_audits.py first.")
@@ -962,16 +981,17 @@ with tab_audit:
         ]:
             if col in a.columns:
                 a[col] = a[col].astype("string").fillna("")
-                # Derived diagnostics
-                a["has_claim_refs"] = a["n_claim_ids"].fillna(0) > 0
-                a["is_meta_section"] = a["section"].str.lower().isin(["cautions", "meta", "meta_caution"])
+                
+        # Derived diagnostics
+        a["has_claim_refs"] = a["n_claim_ids"].fillna(0) > 0
+        a["is_meta_section"] = a["section"].str.lower().isin(["cautions", "meta", "meta_caution"])
 
-                a["zero_overlap_empirical"] = (
-                    (a["audit_status"] == "supported")
-                    & (a["claim_id_overlap_ratio"].fillna(0) == 0)
-                    & (a["has_claim_refs"])
-                    & (~a["is_meta_section"])
-                )
+        a["zero_overlap_empirical"] = (
+            (a["audit_status"] == "supported")
+            & (a["claim_id_overlap_ratio"].fillna(0) == 0)
+            & (a["has_claim_refs"])
+            & (~a["is_meta_section"])
+        )
                 
 
         # -------------------------
@@ -1288,6 +1308,151 @@ with tab_audit:
         # -------------------------
         st.markdown("### Full Audit Item Table")
         st.dataframe(a_filt, use_container_width=True)
+        
+        
+        # -------------------------
+        # Claim Coverage
+        # -------------------------
+        st.markdown("---")
+        st.subheader("Claim Coverage")
+
+        if claim_coverage.empty:
+            st.info("No claim_coverage.csv found yet. Run summarize_audits.py first.")
+        else:
+            cc = claim_coverage.copy()
+
+            for col in ["times_cited", "n_sections_used"]:
+                if col in cc.columns:
+                    cc[col] = pd.to_numeric(cc[col], errors="coerce")
+
+            for col in [
+                "artifact_name",
+                "suite_name",
+                "model",
+                "prompt_id",
+                "claim_type",
+                "claim_strength",
+                "label",
+                "claim_id",
+                "sections_used",
+            ]:
+                if col in cc.columns:
+                    cc[col] = cc[col].astype("string").fillna("")
+
+            if "used_in_narrative" in cc.columns:
+                cc["used_in_narrative"] = cc["used_in_narrative"].astype(str).str.lower().isin(
+                    ["true", "1", "yes"]
+                )
+
+            # Filter to current suite/model/prompt selections when possible
+            cc_filt = cc[
+                cc["suite_name"].isin(selected_suites)
+                & cc["model"].isin(selected_models)
+                & cc["prompt_id"].isin(selected_prompts)
+            ].copy()
+
+            # -------------------------
+            # Claim Coverage KPIs
+            # -------------------------
+            selected_claims_count = len(cc_filt)
+            used_claims_count = int(cc_filt["used_in_narrative"].sum()) if "used_in_narrative" in cc_filt.columns else 0
+            unused_claims_count = selected_claims_count - used_claims_count
+            used_claim_ratio = (
+                used_claims_count / selected_claims_count if selected_claims_count > 0 else 0.0
+            )
+
+            ck1, ck2, ck3, ck4 = st.columns(4)
+            ck1.metric("Selected claims", selected_claims_count)
+            ck2.metric("Used claims", used_claims_count)
+            ck3.metric("Unused claims", unused_claims_count)
+            ck4.metric("Used-claim ratio", fmt_pct(used_claim_ratio))
+
+            # -------------------------
+            # Artifact-level coverage summary
+            # -------------------------
+            st.markdown("### Claim Coverage by Artifact")
+
+            artifact_coverage = (
+                cc_filt.groupby(["artifact_name", "suite_name"], as_index=False)
+                .agg(
+                    selected_claim_count=("claim_id", "size"),
+                    used_claim_count=("used_in_narrative", "sum"),
+                )
+            )
+
+            if not artifact_coverage.empty:
+                artifact_coverage["unused_claim_count"] = (
+                    artifact_coverage["selected_claim_count"] - artifact_coverage["used_claim_count"]
+                )
+                artifact_coverage["used_claim_ratio"] = (
+                    artifact_coverage["used_claim_count"] / artifact_coverage["selected_claim_count"]
+                )
+                artifact_coverage = artifact_coverage.sort_values(
+                    ["used_claim_ratio", "unused_claim_count"],
+                    ascending=[True, False],
+                )
+                st.dataframe(artifact_coverage, use_container_width=True)
+            else:
+                st.info("No artifact-level claim coverage available in current filter.")
+
+            # -------------------------
+            # Unused claims
+            # -------------------------
+            st.markdown("### Unused Selected Claims")
+
+            unused_claims = cc_filt[~cc_filt["used_in_narrative"]].copy()
+            unused_cols = [
+                "suite_name",
+                "artifact_name",
+                "claim_id",
+                "model",
+                "prompt_id",
+                "claim_type",
+                "claim_strength",
+                "label",
+            ]
+            unused_cols = [c for c in unused_cols if c in unused_claims.columns]
+
+            if len(unused_claims):
+                st.dataframe(
+                    unused_claims[unused_cols].sort_values(
+                        ["suite_name", "model", "prompt_id", "claim_strength"],
+                        ascending=[True, True, True, False],
+                    ),
+                    use_container_width=True,
+                )
+            else:
+                st.info("No unused selected claims in current filter.")
+
+            # -------------------------
+            # Reused claims
+            # -------------------------
+            st.markdown("### Reused Claims")
+
+            reused_claims = cc_filt[cc_filt["times_cited"].fillna(0) > 1].copy()
+            reused_cols = [
+                "suite_name",
+                "artifact_name",
+                "claim_id",
+                "model",
+                "prompt_id",
+                "times_cited",
+                "sections_used",
+                "claim_type",
+                "claim_strength",
+            ]
+            reused_cols = [c for c in reused_cols if c in reused_claims.columns]
+
+            if len(reused_claims):
+                st.dataframe(
+                    reused_claims[reused_cols].sort_values(
+                        ["times_cited", "suite_name", "model"],
+                        ascending=[False, True, True],
+                    ),
+                    use_container_width=True,
+                )
+            else:
+                st.info("No multiply cited claims in current filter.")
 
 with tab_trace:
     st.subheader("Narrative Traceability")
