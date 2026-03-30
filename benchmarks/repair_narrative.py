@@ -157,11 +157,22 @@ Your task:
 - If a target claim is redundant with an existing bullet, merge it into a revised observation or tradeoff instead of adding unnecessary new bullets
 - If a target claim does not add meaningful new information, you may leave it unused, but only if the current narrative already captures its content well
 - Cautions may omit claim IDs if they are clearly meta-cautions
+- For every empirical bullet, the model names in prose must exactly match the models referenced by the cited claim IDs.
+- Do not cite a mistral claim in a bullet that describes llama3.
+- Do not merge llama3 and llama3:70b into one bullet unless the prose explicitly names both.
 
 Important:
 - All cited claim IDs must be copied exactly from the provided selected_claims
 - Do not create synthetic comparison IDs
 - If comparing two temperatures in prose, cite the underlying real selected claim IDs
+- The model, prompt_id, and experiment names in prose must be consistent with the cited claim IDs.
+- If a cited claim refers to mistral, the prose must refer to mistral, not llama3.
+- If a cited claim refers to llama3:70b, the prose must preserve that distinction and not collapse it into llama3.
+- If a bullet cites a target claim, the prose in that bullet must explicitly name the same model family as the cited claim ID.
+- Do not satisfy target-claim inclusion by attaching the target claim ID to a bullet whose prose primarily describes a different model.
+- If no valid revision can incorporate a target claim without violating these rules, omit it and add a short note under Cautions explaining that the target claim could not be incorporated cleanly.
+- Do not write placeholder bullets like "None (...)" in Observations, Tradeoffs, or Invariances. Omit the bullet instead.
+
 
 Output exactly in this structure:
 
@@ -281,30 +292,122 @@ def parse_repaired_text_to_sections(text: str) -> dict[str, list[str]]:
     return sections
 
 
+def infer_metadata_from_selected_payload(
+    selected_payload: dict[str, Any],
+    selected_claims_path: Path,
+) -> dict[str, Any]:
+    suite_name = selected_payload.get("suite_name", "")
+    metric = selected_payload.get("metric", "")
+    baseline_experiment = selected_payload.get("baseline_experiment", "")
+    comparison_experiments = selected_payload.get("comparison_experiments", [])
+
+    # Fallback: derive from filename if fields are missing
+    if not suite_name or not metric:
+        stem = selected_claims_path.name.replace("__selected_claims.json", "")
+        parts = stem.split("__")
+
+        if len(parts) >= 4:
+            # expected shape:
+            # suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate
+            suite_name = suite_name or parts[0]
+            baseline_experiment = baseline_experiment or parts[1]
+
+            # crude but workable fallback
+            if "checks_pass_rate" in stem and not metric:
+                metric = "checks_pass_rate"
+
+            # comparison experiments fallback from temp03_temp07
+            if not comparison_experiments and len(parts) >= 4:
+                maybe_comps = parts[3]
+                if isinstance(maybe_comps, str) and maybe_comps.startswith("temp"):
+                    comparison_experiments = maybe_comps.split("_")
+
+    return {
+        "suite_name": suite_name,
+        "metric": metric,
+        "baseline_experiment": baseline_experiment,
+        "comparison_experiments": comparison_experiments,
+    }
+    
+
 def build_repaired_payload(
     *,
     repaired_text: str,
     original_narrative_payload: dict[str, Any],
+    selected_payload: dict[str, Any],
+    selected_claims_path: Path,
     target_claim_ids: list[str],
     model: str,
     temperature: float,
     num_predict: int,
 ) -> dict[str, Any]:
     sections = parse_repaired_text_to_sections(repaired_text)
+    meta = infer_metadata_from_selected_payload(selected_payload, selected_claims_path)
 
     return {
-        "suite_name": original_narrative_payload.get("suite_name", ""),
-        "metric": original_narrative_payload.get("metric", ""),
-        "baseline_experiment": original_narrative_payload.get("baseline_experiment", ""),
-        "comparison_experiments": original_narrative_payload.get("comparison_experiments", []),
+        "suite_name": meta["suite_name"],
+        "metric": meta["metric"],
+        "baseline_experiment": meta["baseline_experiment"],
+        "comparison_experiments": meta["comparison_experiments"],
+        "source_selected_claims_json": str(selected_claims_path),
+        "source_narrative_json": original_narrative_payload.get("source_selected_claims_json", ""),
         "repair_mode": "targeted_unused_claim_inclusion",
         "target_claim_ids": target_claim_ids,
         "model": model,
         "temperature": temperature,
         "num_predict": num_predict,
-        "narrative_text": repaired_text,
+        "prompt": build_instruction(),
+        "narrative": repaired_text,
         "sections": sections,
     }
+
+
+def expected_model_tokens_for_claim_id(claim_id: str) -> list[str]:
+    cid = claim_id.lower()
+    if "__mistral__" in cid:
+        return ["mistral"]
+    if "__llama3_70b__" in cid:
+        return ["70b"]
+    if "__llama3__" in cid:
+        return ["llama3"]
+    return []
+
+
+def validate_repaired_sections(
+    sections: dict[str, list[str]],
+    target_claim_ids: list[str],
+) -> list[str]:
+    errors: list[str] = []
+
+    empirical_sections = ["observations", "tradeoffs", "invariances"]
+
+    # 1. No "None (...)" bullets in empirical sections
+    for section_name in empirical_sections:
+        for bullet in sections.get(section_name, []):
+            if bullet.strip().lower().startswith("none"):
+                errors.append(
+                    f"{section_name}: found placeholder bullet starting with 'None' -> {bullet}"
+                )
+
+    # 2. For each target claim, if cited in a bullet, prose should mention the expected model token
+    for section_name in empirical_sections:
+        for bullet in sections.get(section_name, []):
+            bullet_lower = bullet.lower()
+            for claim_id in target_claim_ids:
+                if claim_id in bullet:
+                    expected_tokens = expected_model_tokens_for_claim_id(claim_id)
+                    if expected_tokens and not any(tok in bullet_lower for tok in expected_tokens):
+                        errors.append(
+                            f"{section_name}: bullet cites {claim_id} but prose does not mention expected model token(s) {expected_tokens}: {bullet}"
+                        )
+
+                    # Optional stricter check:
+                    if "__mistral__" in claim_id.lower() and "llama3" in bullet_lower:
+                        errors.append(
+                            f"{section_name}: bullet cites mistral claim but mentions llama3: {bullet}"
+                        )
+
+    return errors
 
 
 def parse_args() -> argparse.Namespace:
@@ -363,15 +466,34 @@ def main() -> None:
         temperature=args.temperature,
         num_predict=args.num_predict,
     )
+    
+    missing_targets_in_output = [cid for cid in target_claim_ids if cid not in repaired_text]
+    if missing_targets_in_output:
+        raise ValueError(
+            "Repaired output did not include all target claim IDs:\n"
+            + "\n".join(missing_targets_in_output)
+        )
 
     repaired_payload = build_repaired_payload(
         repaired_text=repaired_text,
         original_narrative_payload=narrative_payload,
+        selected_payload=selected_payload,
+        selected_claims_path=selected_claims_path,
         target_claim_ids=target_claim_ids,
         model=args.model,
         temperature=args.temperature,
         num_predict=args.num_predict,
     )
+    
+    validation_errors = validate_repaired_sections(
+        repaired_payload["sections"],
+        target_claim_ids,
+    )
+
+    if validation_errors:
+        raise ValueError(
+            "Repaired output failed validation:\n- " + "\n- ".join(validation_errors)
+        )
 
     output_paths = derive_output_paths(narrative_json_path)
 
