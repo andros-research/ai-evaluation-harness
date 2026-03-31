@@ -325,16 +325,24 @@ def extract_artifact_paths(narratives_dir: Path) -> list[dict[str, Path]]:
     artifact_pairs: list[dict[str, Path]] = []
 
     for parsed_path in sorted(narratives_dir.rglob("*__parsed_narrative.json")):
+        # audit_path = parsed_path.with_name(
+        #     parsed_path.name.replace("__parsed_narrative.json", "__audit.json")
+        # )
+        # selected_claims_path = parsed_path.with_name(
+        #     parsed_path.name.replace("__parsed_narrative.json", "__selected_claims.json")
+        # )
+        parsed_payload = load_json(parsed_path)
+
+        selected_claims_path_str = parsed_payload.get("source_selected_claims_json", "")
+        selected_claims_path = Path(selected_claims_path_str) if selected_claims_path_str else None
+
         audit_path = parsed_path.with_name(
             parsed_path.name.replace("__parsed_narrative.json", "__audit.json")
-        )
-        selected_claims_path = parsed_path.with_name(
-            parsed_path.name.replace("__parsed_narrative.json", "__selected_claims.json")
         )
 
         if not audit_path.exists():
             continue
-        if not selected_claims_path.exists():
+        if selected_claims_path is None or not selected_claims_path.exists():
             continue
 
         artifact_pairs.append(
@@ -548,6 +556,10 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
         if row.get("strict_ref_support_regime") == "heuristic_only_supported":
             heuristic_only_supported_count += 1
+            
+        regime = str(row.get("strict_ref_support_regime", "")).strip()
+        if regime:
+            strict_ref_regime_counts[regime] += 1
 
     fidelity_by_suite = {
         k: round(sum(v) / len(v), 4) for k, v in sorted(fidelity_by_suite_accum.items()) if v
