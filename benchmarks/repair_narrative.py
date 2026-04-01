@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+REPAIR_SUFFIX_RE = re.compile(r"__narrative_repair_(\d+)$")
 
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
@@ -122,16 +123,47 @@ def extract_narrative_text(narrative_payload: dict[str, Any]) -> str:
     )
 
 
+def get_base_artifact_stem(narrative_json: Path) -> tuple[str, int]:
+    """
+    Returns:
+        base_stem: artifact stem without repair suffix
+        next_repair_idx: next repair number to write
+    """
+
+    name = narrative_json.name
+
+    # Original narrative
+    if name.endswith("__narrative_from_claims.json"):
+        base_stem = name.replace("__narrative_from_claims.json", "")
+        return base_stem, 1
+
+    stem = narrative_json.stem
+
+    # Already-numbered repaired narrative
+    m = REPAIR_SUFFIX_RE.search(stem)
+    if m:
+        repair_idx = int(m.group(1))
+        base_stem = REPAIR_SUFFIX_RE.sub("", stem)
+        return base_stem, repair_idx + 1
+
+    # Fallback for old-style repaired artifact names
+    if stem.endswith("__narrative_repaired"):
+        base_stem = stem.replace("__narrative_repaired", "")
+        return base_stem, 2
+
+    # Last-resort fallback
+    return stem, 1
+
+
 def derive_output_paths(narrative_json: Path) -> dict[str, Path]:
-    stem = narrative_json.name.replace("__narrative_from_claims.json", "")
-    if stem == narrative_json.name:
-        stem = narrative_json.stem
+    base_stem, next_repair_idx = get_base_artifact_stem(narrative_json)
+    repair_tag = f"__narrative_repair_{next_repair_idx:02d}"
 
     parent = narrative_json.parent
     return {
-        "json": parent / f"{stem}__narrative_repaired.json",
-        "md": parent / f"{stem}__narrative_repaired.md",
-        "meta": parent / f"{stem}__repair_metadata.json",
+        "json": parent / f"{base_stem}{repair_tag}.json",
+        "md": parent / f"{base_stem}{repair_tag}.md",
+        "meta": parent / f"{base_stem}{repair_tag}__repair_metadata.json",
     }
 
 
@@ -336,6 +368,8 @@ def build_repaired_payload(
     original_narrative_payload: dict[str, Any],
     selected_payload: dict[str, Any],
     selected_claims_path: Path,
+    parent_narrative_json: Path,
+    repair_iteration: int,
     target_claim_ids: list[str],
     model: str,
     temperature: float,
@@ -350,7 +384,9 @@ def build_repaired_payload(
         "baseline_experiment": meta["baseline_experiment"],
         "comparison_experiments": meta["comparison_experiments"],
         "source_selected_claims_json": str(selected_claims_path),
-        "source_narrative_json": original_narrative_payload.get("source_selected_claims_json", ""),
+        "source_narrative_json": str(parent_narrative_json),
+        "parent_narrative_json": str(parent_narrative_json),
+        "repair_iteration": repair_iteration,
         "repair_mode": "targeted_unused_claim_inclusion",
         "target_claim_ids": target_claim_ids,
         "model": model,
@@ -449,9 +485,12 @@ def main() -> None:
         )
         
     print("Narrative JSON keys:", sorted(narrative_payload.keys()))
-    
+
     current_narrative_text = extract_narrative_text(narrative_payload)
     target_claims = format_claim_subset(target_claim_ids, claims_by_id)
+
+    _, next_repair_idx = get_base_artifact_stem(narrative_json_path)
+    output_paths = derive_output_paths(narrative_json_path)
 
     prompt = build_prompt(
         current_narrative_text=current_narrative_text,
@@ -479,6 +518,8 @@ def main() -> None:
         original_narrative_payload=narrative_payload,
         selected_payload=selected_payload,
         selected_claims_path=selected_claims_path,
+        parent_narrative_json=narrative_json_path,
+        repair_iteration=next_repair_idx,
         target_claim_ids=target_claim_ids,
         model=args.model,
         temperature=args.temperature,
@@ -495,11 +536,12 @@ def main() -> None:
             "Repaired output failed validation:\n- " + "\n- ".join(validation_errors)
         )
 
-    output_paths = derive_output_paths(narrative_json_path)
 
     repair_metadata = {
         "selected_claims_json": str(selected_claims_path),
         "narrative_json": str(narrative_json_path),
+        "parent_narrative_json": str(narrative_json_path),
+        "repair_iteration": next_repair_idx,
         "target_claim_ids": target_claim_ids,
         "model": args.model,
         "temperature": args.temperature,
