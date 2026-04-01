@@ -122,7 +122,7 @@ def parse_narrative(
 
         if claim_ids:
             n_with_claims += 1
-        else:
+        elif item["section"] != "cautions":
             n_missing_claim_refs += 1
 
         n_unknown_claim_ids += len(unknown_claim_ids)
@@ -134,8 +134,11 @@ def parse_narrative(
                 "raw_text": raw_text,
                 "clean_text": clean_text,
                 "claim_ids": claim_ids,
+                "n_claim_ids": len(claim_ids),
                 "unknown_claim_ids": unknown_claim_ids,
+                "n_unknown_claim_ids": len(unknown_claim_ids),
                 "linked_claims": linked_claims,
+                "n_linked_claims": len(linked_claims),
             }
         )
 
@@ -146,6 +149,10 @@ def parse_narrative(
         "metric": selected_claims_payload.get("metric"),
         "baseline_experiment": selected_claims_payload.get("baseline_experiment"),
         "comparison_experiments": selected_claims_payload.get("comparison_experiments", []),
+        "repair_mode": narrative_payload.get("repair_mode"),
+        "repair_iteration": narrative_payload.get("repair_iteration"),
+        "parent_narrative_json": narrative_payload.get("parent_narrative_json"),
+        "target_claim_ids": narrative_payload.get("target_claim_ids", []),
         "summary": {
             "n_items": len(parsed_items),
             "n_items_with_claim_refs": n_with_claims,
