@@ -98,26 +98,29 @@ def find_matching_claims(text: str, selected_claims: list[dict[str, Any]]) -> li
     for claim in selected_claims:
         prompt_id_raw = str(claim.get("prompt_id", "")).lower()
         prompt_id_spaced = prompt_id_raw.replace("_", " ")
-
-        model = str(claim.get("model", "")).lower()
-        comparison_experiment = str(claim.get("comparison_experiment", "")).lower()
+        model = str(claim.get("model", ""))
 
         prompt_match = (
             (prompt_id_raw and prompt_id_raw in t)
             or (prompt_id_spaced and prompt_id_spaced in t)
         )
-        model_match = model in t if model else False
-        comp_match = comparison_experiment in t if comparison_experiment else False
+        model_match = text_mentions_model(text, model)
 
-        mentions_prompt = prompt_match
-        mentions_model = model_match
+        # Prefer tighter empirical matching:
+        # require both prompt + model when both are available
+        if prompt_id_raw and model:
+            if prompt_match and model_match:
+                matches.append(claim)
+            continue
 
-        if mentions_prompt and mentions_model:
+        # Fallback if one field is missing
+        if prompt_id_raw and prompt_match:
             matches.append(claim)
-        elif mentions_prompt and not mentions_model:
+            continue
+
+        if model and model_match:
             matches.append(claim)
-        elif mentions_model and not mentions_prompt:
-            matches.append(claim)
+            continue
 
     return matches
 
@@ -265,6 +268,10 @@ def audit_narrative(
         "metric": selected_claims_payload.get("metric"),
         "baseline_experiment": selected_claims_payload.get("baseline_experiment"),
         "comparison_experiments": selected_claims_payload.get("comparison_experiments", []),
+        "repair_mode": narrative_payload.get("repair_mode"),
+        "repair_iteration": narrative_payload.get("repair_iteration"),
+        "parent_narrative_json": narrative_payload.get("parent_narrative_json"),
+        "target_claim_ids": narrative_payload.get("target_claim_ids", []),
         "fidelity_score": fidelity_score,
         "summary": {
             "n_items": n_items,
@@ -280,6 +287,40 @@ def audit_narrative(
 def default_output_path(narrative_json: Path) -> Path:
     stem = narrative_json.stem.replace("__narrative_from_claims", "")
     return narrative_json.parent / f"{stem}__audit.json"
+
+
+def expected_model_tokens(model: str) -> list[str]:
+    m = normalize_text(model)
+
+    if m == "mistral":
+        return ["mistral"]
+
+    if m in {"llama3:70b", "llama3_70b", "llama3 70b"}:
+        return ["70b", "llama3:70b", "llama3 70b", "llama3-70b"]
+
+    if m == "llama3":
+        return ["llama3"]
+
+    return [m] if m else []
+
+
+def text_mentions_model(text: str, model: str) -> bool:
+    t = normalize_text(text)
+    tokens = expected_model_tokens(model)
+
+    if not tokens:
+        return False
+
+    # Special handling:
+    # - llama3:70b should require an explicit 70b-style token
+    if normalize_text(model) in {"llama3:70b", "llama3_70b", "llama3 70b"}:
+        return any(tok in t for tok in ["70b", "llama3:70b", "llama3 70b", "llama3-70b"])
+
+    # Plain llama3 should NOT count bullets that only mention 70b without generic llama3 wording
+    if normalize_text(model) == "llama3":
+        return "llama3" in t
+
+    return any(tok in t for tok in tokens)
 
 
 def parse_args() -> argparse.Namespace:
