@@ -461,6 +461,17 @@ def row_from_items(
         "strict_ref_overlap_ratio": strict_ref_info["strict_ref_overlap_ratio"],
         "strict_ref_supported": strict_ref_info["strict_ref_supported"],
         "strict_ref_support_regime": strict_ref_info["strict_ref_support_regime"],
+        
+        # mixed-claim diagnostics from parsed artifact
+        "has_mixed_directions": bool(parsed_item.get("has_mixed_directions", False)),
+        "has_mixed_models": bool(parsed_item.get("has_mixed_models", False)),
+        "has_mixed_prompts": bool(parsed_item.get("has_mixed_prompts", False)),
+        "has_mixed_strengths": bool(parsed_item.get("has_mixed_strengths", False)),
+        "n_distinct_directions": parsed_item.get("n_distinct_directions", 0),
+        "direction_set": stringify_list(safe_list(parsed_item.get("direction_set"))),
+        "linked_models": stringify_list(safe_list(parsed_item.get("linked_models"))),
+        "linked_prompt_ids": stringify_list(safe_list(parsed_item.get("linked_prompt_ids"))),
+        "linked_claim_strengths": stringify_list(safe_list(parsed_item.get("linked_claim_strengths"))),
     }
     return row
 
@@ -496,6 +507,11 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     strict_ref_overlap_ratios = []
     strict_ref_supported_count = 0
     heuristic_only_supported_count = 0
+    
+    mixed_direction_count = 0
+    mixed_model_count = 0
+    mixed_prompt_count = 0
+    mixed_strength_count = 0
 
     for row in rows:
         artifact_name = str(row["artifact_name"])
@@ -560,6 +576,15 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         regime = str(row.get("strict_ref_support_regime", "")).strip()
         if regime:
             strict_ref_regime_counts[regime] += 1
+        
+        if row.get("has_mixed_directions") is True:
+            mixed_direction_count += 1
+        if row.get("has_mixed_models") is True:
+            mixed_model_count += 1
+        if row.get("has_mixed_prompts") is True:
+            mixed_prompt_count += 1
+        if row.get("has_mixed_strengths") is True:
+            mixed_strength_count += 1
 
     fidelity_by_suite = {
         k: round(sum(v) / len(v), 4) for k, v in sorted(fidelity_by_suite_accum.items()) if v
@@ -591,6 +616,25 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     
     
     top_extra_matched_bullets = []
+    top_mixed_direction_bullets = []
+    for row in rows:
+        if row.get("has_mixed_directions") is not True:
+            continue
+        top_mixed_direction_bullets.append(
+            {
+                "artifact_name": row["artifact_name"],
+                "suite_name": row["suite_name"],
+                "model": row["model"],
+                "prompt_id": row["prompt_id"],
+                "section": row["section"],
+                "bullet_text": row["bullet_text"],
+                "claim_ids": row["claim_ids"].split("|") if row["claim_ids"] else [],
+                "direction_set": row["direction_set"].split("|") if row["direction_set"] else [],
+                "linked_models": row["linked_models"].split("|") if row["linked_models"] else [],
+            }
+        )
+    top_mixed_direction_bullets = top_mixed_direction_bullets[:25]
+    
     for row in sorted(
         rows,
         key=lambda r: int(r.get("n_extra_matched_claim_ids", 0) or 0),
@@ -649,6 +693,13 @@ def summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "strict_ref_supported_bullets": strict_ref_supported_count,
             "heuristic_only_supported_bullets": heuristic_only_supported_count,
         },
+        "claim_interaction_diagnostics": {
+            "mixed_direction_bullets": mixed_direction_count,
+            "mixed_model_bullets": mixed_model_count,
+            "mixed_prompt_bullets": mixed_prompt_count,
+            "mixed_strength_bullets": mixed_strength_count,
+        },
+        "top_mixed_direction_bullets": top_mixed_direction_bullets,
     }
 
 

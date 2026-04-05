@@ -89,6 +89,68 @@ def index_selected_claims(selected_payload: dict[str, Any]) -> dict[str, dict[st
     }
 
 
+def extract_claim_direction(claim: dict[str, Any]) -> str:
+    """
+    Coarse semantic direction for a claim.
+    """
+    label = str(claim.get("label", "")).strip().lower()
+    claim_type = str(claim.get("claim_type", "")).strip().lower()
+    delta_value = claim.get("delta_value")
+
+    if label in {"improves", "increase", "better"}:
+        return "positive"
+    if label in {"degrades", "decrease", "worse"}:
+        return "negative"
+    if label.startswith("stable_") or claim_type in {"stable_floor", "stable_ceiling"}:
+        return "stable"
+
+    try:
+        dv = float(delta_value)
+        if dv > 0:
+            return "positive"
+        if dv < 0:
+            return "negative"
+        if dv == 0:
+            return "stable"
+    except (TypeError, ValueError):
+        pass
+
+    return "unknown"
+
+
+def compute_linked_claim_diagnostics(linked_claims: list[dict[str, Any]]) -> dict[str, Any]:
+    directions = [extract_claim_direction(c) for c in linked_claims]
+    directions_non_unknown = sorted({d for d in directions if d != "unknown"})
+
+    models = sorted(
+        {str(c.get("model", "")).strip() for c in linked_claims if str(c.get("model", "")).strip()}
+    )
+    prompts = sorted(
+        {str(c.get("prompt_id", "")).strip() for c in linked_claims if str(c.get("prompt_id", "")).strip()}
+    )
+    strengths = sorted(
+        {str(c.get("claim_strength", "")).strip() for c in linked_claims if str(c.get("claim_strength", "")).strip()}
+    )
+
+    has_mixed_directions = len(directions_non_unknown) > 1
+    has_mixed_models = len(models) > 1
+    has_mixed_prompts = len(prompts) > 1
+    has_mixed_strengths = len(strengths) > 1
+
+    return {
+        "claim_directions": directions,
+        "direction_set": directions_non_unknown,
+        "n_distinct_directions": len(directions_non_unknown),
+        "has_mixed_directions": has_mixed_directions,
+        "linked_models": models,
+        "linked_prompt_ids": prompts,
+        "linked_claim_strengths": strengths,
+        "has_mixed_models": has_mixed_models,
+        "has_mixed_prompts": has_mixed_prompts,
+        "has_mixed_strengths": has_mixed_strengths,
+    }
+
+
 def parse_narrative(
     selected_claims_payload: dict[str, Any],
     narrative_payload: dict[str, Any],
@@ -119,6 +181,8 @@ def parse_narrative(
                 unknown_claim_ids.append(cid)
             else:
                 linked_claims.append(claim)
+        
+        linked_claim_diag = compute_linked_claim_diagnostics(linked_claims)
 
         if claim_ids:
             n_with_claims += 1
@@ -139,6 +203,18 @@ def parse_narrative(
                 "n_unknown_claim_ids": len(unknown_claim_ids),
                 "linked_claims": linked_claims,
                 "n_linked_claims": len(linked_claims),
+
+                # mixed-claim diagnostics
+                "claim_directions": linked_claim_diag["claim_directions"],
+                "direction_set": linked_claim_diag["direction_set"],
+                "n_distinct_directions": linked_claim_diag["n_distinct_directions"],
+                "has_mixed_directions": linked_claim_diag["has_mixed_directions"],
+                "linked_models": linked_claim_diag["linked_models"],
+                "linked_prompt_ids": linked_claim_diag["linked_prompt_ids"],
+                "linked_claim_strengths": linked_claim_diag["linked_claim_strengths"],
+                "has_mixed_models": linked_claim_diag["has_mixed_models"],
+                "has_mixed_prompts": linked_claim_diag["has_mixed_prompts"],
+                "has_mixed_strengths": linked_claim_diag["has_mixed_strengths"],
             }
         )
 
@@ -158,6 +234,18 @@ def parse_narrative(
             "n_items_with_claim_refs": n_with_claims,
             "n_items_missing_claim_refs": n_missing_claim_refs,
             "n_unknown_claim_ids": n_unknown_claim_ids,
+            "n_mixed_direction_items": sum(
+                1 for item in parsed_items if item.get("has_mixed_directions") is True
+            ),
+            "n_mixed_model_items": sum(
+                1 for item in parsed_items if item.get("has_mixed_models") is True
+            ),
+            "n_mixed_prompt_items": sum(
+                1 for item in parsed_items if item.get("has_mixed_prompts") is True
+            ),
+            "n_mixed_strength_items": sum(
+                1 for item in parsed_items if item.get("has_mixed_strengths") is True
+            ),
         },
         "items": parsed_items,
     }

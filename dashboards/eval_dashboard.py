@@ -992,6 +992,15 @@ with tab_audit:
             & (a["has_claim_refs"])
             & (~a["is_meta_section"])
         )
+        
+        for col in [
+            "has_mixed_directions",
+            "has_mixed_models",
+            "has_mixed_prompts",
+            "has_mixed_strengths",
+        ]:
+            if col in a.columns:
+                a[col] = a[col].astype(str).str.lower().isin(["true", "1", "yes"])
                 
 
         # -------------------------
@@ -1171,6 +1180,11 @@ with tab_audit:
         # Support-discipline diagnostics
         # -------------------------
         st.markdown("### Support Discipline Diagnostics")
+        md1, md2, md3, md4 = st.columns(4)
+        md1.metric("Mixed-direction bullets", int(a_filt["has_mixed_directions"].sum()) if "has_mixed_directions" in a_filt.columns else 0)
+        md2.metric("Mixed-model bullets", int(a_filt["has_mixed_models"].sum()) if "has_mixed_models" in a_filt.columns else 0)
+        md3.metric("Mixed-prompt bullets", int(a_filt["has_mixed_prompts"].sum()) if "has_mixed_prompts" in a_filt.columns else 0)
+        md4.metric("Mixed-strength bullets", int(a_filt["has_mixed_strengths"].sum()) if "has_mixed_strengths" in a_filt.columns else 0)
         
         
         st.markdown("### Heuristic-Only Supported Bullets")
@@ -1215,6 +1229,30 @@ with tab_audit:
         zoe_cols = [c for c in zoe_cols if c in zoe.columns]
 
         st.dataframe(zoe[zoe_cols], use_container_width=True)
+        
+        
+        st.markdown("#### Mixed-Direction Bullets")
+        mdb = a_filt[a_filt["has_mixed_directions"]].copy()
+
+        mdb_cols = [
+            "suite_name",
+            "model",
+            "prompt_id",
+            "section",
+            "bullet_text",
+            "claim_ids",
+            "direction_set",
+            "linked_models",
+            "linked_prompt_ids",
+            "linked_claim_strengths",
+        ]
+        mdb_cols = [c for c in mdb_cols if c in mdb.columns]
+
+        if len(mdb):
+            st.dataframe(mdb[mdb_cols], use_container_width=True)
+        else:
+            st.info("No mixed-direction bullets in current filter.")
+
 
         diag1, diag2 = st.columns(2)
 
@@ -1532,6 +1570,12 @@ with tab_trace:
                 st.write(f"**Clean text:** {item.get('clean_text', '')}")
                 st.write(f"**Raw text:** {item.get('raw_text', '')}")
                 st.write(f"**Claim IDs:**")
+                st.write("**Direction set:**", " | ".join(item.get("direction_set", [])) if item.get("direction_set") else "—")
+                st.write("**Mixed directions:**", item.get("has_mixed_directions", False))
+                st.write("**Linked models:**", " | ".join(item.get("linked_models", [])) if item.get("linked_models") else "—")
+                st.write("**Mixed models:**", item.get("has_mixed_models", False))
+                st.write("**Linked prompts:**", " | ".join(item.get("linked_prompt_ids", [])) if item.get("linked_prompt_ids") else "—")
+                st.write("**Mixed prompts:**", item.get("has_mixed_prompts", False))
                 st.code("\n".join(item.get("claim_ids", [])) if item.get("claim_ids") else "—")
 
                 if item.get("unknown_claim_ids"):
