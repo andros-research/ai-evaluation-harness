@@ -369,6 +369,7 @@ def row_from_items(
     claim_ids = safe_list(parsed_item.get("claim_ids"))
     unknown_claim_ids = safe_list(parsed_item.get("unknown_claim_ids"))
     matched_claim_ids = safe_list(audit_item.get("matched_claim_ids"))
+    section = str(parsed_item.get("section", "")).strip()
 
     overlap_info = compute_claim_overlap(claim_ids, matched_claim_ids)
     
@@ -415,7 +416,7 @@ def row_from_items(
 
         # item identity
         "item_id": parsed_item.get("item_id", ""),
-        "section": parsed_item.get("section", ""),
+        "section": section,
         "bullet_text": audit_item.get("text", ""),
         "clean_text": parsed_item.get("clean_text", ""),
         "raw_text": parsed_item.get("raw_text", ""),
@@ -433,7 +434,7 @@ def row_from_items(
         "n_claim_ids": len(claim_ids),
         "n_matched_claim_ids": len(matched_claim_ids),
         "n_unknown_claim_ids": len(unknown_claim_ids),
-        "missing_claim_refs": len(claim_ids) == 0,
+        "missing_claim_refs": (len(claim_ids) == 0 and section != "cautions"),
 
         # overlap / support discipline diagnostics
         "claim_id_overlap_count": overlap_info["claim_id_overlap_count"],
