@@ -204,6 +204,12 @@ Important:
 - Do not satisfy target-claim inclusion by attaching the target claim ID to a bullet whose prose primarily describes a different model.
 - If no valid revision can incorporate a target claim without violating these rules, omit it and add a short note under Cautions explaining that the target claim could not be incorporated cleanly.
 - Do not write placeholder bullets like "None (...)" in Observations, Tradeoffs, or Invariances. Omit the bullet instead.
+- Do not merge target claims into an existing bullet if doing so would combine different models in one generalized statement.
+- If a target claim belongs to a different model than the existing cited claims in a bullet, create a separate bullet instead of merging.
+- When in doubt, prefer adding a new model-specific observation over compressing across models.
+- Never combine llama3 and mistral into the same empirical bullet unless every cited claim in that bullet clearly supports a cross-model comparison stated explicitly in the prose.
+- Cross-model comparisons are only valid if the prose explicitly compares the same prompt_id and experiment across models, and all cited claims correspond to that exact comparison.
+- If a target claim cannot be incorporated cleanly into an existing bullet without changing the cited model names, add a new bullet for that target claim.
 
 
 Output exactly in this structure:
