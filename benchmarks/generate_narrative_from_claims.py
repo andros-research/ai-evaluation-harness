@@ -149,6 +149,7 @@ def save_outputs(
     model: str,
     temperature: float,
     num_predict: int,
+    results_root: Path,
 ) -> tuple[Path, Path]:
     stem = selected_claims_path.stem.replace("__selected_claims", "")
     out_dir = selected_claims_path.parent
@@ -157,6 +158,7 @@ def save_outputs(
     md_path = out_dir / f"{stem}__narrative_from_claims.md"
 
     payload = {
+        "results_root": str(results_root),
         "source_selected_claims_json": str(selected_claims_path),
         "model": model,
         "temperature": temperature,
@@ -165,11 +167,14 @@ def save_outputs(
         "narrative": narrative,
     }
 
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
     with md_path.open("w", encoding="utf-8") as f:
         f.write("# Narrative from Selected Claims\n\n")
+        f.write(f"- results_root: `{results_root}`\n")
         f.write(f"- source_selected_claims_json: `{selected_claims_path}`\n")
         f.write(f"- model: `{model}`\n")
         f.write(f"- temperature: `{temperature}`\n")
@@ -184,6 +189,7 @@ def save_outputs(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--selected-claims-json", required=True)
+    parser.add_argument("--results-root", default="benchmarks/results")
     parser.add_argument("--model", default="mistral")
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--num-predict", type=int, default=512)
@@ -193,7 +199,12 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    results_root = Path(args.results_root).resolve()
     selected_claims_path = Path(args.selected_claims_json).resolve()
+
+    if not selected_claims_path.exists():
+        raise FileNotFoundError(f"selected claims file not found: {selected_claims_path}")
+
     selected_payload = load_json(selected_claims_path)
     prompt = build_prompt(selected_payload)
 
@@ -211,6 +222,7 @@ def main() -> None:
         model=args.model,
         temperature=args.temperature,
         num_predict=args.num_predict,
+        results_root=results_root,
     )
 
     print(f"Saved narrative JSON: {json_path}")

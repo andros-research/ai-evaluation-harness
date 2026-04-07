@@ -1,0 +1,101 @@
+{
+  "suite_name": "suite_structured",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "selection_policy": {
+    "max_total_claims": 12,
+    "max_medium_delta": 4,
+    "max_stable": 4
+  },
+  "selection_summary": {
+    "n_validated_claims_available": 9,
+    "n_selected_claims": 3,
+    "n_strong_delta": 0,
+    "n_medium_delta": 0,
+    "n_stable_total": 9
+  },
+  "selected_claims": [
+    {
+      "claim_id": "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+      "claim_type": "stable_floor",
+      "suite_name": "suite_structured",
+      "metric": "checks_pass_rate",
+      "prompt_id": "json_strict",
+      "model": "llama3:70b",
+      "baseline_experiment": "temp0",
+      "comparison_experiment": "temp03",
+      "baseline_value": 0.0,
+      "comparison_value": 0.0,
+      "delta_value": 0.0,
+      "direction": "flat",
+      "label": "stable_always_fail",
+      "claim_eligible": true,
+      "claim_strength": "strong",
+      "validation": {
+        "values_present": true,
+        "direction_matches_delta": true,
+        "stable_pass_matches_values": true,
+        "stable_fail_matches_values": true,
+        "invariant_matches_values": true
+      },
+      "validation_passed": true,
+      "claim_status": "validated"
+    },
+    {
+      "claim_id": "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+      "claim_type": "stable_floor",
+      "suite_name": "suite_structured",
+      "metric": "checks_pass_rate",
+      "prompt_id": "json_strict",
+      "model": "llama3:70b",
+      "baseline_experiment": "temp0",
+      "comparison_experiment": "temp07",
+      "baseline_value": 0.0,
+      "comparison_value": 0.0,
+      "delta_value": 0.0,
+      "direction": "flat",
+      "label": "stable_always_fail",
+      "claim_eligible": true,
+      "claim_strength": "strong",
+      "validation": {
+        "values_present": true,
+        "direction_matches_delta": true,
+        "stable_pass_matches_values": true,
+        "stable_fail_matches_values": true,
+        "invariant_matches_values": true
+      },
+      "validation_passed": true,
+      "claim_status": "validated"
+    },
+    {
+      "claim_id": "suite_structured__json_strict__mistral__temp03_vs_temp0",
+      "claim_type": "stable_ceiling",
+      "suite_name": "suite_structured",
+      "metric": "checks_pass_rate",
+      "prompt_id": "json_strict",
+      "model": "mistral",
+      "baseline_experiment": "temp0",
+      "comparison_experiment": "temp03",
+      "baseline_value": 1.0,
+      "comparison_value": 1.0,
+      "delta_value": 0.0,
+      "direction": "flat",
+      "label": "stable_always_pass",
+      "claim_eligible": true,
+      "claim_strength": "strong",
+      "validation": {
+        "values_present": true,
+        "direction_matches_delta": true,
+        "stable_pass_matches_values": true,
+        "stable_fail_matches_values": true,
+        "invariant_matches_values": true
+      },
+      "validation_passed": true,
+      "claim_status": "validated"
+    }
+  ]
+}

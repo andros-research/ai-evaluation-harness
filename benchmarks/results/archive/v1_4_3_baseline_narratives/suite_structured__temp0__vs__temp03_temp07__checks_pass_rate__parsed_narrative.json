@@ -1,0 +1,243 @@
+{
+  "source_selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_structured__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "source_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_structured__temp0__vs__temp03_temp07__checks_pass_rate__narrative_from_claims.json",
+  "suite_name": "suite_structured",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "summary": {
+    "n_items": 6,
+    "n_items_with_claim_refs": 4,
+    "n_items_missing_claim_refs": 2,
+    "n_unknown_claim_ids": 0
+  },
+  "items": [
+    {
+      "item_id": 1,
+      "section": "observations",
+      "raw_text": "The LLama3:70b model consistently fails to pass checks for the json_strict prompt across both temperature experiments [CLAIMS: suite_structured__json_strict__llama3_70b__temp03_vs_temp0, suite_structured__json_strict__llama3_70b__temp07_vs_temp0].",
+      "clean_text": "The LLama3:70b model consistently fails to pass checks for the json_strict prompt across both temperature experiments .",
+      "claim_ids": [
+        "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+        "suite_structured__json_strict__llama3_70b__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_structured",
+          "metric": "checks_pass_rate",
+          "prompt_id": "json_strict",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_structured",
+          "metric": "checks_pass_rate",
+          "prompt_id": "json_strict",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 2,
+      "section": "observations",
+      "raw_text": "In contrast, the Mistral model passes checks for the json_strict prompt consistently at both temperatures [CLAIMS: suite_structured__json_strict__mistral__temp03_vs_temp0].",
+      "clean_text": "In contrast, the Mistral model passes checks for the json_strict prompt consistently at both temperatures .",
+      "claim_ids": [
+        "suite_structured__json_strict__mistral__temp03_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_structured__json_strict__mistral__temp03_vs_temp0",
+          "claim_type": "stable_ceiling",
+          "suite_name": "suite_structured",
+          "metric": "checks_pass_rate",
+          "prompt_id": "json_strict",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 1.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_pass",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 3,
+      "section": "tradeoffs",
+      "raw_text": "Increasing temperature from 0 to 0.3 or 0.7 does not appear to impact the LLama3:70b model's failure to pass checks for the json_strict prompt [CLAIMS: suite_structured__json_strict__llama3_70b__temp03_vs_temp0, suite_structured__json_strict__llama3_70b__temp07_vs_temp0].",
+      "clean_text": "Increasing temperature from 0 to 0.3 or 0.7 does not appear to impact the LLama3:70b model's failure to pass checks for the json_strict prompt .",
+      "claim_ids": [
+        "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+        "suite_structured__json_strict__llama3_70b__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_structured",
+          "metric": "checks_pass_rate",
+          "prompt_id": "json_strict",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_structured",
+          "metric": "checks_pass_rate",
+          "prompt_id": "json_strict",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 4,
+      "section": "tradeoffs",
+      "raw_text": "However, the Mistral model maintains its ability to pass checks for the json_strict prompt across temperature changes [CLAIMS: suite_structured__json_strict__mistral__temp03_vs_temp0].",
+      "clean_text": "However, the Mistral model maintains its ability to pass checks for the json_strict prompt across temperature changes .",
+      "claim_ids": [
+        "suite_structured__json_strict__mistral__temp03_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_structured__json_strict__mistral__temp03_vs_temp0",
+          "claim_type": "stable_ceiling",
+          "suite_name": "suite_structured",
+          "metric": "checks_pass_rate",
+          "prompt_id": "json_strict",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 1.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_pass",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 5,
+      "section": "invariances",
+      "raw_text": "No meaningful invariances could be identified based on the available claims.",
+      "clean_text": "No meaningful invariances could be identified based on the available claims.",
+      "claim_ids": [],
+      "unknown_claim_ids": [],
+      "linked_claims": []
+    },
+    {
+      "item_id": 6,
+      "section": "cautions",
+      "raw_text": "The observations are limited to the specific prompts, models, and temperature settings mentioned in the supplied claims. Generalizations beyond these boundaries may not hold true.",
+      "clean_text": "The observations are limited to the specific prompts, models, and temperature settings mentioned in the supplied claims. Generalizations beyond these boundaries may not hold true.",
+      "claim_ids": [],
+      "unknown_claim_ids": [],
+      "linked_claims": []
+    }
+  ]
+}

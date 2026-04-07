@@ -1,0 +1,85 @@
+{
+  "source_selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_structured__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "source_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_structured__temp0__vs__temp03_temp07__checks_pass_rate__narrative_from_claims.json",
+  "suite_name": "suite_structured",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "fidelity_score": 0.8,
+  "summary": {
+    "n_items": 6,
+    "n_scored_items": 5,
+    "n_meta_cautions": 1,
+    "n_supported": 4,
+    "n_flagged": 1
+  },
+  "audit_items": [
+    {
+      "section": "observations",
+      "text": "The LLama3:70b model consistently fails to pass checks for the json_strict prompt across both temperature experiments [CLAIMS: suite_structured__json_strict__llama3_70b__temp03_vs_temp0, suite_structured__json_strict__llama3_70b__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+        "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+        "suite_structured__json_strict__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "observations",
+      "text": "In contrast, the Mistral model passes checks for the json_strict prompt consistently at both temperatures [CLAIMS: suite_structured__json_strict__mistral__temp03_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+        "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+        "suite_structured__json_strict__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "tradeoffs",
+      "text": "Increasing temperature from 0 to 0.3 or 0.7 does not appear to impact the LLama3:70b model's failure to pass checks for the json_strict prompt [CLAIMS: suite_structured__json_strict__llama3_70b__temp03_vs_temp0, suite_structured__json_strict__llama3_70b__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+        "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+        "suite_structured__json_strict__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "tradeoffs",
+      "text": "However, the Mistral model maintains its ability to pass checks for the json_strict prompt across temperature changes [CLAIMS: suite_structured__json_strict__mistral__temp03_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_structured__json_strict__llama3_70b__temp03_vs_temp0",
+        "suite_structured__json_strict__llama3_70b__temp07_vs_temp0",
+        "suite_structured__json_strict__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "invariances",
+      "text": "No meaningful invariances could be identified based on the available claims.",
+      "supported": false,
+      "issue_type": "unclear_match",
+      "notes": "No matching claims found for this narrative item.",
+      "matched_claim_ids": []
+    },
+    {
+      "section": "cautions",
+      "text": "The observations are limited to the specific prompts, models, and temperature settings mentioned in the supplied claims. Generalizations beyond these boundaries may not hold true.",
+      "supported": null,
+      "issue_type": "meta_caution",
+      "notes": "Meta-caution; excluded from claim-support scoring.",
+      "matched_claim_ids": []
+    }
+  ]
+}

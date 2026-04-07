@@ -1,0 +1,134 @@
+{
+  "source_selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_reasoning__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "source_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_reasoning__temp0__vs__temp03_temp07__checks_pass_rate__narrative_from_claims.json",
+  "suite_name": "suite_reasoning",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "fidelity_score": 1.0,
+  "summary": {
+    "n_items": 9,
+    "n_scored_items": 7,
+    "n_meta_cautions": 2,
+    "n_supported": 7,
+    "n_flagged": 0
+  },
+  "audit_items": [
+    {
+      "section": "observations",
+      "text": "The Mistral model degrades on the 'attention_5sent' prompt at temperature 0.7 compared to the baseline [CLAIMS: suite_reasoning__attention_5sent__mistral__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "observations",
+      "text": "The Mistral model consistently fails on the 'reasoning_trap' prompt across both temperature levels, indicating a stable floor of failure [CLAIMS: suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0, suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "observations",
+      "text": "The Llama3:70b model demonstrates a stable ceiling of success on the 'attention_5sent' prompt across both temperature levels [CLAIMS: suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0, suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "observations",
+      "text": "The Mistral model slightly degrades on the 'attention_5sent' prompt at temperature 0.3 compared to the baseline [CLAIMS: suite_reasoning__attention_5sent__mistral__temp03_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "tradeoffs",
+      "text": "Increasing temperature from 0.3 to 0.7 in the Mistral model worsens performance on the 'attention_5sent' prompt [CLAIMS: suite_reasoning__attention_5sent__mistral__temp03_vs_temp0, suite_reasoning__attention_5sent__mistral__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "invariances",
+      "text": "The Llama3:70b model maintains a stable ceiling of success on the 'attention_5sent' prompt across both temperature levels [CLAIMS: suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0, suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "invariances",
+      "text": "The Mistral model consistently fails on the 'reasoning_trap' prompt across both temperature levels [CLAIMS: suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0, suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0].",
+      "supported": true,
+      "issue_type": "supported",
+      "notes": "Narrative item is supported by matched claims under v0 audit rules.",
+      "matched_claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ]
+    },
+    {
+      "section": "cautions",
+      "text": "The analysis is limited to the provided claims and may not fully capture all differences or similarities between models and prompts.",
+      "supported": null,
+      "issue_type": "meta_caution",
+      "notes": "Meta-caution; excluded from claim-support scoring.",
+      "matched_claim_ids": []
+    },
+    {
+      "section": "cautions",
+      "text": "Interpretations should be cautious as changes in performance metrics do not necessarily correlate with real-world performance improvements or declines.",
+      "supported": null,
+      "issue_type": "meta_caution",
+      "notes": "Meta-caution; excluded from claim-support scoring.",
+      "matched_claim_ids": []
+    }
+  ]
+}

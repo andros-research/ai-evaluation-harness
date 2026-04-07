@@ -1,0 +1,438 @@
+{
+  "source_selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_reasoning__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "source_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_reasoning__temp0__vs__temp03_temp07__checks_pass_rate__narrative_from_claims.json",
+  "suite_name": "suite_reasoning",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "summary": {
+    "n_items": 9,
+    "n_items_with_claim_refs": 7,
+    "n_items_missing_claim_refs": 2,
+    "n_unknown_claim_ids": 0
+  },
+  "items": [
+    {
+      "item_id": 1,
+      "section": "observations",
+      "raw_text": "The Mistral model degrades on the 'attention_5sent' prompt at temperature 0.7 compared to the baseline [CLAIMS: suite_reasoning__attention_5sent__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model degrades on the 'attention_5sent' prompt at temperature 0.7 compared to the baseline .",
+      "claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 0.7,
+          "delta_value": -0.30000000000000004,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 2,
+      "section": "observations",
+      "raw_text": "The Mistral model consistently fails on the 'reasoning_trap' prompt across both temperature levels, indicating a stable floor of failure [CLAIMS: suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0, suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model consistently fails on the 'reasoning_trap' prompt across both temperature levels, indicating a stable floor of failure .",
+      "claim_ids": [
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "reasoning_trap",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "reasoning_trap",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 3,
+      "section": "observations",
+      "raw_text": "The Llama3:70b model demonstrates a stable ceiling of success on the 'attention_5sent' prompt across both temperature levels [CLAIMS: suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0, suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0].",
+      "clean_text": "The Llama3:70b model demonstrates a stable ceiling of success on the 'attention_5sent' prompt across both temperature levels .",
+      "claim_ids": [
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+          "claim_type": "stable_ceiling",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 1.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_pass",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+          "claim_type": "stable_ceiling",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 1.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_pass",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 4,
+      "section": "observations",
+      "raw_text": "The Mistral model slightly degrades on the 'attention_5sent' prompt at temperature 0.3 compared to the baseline [CLAIMS: suite_reasoning__attention_5sent__mistral__temp03_vs_temp0].",
+      "clean_text": "The Mistral model slightly degrades on the 'attention_5sent' prompt at temperature 0.3 compared to the baseline .",
+      "claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 0.8857142857142857,
+          "delta_value": -0.11428571428571432,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "weak",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 5,
+      "section": "tradeoffs",
+      "raw_text": "Increasing temperature from 0.3 to 0.7 in the Mistral model worsens performance on the 'attention_5sent' prompt [CLAIMS: suite_reasoning__attention_5sent__mistral__temp03_vs_temp0, suite_reasoning__attention_5sent__mistral__temp07_vs_temp0].",
+      "clean_text": "Increasing temperature from 0.3 to 0.7 in the Mistral model worsens performance on the 'attention_5sent' prompt .",
+      "claim_ids": [
+        "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__attention_5sent__mistral__temp03_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 0.8857142857142857,
+          "delta_value": -0.11428571428571432,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "weak",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_reasoning__attention_5sent__mistral__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 0.7,
+          "delta_value": -0.30000000000000004,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 6,
+      "section": "invariances",
+      "raw_text": "The Llama3:70b model maintains a stable ceiling of success on the 'attention_5sent' prompt across both temperature levels [CLAIMS: suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0, suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0].",
+      "clean_text": "The Llama3:70b model maintains a stable ceiling of success on the 'attention_5sent' prompt across both temperature levels .",
+      "claim_ids": [
+        "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+        "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__attention_5sent__llama3_70b__temp03_vs_temp0",
+          "claim_type": "stable_ceiling",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 1.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_pass",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_reasoning__attention_5sent__llama3_70b__temp07_vs_temp0",
+          "claim_type": "stable_ceiling",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 1.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_pass",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 7,
+      "section": "invariances",
+      "raw_text": "The Mistral model consistently fails on the 'reasoning_trap' prompt across both temperature levels [CLAIMS: suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0, suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model consistently fails on the 'reasoning_trap' prompt across both temperature levels .",
+      "claim_ids": [
+        "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+        "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0"
+      ],
+      "unknown_claim_ids": [],
+      "linked_claims": [
+        {
+          "claim_id": "suite_reasoning__reasoning_trap__mistral__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "reasoning_trap",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_reasoning__reasoning_trap__mistral__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_reasoning",
+          "metric": "checks_pass_rate",
+          "prompt_id": "reasoning_trap",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ]
+    },
+    {
+      "item_id": 8,
+      "section": "cautions",
+      "raw_text": "The analysis is limited to the provided claims and may not fully capture all differences or similarities between models and prompts.",
+      "clean_text": "The analysis is limited to the provided claims and may not fully capture all differences or similarities between models and prompts.",
+      "claim_ids": [],
+      "unknown_claim_ids": [],
+      "linked_claims": []
+    },
+    {
+      "item_id": 9,
+      "section": "cautions",
+      "raw_text": "Interpretations should be cautious as changes in performance metrics do not necessarily correlate with real-world performance improvements or declines.",
+      "clean_text": "Interpretations should be cautious as changes in performance metrics do not necessarily correlate with real-world performance improvements or declines.",
+      "claim_ids": [],
+      "unknown_claim_ids": [],
+      "linked_claims": []
+    }
+  ]
+}

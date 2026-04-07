@@ -1,0 +1,321 @@
+{
+  "suite_name": "suite_reasoning",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "n_cells": 9,
+  "cells": [
+    {
+      "prompt_id": "attention_5sent",
+      "model": "llama3",
+      "baseline_pass_rate": 1.0,
+      "comparison_pass_rates": {
+        "temp03": 1.0,
+        "temp07": 0.95
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": -0.050000000000000044
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_pass",
+        "temp07_vs_temp0": "degrades"
+      }
+    },
+    {
+      "prompt_id": "attention_5sent",
+      "model": "llama3:70b",
+      "baseline_pass_rate": 1.0,
+      "comparison_pass_rates": {
+        "temp03": 1.0,
+        "temp07": 1.0
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.0
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_pass",
+        "temp07_vs_temp0": "stable_always_pass"
+      }
+    },
+    {
+      "prompt_id": "attention_5sent",
+      "model": "mistral",
+      "baseline_pass_rate": 1.0,
+      "comparison_pass_rates": {
+        "temp03": 0.8857142857142857,
+        "temp07": 0.7
+      },
+      "deltas": {
+        "temp03_vs_temp0": -0.11428571428571432,
+        "temp07_vs_temp0": -0.30000000000000004
+      },
+      "labels": {
+        "temp03_vs_temp0": "degrades",
+        "temp07_vs_temp0": "degrades"
+      }
+    },
+    {
+      "prompt_id": "follow_instr",
+      "model": "llama3",
+      "baseline_pass_rate": 0.0,
+      "comparison_pass_rates": {
+        "temp03": 0.0,
+        "temp07": 0.0
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.0
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_fail",
+        "temp07_vs_temp0": "stable_always_fail"
+      }
+    },
+    {
+      "prompt_id": "follow_instr",
+      "model": "llama3:70b",
+      "baseline_pass_rate": 0.0,
+      "comparison_pass_rates": {
+        "temp03": 0.0,
+        "temp07": 0.0
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.0
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_fail",
+        "temp07_vs_temp0": "stable_always_fail"
+      }
+    },
+    {
+      "prompt_id": "follow_instr",
+      "model": "mistral",
+      "baseline_pass_rate": 0.0,
+      "comparison_pass_rates": {
+        "temp03": 0.0,
+        "temp07": 0.05
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.05
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_fail",
+        "temp07_vs_temp0": "improves"
+      }
+    },
+    {
+      "prompt_id": "reasoning_trap",
+      "model": "llama3",
+      "baseline_pass_rate": 0.0,
+      "comparison_pass_rates": {
+        "temp03": 0.0,
+        "temp07": 0.0
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.0
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_fail",
+        "temp07_vs_temp0": "stable_always_fail"
+      }
+    },
+    {
+      "prompt_id": "reasoning_trap",
+      "model": "llama3:70b",
+      "baseline_pass_rate": 0.0,
+      "comparison_pass_rates": {
+        "temp03": 0.0,
+        "temp07": 0.0
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.0
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_fail",
+        "temp07_vs_temp0": "stable_always_fail"
+      }
+    },
+    {
+      "prompt_id": "reasoning_trap",
+      "model": "mistral",
+      "baseline_pass_rate": 0.0,
+      "comparison_pass_rates": {
+        "temp03": 0.0,
+        "temp07": 0.0
+      },
+      "deltas": {
+        "temp03_vs_temp0": 0.0,
+        "temp07_vs_temp0": 0.0
+      },
+      "labels": {
+        "temp03_vs_temp0": "stable_always_fail",
+        "temp07_vs_temp0": "stable_always_fail"
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "comparison_experiment": "temp03",
+      "cells": [
+        {
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_pass_rate": 1.0,
+          "comparison_pass_rate": 0.8857142857142857,
+          "delta_pass_rate": -0.11428571428571432,
+          "label": "degrades"
+        },
+        {
+          "prompt_id": "attention_5sent",
+          "model": "llama3",
+          "baseline_pass_rate": 1.0,
+          "comparison_pass_rate": 1.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_pass"
+        },
+        {
+          "prompt_id": "attention_5sent",
+          "model": "llama3:70b",
+          "baseline_pass_rate": 1.0,
+          "comparison_pass_rate": 1.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_pass"
+        },
+        {
+          "prompt_id": "follow_instr",
+          "model": "llama3",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "follow_instr",
+          "model": "llama3:70b",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "reasoning_trap",
+          "model": "llama3",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "reasoning_trap",
+          "model": "llama3:70b",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "reasoning_trap",
+          "model": "mistral",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        }
+      ]
+    },
+    {
+      "comparison_experiment": "temp07",
+      "cells": [
+        {
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_pass_rate": 1.0,
+          "comparison_pass_rate": 0.7,
+          "delta_pass_rate": -0.30000000000000004,
+          "label": "degrades"
+        },
+        {
+          "prompt_id": "attention_5sent",
+          "model": "llama3",
+          "baseline_pass_rate": 1.0,
+          "comparison_pass_rate": 0.95,
+          "delta_pass_rate": -0.050000000000000044,
+          "label": "degrades"
+        },
+        {
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.05,
+          "delta_pass_rate": 0.05,
+          "label": "improves"
+        },
+        {
+          "prompt_id": "attention_5sent",
+          "model": "llama3:70b",
+          "baseline_pass_rate": 1.0,
+          "comparison_pass_rate": 1.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_pass"
+        },
+        {
+          "prompt_id": "follow_instr",
+          "model": "llama3",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "follow_instr",
+          "model": "llama3:70b",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "reasoning_trap",
+          "model": "llama3",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "reasoning_trap",
+          "model": "llama3:70b",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        },
+        {
+          "prompt_id": "reasoning_trap",
+          "model": "mistral",
+          "baseline_pass_rate": 0.0,
+          "comparison_pass_rate": 0.0,
+          "delta_pass_rate": 0.0,
+          "label": "stable_always_fail"
+        }
+      ]
+    }
+  ]
+}

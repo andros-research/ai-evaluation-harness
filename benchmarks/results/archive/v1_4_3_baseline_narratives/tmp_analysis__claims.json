@@ -1,0 +1,94 @@
+{
+  "suite_name": "test_suite",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp07"
+  ],
+  "min_abs_delta": 0.1,
+  "n_claims_total": 3,
+  "n_validated_claims": 2,
+  "n_rejected_claims": 1,
+  "validated_claims": [
+    {
+      "claim_id": "test_suite__p1__m1__temp07_vs_temp0",
+      "claim_type": "delta_change",
+      "suite_name": "test_suite",
+      "metric": "checks_pass_rate",
+      "prompt_id": "p1",
+      "model": "m1",
+      "baseline_experiment": "temp0",
+      "comparison_experiment": "temp07",
+      "baseline_value": 0.0,
+      "comparison_value": 0.5,
+      "delta_value": 0.5,
+      "direction": "up",
+      "label": "improves",
+      "claim_eligible": true,
+      "claim_strength": "strong",
+      "validation": {
+        "values_present": true,
+        "direction_matches_delta": true,
+        "stable_pass_matches_values": true,
+        "stable_fail_matches_values": true,
+        "invariant_matches_values": true
+      },
+      "validation_passed": true,
+      "claim_status": "validated"
+    },
+    {
+      "claim_id": "test_suite__p2__m1__temp07_vs_temp0",
+      "claim_type": "stable_ceiling",
+      "suite_name": "test_suite",
+      "metric": "checks_pass_rate",
+      "prompt_id": "p2",
+      "model": "m1",
+      "baseline_experiment": "temp0",
+      "comparison_experiment": "temp07",
+      "baseline_value": 1.0,
+      "comparison_value": 1.0,
+      "delta_value": 0.0,
+      "direction": "flat",
+      "label": "stable_always_pass",
+      "claim_eligible": true,
+      "claim_strength": "strong",
+      "validation": {
+        "values_present": true,
+        "direction_matches_delta": true,
+        "stable_pass_matches_values": true,
+        "stable_fail_matches_values": true,
+        "invariant_matches_values": true
+      },
+      "validation_passed": true,
+      "claim_status": "validated"
+    }
+  ],
+  "rejected_claims": [
+    {
+      "claim_id": "test_suite__p3__m1__temp07_vs_temp0",
+      "claim_type": "unsupported",
+      "suite_name": "test_suite",
+      "metric": "checks_pass_rate",
+      "prompt_id": "p3",
+      "model": "m1",
+      "baseline_experiment": "temp0",
+      "comparison_experiment": "temp07",
+      "baseline_value": 0.8,
+      "comparison_value": null,
+      "delta_value": null,
+      "direction": null,
+      "label": "missing_comparison",
+      "claim_eligible": false,
+      "claim_strength": null,
+      "validation": {
+        "values_present": false,
+        "direction_matches_delta": false,
+        "stable_pass_matches_values": true,
+        "stable_fail_matches_values": true,
+        "invariant_matches_values": true
+      },
+      "validation_passed": false,
+      "claim_status": "rejected"
+    }
+  ]
+}

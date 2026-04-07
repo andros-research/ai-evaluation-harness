@@ -1,0 +1,927 @@
+{
+  "source_selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "source_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repair_03.json",
+  "suite_name": "suite_instruction",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "repair_mode": "targeted_unused_claim_inclusion",
+  "repair_iteration": 3,
+  "parent_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repair_02.json",
+  "target_claim_ids": [
+    "suite_instruction__style_hemi__mistral__temp07_vs_temp0"
+  ],
+  "summary": {
+    "n_items": 11,
+    "n_items_with_claim_refs": 10,
+    "n_items_missing_claim_refs": 0,
+    "n_unknown_claim_ids": 0,
+    "n_mixed_direction_items": 6,
+    "n_mixed_model_items": 2,
+    "n_mixed_prompt_items": 4,
+    "n_mixed_strength_items": 2
+  },
+  "items": [
+    {
+      "item_id": 1,
+      "section": "observations",
+      "raw_text": "Increasing the temperature from 0 to 0.7 in LLama3 model for the verbosity_drift prompt leads to a significant improvement [CLAIMS: suite_instruction__verbosity_drift__llama3__temp07_vs_temp0, suite_instruction__verbosity_drift__llama3_70b__temp07_vs_temp0].",
+      "clean_text": "Increasing the temperature from 0 to 0.7 in LLama3 model for the verbosity_drift prompt leads to a significant improvement .",
+      "claim_ids": [
+        "suite_instruction__verbosity_drift__llama3__temp07_vs_temp0",
+        "suite_instruction__verbosity_drift__llama3_70b__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__verbosity_drift__llama3__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "verbosity_drift",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.725,
+          "delta_value": 0.725,
+          "direction": "up",
+          "label": "improves",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__verbosity_drift__llama3_70b__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "verbosity_drift",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.775,
+          "comparison_value": 0.425,
+          "delta_value": -0.35000000000000003,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "positive",
+        "negative"
+      ],
+      "direction_set": [
+        "negative",
+        "positive"
+      ],
+      "n_distinct_directions": 2,
+      "has_mixed_directions": true,
+      "linked_models": [
+        "llama3",
+        "llama3:70b"
+      ],
+      "linked_prompt_ids": [
+        "verbosity_drift"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": true,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 2,
+      "section": "observations",
+      "raw_text": "For the same model and prompt, a higher temperature (0.7) results in a substantial degradation for the style_hemi prompt [CLAIMS: suite_instruction__style_hemi__llama3__temp07_vs_temp0, suite_instruction__style_hemi__llama3_70b__temp07_vs_temp0].",
+      "clean_text": "For the same model and prompt, a higher temperature (0.7) results in a substantial degradation for the style_hemi prompt .",
+      "claim_ids": [
+        "suite_instruction__style_hemi__llama3__temp07_vs_temp0",
+        "suite_instruction__style_hemi__llama3_70b__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__style_hemi__llama3__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 0.35,
+          "delta_value": -0.65,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__style_hemi__llama3_70b__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "llama3:70b",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.25,
+          "delta_value": 0.25,
+          "direction": "up",
+          "label": "improves",
+          "claim_eligible": true,
+          "claim_strength": "medium",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "negative",
+        "positive"
+      ],
+      "direction_set": [
+        "negative",
+        "positive"
+      ],
+      "n_distinct_directions": 2,
+      "has_mixed_directions": true,
+      "linked_models": [
+        "llama3",
+        "llama3:70b"
+      ],
+      "linked_prompt_ids": [
+        "style_hemi"
+      ],
+      "linked_claim_strengths": [
+        "medium",
+        "strong"
+      ],
+      "has_mixed_models": true,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": true
+    },
+    {
+      "item_id": 3,
+      "section": "observations",
+      "raw_text": "Lowering the temperature from 0 to 0.3 in LLama3 model for the same prompts results in a degradation for both verbosity_drift and style_hemi [CLAIMS: suite_instruction__verbosity_drift__llama3__temp03_vs_temp0, suite_instruction__style_hemi__llama3__temp03_vs_temp0].",
+      "clean_text": "Lowering the temperature from 0 to 0.3 in LLama3 model for the same prompts results in a degradation for both verbosity_drift and style_hemi .",
+      "claim_ids": [
+        "suite_instruction__verbosity_drift__llama3__temp03_vs_temp0",
+        "suite_instruction__style_hemi__llama3__temp03_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__verbosity_drift__llama3__temp03_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "verbosity_drift",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.5714285714285714,
+          "delta_value": 0.5714285714285714,
+          "direction": "up",
+          "label": "improves",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__style_hemi__llama3__temp03_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 0.4,
+          "delta_value": -0.6,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "positive",
+        "negative"
+      ],
+      "direction_set": [
+        "negative",
+        "positive"
+      ],
+      "n_distinct_directions": 2,
+      "has_mixed_directions": true,
+      "linked_models": [
+        "llama3"
+      ],
+      "linked_prompt_ids": [
+        "style_hemi",
+        "verbosity_drift"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": true,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 4,
+      "section": "observations",
+      "raw_text": "The Mistral model struggles with the follow_instr prompt, consistently failing across different temperatures [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model struggles with the follow_instr prompt, consistently failing across different temperatures .",
+      "claim_ids": [
+        "suite_instruction__follow_instr__mistral__temp03_vs_temp0",
+        "suite_instruction__follow_instr__mistral__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__follow_instr__mistral__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__follow_instr__mistral__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "stable",
+        "stable"
+      ],
+      "direction_set": [
+        "stable"
+      ],
+      "n_distinct_directions": 1,
+      "has_mixed_directions": false,
+      "linked_models": [
+        "mistral"
+      ],
+      "linked_prompt_ids": [
+        "follow_instr"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 5,
+      "section": "observations",
+      "raw_text": "Mistral model's performance on the attention_5sent prompt is significantly worse at temperature 0.7 compared to temperature 0 [CLAIMS: suite_instruction__attention_5sent__mistral__temp07_vs_temp0].",
+      "clean_text": "Mistral model's performance on the attention_5sent prompt is significantly worse at temperature 0.7 compared to temperature 0 .",
+      "claim_ids": [
+        "suite_instruction__attention_5sent__mistral__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 1,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__attention_5sent__mistral__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "attention_5sent",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 0.7,
+          "delta_value": -0.30000000000000004,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 1,
+      "claim_directions": [
+        "negative"
+      ],
+      "direction_set": [
+        "negative"
+      ],
+      "n_distinct_directions": 1,
+      "has_mixed_directions": false,
+      "linked_models": [
+        "mistral"
+      ],
+      "linked_prompt_ids": [
+        "attention_5sent"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 6,
+      "section": "observations",
+      "raw_text": "The Mistral model also shows a degradation in style performance for the style_hemi prompt at higher temperatures (0.7) compared to lower temperatures (0) [CLAIMS: suite_instruction__style_hemi__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model also shows a degradation in style performance for the style_hemi prompt at higher temperatures (0.7) compared to lower temperatures (0) .",
+      "claim_ids": [
+        "suite_instruction__style_hemi__mistral__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 1,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__style_hemi__mistral__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.8,
+          "comparison_value": 0.6,
+          "delta_value": -0.20000000000000007,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "medium",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 1,
+      "claim_directions": [
+        "negative"
+      ],
+      "direction_set": [
+        "negative"
+      ],
+      "n_distinct_directions": 1,
+      "has_mixed_directions": false,
+      "linked_models": [
+        "mistral"
+      ],
+      "linked_prompt_ids": [
+        "style_hemi"
+      ],
+      "linked_claim_strengths": [
+        "medium"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 7,
+      "section": "tradeoffs",
+      "raw_text": "Improvements in verbosity for LLama3 at higher temperatures (0.7) come at the cost of degraded style performance for the same model and prompt [CLAIMS: suite_instruction__verbosity_drift__llama3__temp07_vs_temp0, suite_instruction__style_hemi__llama3__temp07_vs_temp0].",
+      "clean_text": "Improvements in verbosity for LLama3 at higher temperatures (0.7) come at the cost of degraded style performance for the same model and prompt .",
+      "claim_ids": [
+        "suite_instruction__verbosity_drift__llama3__temp07_vs_temp0",
+        "suite_instruction__style_hemi__llama3__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__verbosity_drift__llama3__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "verbosity_drift",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.725,
+          "delta_value": 0.725,
+          "direction": "up",
+          "label": "improves",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__style_hemi__llama3__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 1.0,
+          "comparison_value": 0.35,
+          "delta_value": -0.65,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "positive",
+        "negative"
+      ],
+      "direction_set": [
+        "negative",
+        "positive"
+      ],
+      "n_distinct_directions": 2,
+      "has_mixed_directions": true,
+      "linked_models": [
+        "llama3"
+      ],
+      "linked_prompt_ids": [
+        "style_hemi",
+        "verbosity_drift"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": true,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 8,
+      "section": "tradeoffs",
+      "raw_text": "Lowering the temperature from 0.3 to 0 in LLama3 model for the style_hemi prompt leads to a degradation but shows improvement for verbosity_drift [CLAIMS: suite_instruction__style_hemi__llama3__temp03_vs_temp0, suite_instruction__verbosity_drift__llama3__temp03_vs_temp0].",
+      "clean_text": "Lowering the temperature from 0.3 to 0 in LLama3 model for the style_hemi prompt leads to a degradation but shows improvement for verbosity_drift .",
+      "claim_ids": [
+        "suite_instruction__style_hemi__llama3__temp03_vs_temp0",
+        "suite_instruction__verbosity_drift__llama3__temp03_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__style_hemi__llama3__temp03_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 1.0,
+          "comparison_value": 0.4,
+          "delta_value": -0.6,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__verbosity_drift__llama3__temp03_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "verbosity_drift",
+          "model": "llama3",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.5714285714285714,
+          "delta_value": 0.5714285714285714,
+          "direction": "up",
+          "label": "improves",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "negative",
+        "positive"
+      ],
+      "direction_set": [
+        "negative",
+        "positive"
+      ],
+      "n_distinct_directions": 2,
+      "has_mixed_directions": true,
+      "linked_models": [
+        "llama3"
+      ],
+      "linked_prompt_ids": [
+        "style_hemi",
+        "verbosity_drift"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": true,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 9,
+      "section": "tradeoffs",
+      "raw_text": "The Mistral model's failure to pass the follow_instr checks remains consistent across different temperatures, but it also shows a degradation in style performance for the same prompt at higher temperatures (0.7) compared to lower temperatures (0) [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0, suite_instruction__style_hemi__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model's failure to pass the follow_instr checks remains consistent across different temperatures, but it also shows a degradation in style performance for the same prompt at higher temperatures (0.7) compared to lower temperatures (0) .",
+      "claim_ids": [
+        "suite_instruction__follow_instr__mistral__temp03_vs_temp0",
+        "suite_instruction__follow_instr__mistral__temp07_vs_temp0",
+        "suite_instruction__style_hemi__mistral__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 3,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__follow_instr__mistral__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__follow_instr__mistral__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__style_hemi__mistral__temp07_vs_temp0",
+          "claim_type": "delta_change",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "style_hemi",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.8,
+          "comparison_value": 0.6,
+          "delta_value": -0.20000000000000007,
+          "direction": "down",
+          "label": "degrades",
+          "claim_eligible": true,
+          "claim_strength": "medium",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 3,
+      "claim_directions": [
+        "stable",
+        "stable",
+        "negative"
+      ],
+      "direction_set": [
+        "negative",
+        "stable"
+      ],
+      "n_distinct_directions": 2,
+      "has_mixed_directions": true,
+      "linked_models": [
+        "mistral"
+      ],
+      "linked_prompt_ids": [
+        "follow_instr",
+        "style_hemi"
+      ],
+      "linked_claim_strengths": [
+        "medium",
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": true,
+      "has_mixed_strengths": true
+    },
+    {
+      "item_id": 10,
+      "section": "invariances",
+      "raw_text": "The Mistral model's failure to pass the follow_instr checks remains consistent across different temperatures [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0].",
+      "clean_text": "The Mistral model's failure to pass the follow_instr checks remains consistent across different temperatures .",
+      "claim_ids": [
+        "suite_instruction__follow_instr__mistral__temp03_vs_temp0",
+        "suite_instruction__follow_instr__mistral__temp07_vs_temp0"
+      ],
+      "n_claim_ids": 2,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [
+        {
+          "claim_id": "suite_instruction__follow_instr__mistral__temp03_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp03",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        },
+        {
+          "claim_id": "suite_instruction__follow_instr__mistral__temp07_vs_temp0",
+          "claim_type": "stable_floor",
+          "suite_name": "suite_instruction",
+          "metric": "checks_pass_rate",
+          "prompt_id": "follow_instr",
+          "model": "mistral",
+          "baseline_experiment": "temp0",
+          "comparison_experiment": "temp07",
+          "baseline_value": 0.0,
+          "comparison_value": 0.0,
+          "delta_value": 0.0,
+          "direction": "flat",
+          "label": "stable_always_fail",
+          "claim_eligible": true,
+          "claim_strength": "strong",
+          "validation": {
+            "values_present": true,
+            "direction_matches_delta": true,
+            "stable_pass_matches_values": true,
+            "stable_fail_matches_values": true,
+            "invariant_matches_values": true
+          },
+          "validation_passed": true,
+          "claim_status": "validated"
+        }
+      ],
+      "n_linked_claims": 2,
+      "claim_directions": [
+        "stable",
+        "stable"
+      ],
+      "direction_set": [
+        "stable"
+      ],
+      "n_distinct_directions": 1,
+      "has_mixed_directions": false,
+      "linked_models": [
+        "mistral"
+      ],
+      "linked_prompt_ids": [
+        "follow_instr"
+      ],
+      "linked_claim_strengths": [
+        "strong"
+      ],
+      "has_mixed_models": false,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": false
+    },
+    {
+      "item_id": 11,
+      "section": "cautions",
+      "raw_text": "The observations are based on a specific set of prompts and models, and the results may vary for other scenarios.",
+      "clean_text": "The observations are based on a specific set of prompts and models, and the results may vary for other scenarios.",
+      "claim_ids": [],
+      "n_claim_ids": 0,
+      "unknown_claim_ids": [],
+      "n_unknown_claim_ids": 0,
+      "linked_claims": [],
+      "n_linked_claims": 0,
+      "claim_directions": [],
+      "direction_set": [],
+      "n_distinct_directions": 0,
+      "has_mixed_directions": false,
+      "linked_models": [],
+      "linked_prompt_ids": [],
+      "linked_claim_strengths": [],
+      "has_mixed_models": false,
+      "has_mixed_prompts": false,
+      "has_mixed_strengths": false
+    }
+  ]
+}

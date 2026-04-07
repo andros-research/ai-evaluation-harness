@@ -1,0 +1,41 @@
+{
+  "suite_name": "suite_instruction",
+  "metric": "checks_pass_rate",
+  "baseline_experiment": "temp0",
+  "comparison_experiments": [
+    "temp03",
+    "temp07"
+  ],
+  "source_selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "source_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repaired.json",
+  "parent_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repaired.json",
+  "repair_iteration": 2,
+  "repair_mode": "targeted_unused_claim_inclusion",
+  "target_claim_ids": [
+    "suite_instruction__verbosity_drift__llama3_70b__temp07_vs_temp0"
+  ],
+  "model": "mistral",
+  "temperature": 0.1,
+  "num_predict": 768,
+  "prompt": "You are revising a benchmark note to improve evidence coverage.\n\nYou will be given:\n1. The current narrative\n2. The selected claims\n3. A small set of important unused claim IDs that should be incorporated if possible\n\nYour task:\n- Revise the narrative to incorporate the target unused claims if they add meaningful new information\n- Preserve the existing section structure and concise analytical style\n- Prefer minimal edits over wholesale rewriting\n- Do not introduce any facts not supported by the selected claims\n- Do not invent, rewrite, or transform claim IDs\n- Every empirical bullet must cite real selected claim IDs verbatim\n- If a target claim is redundant with an existing bullet, merge it into a revised observation or tradeoff instead of adding unnecessary new bullets\n- If a target claim does not add meaningful new information, you may leave it unused, but only if the current narrative already captures its content well\n- Cautions may omit claim IDs if they are clearly meta-cautions\n- For every empirical bullet, the model names in prose must exactly match the models referenced by the cited claim IDs.\n- Do not cite a mistral claim in a bullet that describes llama3.\n- Do not merge llama3 and llama3:70b into one bullet unless the prose explicitly names both.\n\nImportant:\n- All cited claim IDs must be copied exactly from the provided selected_claims\n- Do not create synthetic comparison IDs\n- If comparing two temperatures in prose, cite the underlying real selected claim IDs\n- The model, prompt_id, and experiment names in prose must be consistent with the cited claim IDs.\n- If a cited claim refers to mistral, the prose must refer to mistral, not llama3.\n- If a cited claim refers to llama3:70b, the prose must preserve that distinction and not collapse it into llama3.\n- If a bullet cites a target claim, the prose in that bullet must explicitly name the same model family as the cited claim ID.\n- Do not satisfy target-claim inclusion by attaching the target claim ID to a bullet whose prose primarily describes a different model.\n- If no valid revision can incorporate a target claim without violating these rules, omit it and add a short note under Cautions explaining that the target claim could not be incorporated cleanly.\n- Do not write placeholder bullets like \"None (...)\" in Observations, Tradeoffs, or Invariances. Omit the bullet instead.\n\n\nOutput exactly in this structure:\n\nObservations:\n- <observation sentence> [CLAIMS: claim_id_1, claim_id_2]\n\nTradeoffs:\n- <tradeoff sentence> [CLAIMS: claim_id_3, claim_id_4]\n\nInvariances:\n- <invariance sentence> [CLAIMS: claim_id_5, claim_id_6]\n\nCautions:\n- <meta-caution sentence>\n",
+  "narrative": "Observations:\n- Increasing the temperature from 0 to 0.7 in LLama3 model for the verbosity_drift prompt leads to a significant improvement [CLAIMS: suite_instruction__verbosity_drift__llama3__temp07_vs_temp0, suite_instruction__verbosity_drift__llama3_70b__temp07_vs_temp0].\n- For the same model and prompt, a higher temperature (0.7) results in a substantial degradation for the style_hemi prompt [CLAIMS: suite_instruction__style_hemi__llama3__temp07_vs_temp0, suite_instruction__style_hemi__llama3_70b__temp07_vs_temp0].\n- Lowering the temperature from 0 to 0.3 in LLama3 model for the same prompts results in a degradation for both verbosity_drift and style_hemi [CLAIMS: suite_instruction__verbosity_drift__llama3__temp03_vs_temp0, suite_instruction__style_hemi__llama3__temp03_vs_temp0].\n- The Mistral model struggles with the follow_instr prompt, consistently failing across different temperatures [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0].\n- Mistral model's performance on the attention_5sent prompt is significantly worse at temperature 0.7 compared to temperature 0 [CLAIMS: suite_instruction__attention_5sent__mistral__temp07_vs_temp0].\n\nTradeoffs:\n- Improvements in verbosity for LLama3 at higher temperatures (0.7) come at the cost of degraded style performance for the same model and prompt [CLAIMS: suite_instruction__verbosity_drift__llama3__temp07_vs_temp0, suite_instruction__style_hemi__llama3__temp07_vs_temp0].\n- Lowering the temperature from 0.3 to 0 in LLama3 model for the style_hemi prompt leads to a degradation but shows improvement for verbosity_drift [CLAIMS: suite_instruction__style_hemi__llama3__temp03_vs_temp0, suite_instruction__verbosity_drift__llama3__temp03_vs_temp0].\n\nInvariances:\n- The Mistral model's failure to pass the follow_instr checks remains consistent across different temperatures [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0].\n\nCautions:\n- The observations are based on a specific set of prompts and models, and the results may vary for other scenarios.",
+  "sections": {
+    "observations": [
+      "Increasing the temperature from 0 to 0.7 in LLama3 model for the verbosity_drift prompt leads to a significant improvement [CLAIMS: suite_instruction__verbosity_drift__llama3__temp07_vs_temp0, suite_instruction__verbosity_drift__llama3_70b__temp07_vs_temp0].",
+      "For the same model and prompt, a higher temperature (0.7) results in a substantial degradation for the style_hemi prompt [CLAIMS: suite_instruction__style_hemi__llama3__temp07_vs_temp0, suite_instruction__style_hemi__llama3_70b__temp07_vs_temp0].",
+      "Lowering the temperature from 0 to 0.3 in LLama3 model for the same prompts results in a degradation for both verbosity_drift and style_hemi [CLAIMS: suite_instruction__verbosity_drift__llama3__temp03_vs_temp0, suite_instruction__style_hemi__llama3__temp03_vs_temp0].",
+      "The Mistral model struggles with the follow_instr prompt, consistently failing across different temperatures [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0].",
+      "Mistral model's performance on the attention_5sent prompt is significantly worse at temperature 0.7 compared to temperature 0 [CLAIMS: suite_instruction__attention_5sent__mistral__temp07_vs_temp0]."
+    ],
+    "tradeoffs": [
+      "Improvements in verbosity for LLama3 at higher temperatures (0.7) come at the cost of degraded style performance for the same model and prompt [CLAIMS: suite_instruction__verbosity_drift__llama3__temp07_vs_temp0, suite_instruction__style_hemi__llama3__temp07_vs_temp0].",
+      "Lowering the temperature from 0.3 to 0 in LLama3 model for the style_hemi prompt leads to a degradation but shows improvement for verbosity_drift [CLAIMS: suite_instruction__style_hemi__llama3__temp03_vs_temp0, suite_instruction__verbosity_drift__llama3__temp03_vs_temp0]."
+    ],
+    "invariances": [
+      "The Mistral model's failure to pass the follow_instr checks remains consistent across different temperatures [CLAIMS: suite_instruction__follow_instr__mistral__temp03_vs_temp0, suite_instruction__follow_instr__mistral__temp07_vs_temp0]."
+    ],
+    "cautions": [
+      "The observations are based on a specific set of prompts and models, and the results may vary for other scenarios."
+    ]
+  }
+}

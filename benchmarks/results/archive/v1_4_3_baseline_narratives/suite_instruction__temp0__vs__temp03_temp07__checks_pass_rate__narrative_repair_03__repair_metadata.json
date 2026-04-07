@@ -1,0 +1,14 @@
+{
+  "selected_claims_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__selected_claims.json",
+  "narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repair_02.json",
+  "parent_narrative_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repair_02.json",
+  "repair_iteration": 3,
+  "target_claim_ids": [
+    "suite_instruction__style_hemi__mistral__temp07_vs_temp0"
+  ],
+  "model": "mistral",
+  "temperature": 0.1,
+  "num_predict": 768,
+  "output_json": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repair_03.json",
+  "output_md": "/home/joe/ai-lab/benchmarks/results/narratives/suite_instruction__temp0__vs__temp03_temp07__checks_pass_rate__narrative_repair_03.md"
+}
