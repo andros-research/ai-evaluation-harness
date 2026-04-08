@@ -265,6 +265,7 @@ def parse_args() -> argparse.Namespace:
         description="Generate validated claims from an analysis payload."
     )
     parser.add_argument("--analysis-json", required=True)
+    parser.add_argument("--results-root", default="benchmarks/results")
     parser.add_argument("--output-json", default=None)
     parser.add_argument("--min-abs-delta", type=float, default=0.10)
     return parser.parse_args()
@@ -273,14 +274,22 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    results_root = Path(args.results_root).resolve()
     analysis_path = Path(args.analysis_json).resolve()
+
+    if not analysis_path.exists():
+        raise FileNotFoundError(f"analysis json not found: {analysis_path}")
+    
     analysis = load_json(analysis_path)
 
     claims_payload = extract_claims(
         analysis=analysis,
         min_abs_delta=args.min_abs_delta,
     )
-
+    
+    claims_payload["results_root"] = str(results_root)
+    claims_payload["source_analysis_json"] = str(analysis_path)
+    
     output_path = (
         Path(args.output_json).resolve()
         if args.output_json

@@ -141,6 +141,8 @@ def select_claims_for_narrative(
             ),
         },
         "selected_claims": selected,
+        "n_weak_delta": len(weak_delta),
+        "n_selected_strong_delta": sum(1 for c in selected if c["claim_type"] == "delta_change" and c.get("claim_strength") == "strong"),
     }
 
 
@@ -158,6 +160,7 @@ def parse_args() -> argparse.Namespace:
         description="Select high-value claims for narrative generation."
     )
     parser.add_argument("--claims-json", required=True)
+    parser.add_argument("--results-root", default="benchmarks/results")
     parser.add_argument("--output-json", default=None)
     parser.add_argument("--max-total", type=int, default=12)
     parser.add_argument("--max-medium", type=int, default=4)
@@ -169,6 +172,12 @@ def main() -> None:
     args = parse_args()
 
     claims_path = Path(args.claims_json).resolve()
+    if not claims_path.exists():
+        raise FileNotFoundError(f"claims json not found: {claims_path}")
+    
+    results_root = Path(args.results_root).resolve()
+    claims_path = Path(args.claims_json).resolve() 
+    
     claims = load_json(claims_path)
 
     selected_payload = select_claims_for_narrative(
@@ -177,6 +186,9 @@ def main() -> None:
         max_medium_delta=args.max_medium,
         max_stable=args.max_stable,
     )
+    
+    selected_payload["results_root"] = str(results_root)
+    selected_payload["source_claims_json"] = str(claims_path)
 
     output_path = (
         Path(args.output_json).resolve()

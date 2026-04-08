@@ -56,8 +56,8 @@ These claims have already passed validation and selection.
 
 Your task:
 1. Summarize the most important observed changes.
-2. Highlight tradeoffs or asymmetries across prompts or models.
-3. Note any meaningful invariances or saturated behaviors.
+2. Highlight tradeoffs or asymmetries only when they are directly supported by the supplied claims.
+3. Note invariances or saturated behaviors only when explicitly supported by the supplied claims.
 4. Keep the tone analytical, cautious, and concrete.
 
 Rules:
@@ -86,6 +86,12 @@ Rules:
 - Before writing each [CLAIMS: ...] block, verify that every cited claim ID appears exactly in the supplied selected_claims list.
 - Meta-cautions may omit claim IDs when they describe interpretation limits, sample-size limitations, or scope boundaries rather than empirical findings.
 - Do not attach [CLAIMS: ...] to a meta-caution unless the cited IDs are real selected_claims and directly support the statement.
+- Do not compare one non-baseline experiment directly against another unless an exact selected claim for that comparison exists.
+- Do not cite claim IDs that are not present verbatim in selected_claims.
+- Do not write placeholder claim blocks such as [CLAIMS: ] or [CLAIMS: None].
+- If no supported bullet exists for Tradeoffs or Invariances, write no bullet under that section.
+- A stable_ceiling or stable_floor claim supports only the specific comparison experiment cited; do not generalize it to “all temperatures” unless both comparison experiments are explicitly cited.
+- Do not combine stable and degrading claims into a single invariance statement.
 
 Output exactly in this structure:
 

@@ -309,7 +309,7 @@ def text_mentions_model(text: str, model: str) -> bool:
     tokens = expected_model_tokens(model)
 
     if not tokens:
-        return False
+        return Falsea
 
     # Special handling:
     # - llama3:70b should require an explicit 70b-style token
@@ -328,6 +328,7 @@ def parse_args() -> argparse.Namespace:
         description="Audit a generated narrative against selected claims."
     )
     parser.add_argument("--selected-claims-json", required=True)
+    parser.add_argument("--results-root", default="benchmarks/results")
     parser.add_argument("--narrative-json", required=True)
     parser.add_argument("--output-json", default=None)
     return parser.parse_args()
@@ -338,6 +339,12 @@ def main() -> None:
 
     selected_claims_path = Path(args.selected_claims_json).resolve()
     narrative_path = Path(args.narrative_json).resolve()
+    
+    if not selected_claims_path.exists():
+        raise FileNotFoundError(f"selected claims json not found: {selected_claims_path}")
+
+    if not narrative_path.exists():
+        raise FileNotFoundError(f"narrative json not found: {narrative_path}")
 
     selected_claims_payload = load_json(selected_claims_path)
     selected_claims_payload["_source_path"] = str(selected_claims_path)
@@ -349,12 +356,18 @@ def main() -> None:
         selected_claims_payload=selected_claims_payload,
         narrative_payload=narrative_payload,
     )
+    results_root = Path(args.results_root).resolve()
+    
+    audit_payload["results_root"] = str(results_root)
+    audit_payload["source_selected_claims_json"] = str(selected_claims_path)
+    audit_payload["source_narrative_json"] = str(narrative_path)
 
     output_path = (
         Path(args.output_json).resolve()
         if args.output_json
         else default_output_path(narrative_path)
     )
+    
 
     save_json(audit_payload, output_path)
     print(f"Saved audit JSON: {output_path}")

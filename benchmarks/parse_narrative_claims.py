@@ -47,7 +47,6 @@ def split_narrative_sections(narrative_text: str) -> list[dict[str, str]]:
 
     return items
 
-import re
 
 def normalize_claim_id(s: str) -> str:
     s = re.sub(r"\s+", "", s)
@@ -261,6 +260,7 @@ def parse_args() -> argparse.Namespace:
         description="Parse claim IDs from a narrative and link them to selected claims."
     )
     parser.add_argument("--selected-claims-json", required=True)
+    parser.add_argument("--results-root", default="benchmarks/results")
     parser.add_argument("--narrative-json", required=True)
     parser.add_argument("--output-json", default=None)
     return parser.parse_args()
@@ -271,6 +271,14 @@ def main() -> None:
 
     selected_claims_path = Path(args.selected_claims_json).resolve()
     narrative_path = Path(args.narrative_json).resolve()
+    
+    if not selected_claims_path.exists():
+        raise FileNotFoundError(f"selected claims json not found: {selected_claims_path}")
+
+    if not narrative_path.exists():
+        raise FileNotFoundError(f"narrative json not found: {narrative_path}")
+    
+    results_root = Path(args.results_root).resolve()
 
     selected_claims_payload = load_json(selected_claims_path)
     selected_claims_payload["_source_path"] = str(selected_claims_path)
@@ -282,6 +290,9 @@ def main() -> None:
         selected_claims_payload=selected_claims_payload,
         narrative_payload=narrative_payload,
     )
+    parsed_payload["results_root"] = str(results_root)
+    parsed_payload["source_selected_claims_json"] = str(selected_claims_path)
+    parsed_payload["source_narrative_json"] = str(narrative_path)
 
     output_path = (
         Path(args.output_json).resolve()

@@ -10,9 +10,8 @@ from analysis import (
     save_json,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
-NARRATIVE_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
+DEFAULT_RESULTS_ROOT = REPO_ROOT / "benchmarks" / "results"
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,9 +31,14 @@ def parse_args() -> argparse.Namespace:
         help="Metric to compare",
     )
     parser.add_argument(
+        "--results-root",
+        default=str(DEFAULT_RESULTS_ROOT),
+        help="Run-scoped results root, e.g. benchmarks/results/runs/v1_4_4_scaled",
+    )
+    parser.add_argument(
         "--output-dir",
-        default=str(NARRATIVE_ROOT),
-        help="Directory to save analysis artifacts",
+        default=None,
+        help="Directory to save analysis artifacts. Defaults to <results-root>/narratives",
     )
     return parser.parse_args()
 
@@ -53,13 +57,17 @@ def main() -> None:
         metric_col=args.metric,
     )
 
-    out_dir = Path(args.output_dir)
+    results_root = Path(args.results_root).resolve()
+    out_dir = Path(args.output_dir).resolve() if args.output_dir else (results_root / "narratives")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     comp_slug = "_".join(args.comparisons)
     stem = f"{args.suite}__{args.baseline}__vs__{comp_slug}__{args.metric}"
 
-    save_json(payload, out_dir / f"{stem}__analysis.json")
+    out_path = out_dir / f"{stem}__analysis.json"
+    save_json(payload, out_path)
 
-    print(f"Saved analysis payload to: {out_dir / f'{stem}__analysis.json'}")
+    print(f"Saved analysis payload to: {out_path}")
 
 
 if __name__ == "__main__":
