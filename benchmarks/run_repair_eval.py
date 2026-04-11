@@ -10,6 +10,7 @@ from typing import Any
 ROOT = Path("benchmarks")
 NARRATIVES_DIR = ROOT / "results" / "narratives"
 AGG_DIR = ROOT / "results" / "aggregated"
+DEFAULT_RESULTS_ROOT = ROOT / "results"
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,6 +21,11 @@ def parse_args() -> argparse.Namespace:
         "--selected-claims-json",
         required=True,
         help="Path to selected claims JSON",
+    )
+    parser.add_argument(
+        "--results-root",
+        default=str(DEFAULT_RESULTS_ROOT),
+        help="Run-scoped results root, e.g. benchmarks/results/runs/v1_4_4_scaled",
     )
     parser.add_argument(
         "--narrative-json",
@@ -150,16 +156,22 @@ def newest_repair_metadata_for_parent(narratives_dir: Path, parent_narrative_jso
 
 def main() -> None:
     args = parse_args()
+    
+    results_root = Path(args.results_root).resolve()
+    agg_dir = results_root / "aggregated"
+    agg_dir.mkdir(parents=True, exist_ok=True)
 
     selected_claims_json = Path(args.selected_claims_json).resolve()
     narrative_json = Path(args.narrative_json).resolve()
-    narratives_dir = narrative_json.parent.resolve()
+    repair_parent_dir = narrative_json.parent.resolve()
 
     repair_cmd = [
         "python",
         args.repair_script,
         "--selected-claims-json",
         str(selected_claims_json),
+        "--results-root", 
+        str(results_root),
         "--narrative-json",
         str(narrative_json),
         "--target-claim-ids",
@@ -173,7 +185,7 @@ def main() -> None:
     ]
     run_cmd(repair_cmd)
 
-    metadata_path = newest_repair_metadata_for_parent(narratives_dir, narrative_json)
+    metadata_path = newest_repair_metadata_for_parent(repair_parent_dir, narrative_json)
     repaired = infer_repaired_paths_from_metadata(metadata_path)
 
     audit_cmd = [
@@ -181,6 +193,8 @@ def main() -> None:
         args.audit_script,
         "--selected-claims-json",
         str(selected_claims_json),
+        "--results-root", 
+        str(results_root),
         "--narrative-json",
         str(repaired["repaired_json"]),
     ]
@@ -191,6 +205,8 @@ def main() -> None:
         args.parse_script,
         "--selected-claims-json",
         str(selected_claims_json),
+        "--results-root", 
+        str(results_root),
         "--narrative-json",
         str(repaired["repaired_json"]),
     ]
@@ -199,12 +215,16 @@ def main() -> None:
     summarize_cmd = [
         "python",
         args.summarize_script,
+        "--results-root", 
+        str(results_root),
     ]
     run_cmd(summarize_cmd)
 
     compare_cmd = [
         "python",
         args.compare_script,
+        "--results-root", 
+        str(results_root),
         "--original-artifact",
         args.original_artifact,
         "--repaired-artifact",
@@ -212,7 +232,7 @@ def main() -> None:
     ]
     run_cmd(compare_cmd)
 
-    comparison_summary = load_json((AGG_DIR / "repair_comparison_summary.json").resolve())
+    comparison_summary = load_json((agg_dir / "repair_comparison_summary.json").resolve())
 
     print("\n=== REPAIR EVAL COMPLETE ===")
     print("Original artifact:", args.original_artifact)

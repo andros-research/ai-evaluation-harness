@@ -7,7 +7,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-
+ROOT = Path("benchmarks")
+DEFAULT_RESULTS_ROOT = ROOT / "results"
 NARRATIVES_DIR = Path("benchmarks/results/narratives")
 AGGREGATED_DIR = Path("benchmarks/results/aggregated")
 CLAIM_COVERAGE_CSV = AGGREGATED_DIR / "claim_coverage.csv"
@@ -739,6 +740,7 @@ def build_rows(narratives_dir: Path) -> list[dict[str, Any]]:
 
     return rows
 
+
 def compute_strict_ref_diagnostics(
     claim_ids: list[Any], matched_claim_ids: list[Any]
 ) -> dict[str, Any]:
@@ -774,33 +776,39 @@ def compute_strict_ref_diagnostics(
         "strict_ref_support_regime": strict_ref_support_regime,
     }
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Aggregate parsed narrative + audit artifacts into bullet-level audit tables."
     )
     parser.add_argument(
         "--narratives-dir",
-        default=str(NARRATIVES_DIR),
+        default=None,
         help="Directory containing narrative artifacts.",
     )
     parser.add_argument(
+        "--results-root",
+        default=str(DEFAULT_RESULTS_ROOT),
+        help="Run-scoped results root, e.g. benchmarks/results/runs/v1_4_4_scaled",
+    )
+    parser.add_argument(
         "--output-csv",
-        default=str(AGGREGATED_DIR / "audit_items.csv"),
+        default=None,
         help="Output CSV path for bullet-level audit rows.",
     )
     parser.add_argument(
         "--output-json",
-        default=str(AGGREGATED_DIR / "audit_summary.json"),
+        default=None,
         help="Output JSON path for summary metrics.",
     )
     parser.add_argument(
         "--claim-coverage-csv",
-        default=str(AGGREGATED_DIR / "claim_coverage.csv"),
+        default=None,
         help="Output CSV path for claim-level coverage rows.",
     )
     parser.add_argument(
         "--claim-coverage-json",
-        default=str(AGGREGATED_DIR / "claim_coverage_summary.json"),
+        default=None,
         help="Output JSON path for claim coverage summary metrics.",
     )
     return parser.parse_args()
@@ -809,11 +817,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    narratives_dir = Path(args.narratives_dir).resolve()
-    output_csv = Path(args.output_csv).resolve()
-    output_json = Path(args.output_json).resolve()
-    claim_coverage_csv = Path(args.claim_coverage_csv).resolve()
-    claim_coverage_json = Path(args.claim_coverage_json).resolve()
+    results_root = Path(args.results_root).resolve()
+    narratives_dir = Path(args.narratives_dir).resolve() if args.narratives_dir else (results_root / "narratives")
+    aggregated_dir = results_root / "aggregated"
+    aggregated_dir.mkdir(parents=True, exist_ok=True)
+
+    output_csv = Path(args.output_csv).resolve() if args.output_csv else (aggregated_dir / "audit_items.csv")
+    output_json = Path(args.output_json).resolve() if args.output_json else (aggregated_dir / "audit_summary.json")
+    claim_coverage_csv = Path(args.claim_coverage_csv).resolve() if args.claim_coverage_csv else (aggregated_dir / "claim_coverage.csv")
+    claim_coverage_json = Path(args.claim_coverage_json).resolve() if args.claim_coverage_json else (aggregated_dir / "claim_coverage_summary.json")
 
     # Audit rows / summary
     rows = build_rows(narratives_dir)

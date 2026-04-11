@@ -370,6 +370,7 @@ def infer_metadata_from_selected_payload(
 
 def build_repaired_payload(
     *,
+    results_root: Path,
     repaired_text: str,
     original_narrative_payload: dict[str, Any],
     selected_payload: dict[str, Any],
@@ -385,6 +386,7 @@ def build_repaired_payload(
     meta = infer_metadata_from_selected_payload(selected_payload, selected_claims_path)
 
     return {
+        "results_root": str(results_root),
         "suite_name": meta["suite_name"],
         "metric": meta["metric"],
         "baseline_experiment": meta["baseline_experiment"],
@@ -457,6 +459,7 @@ def parse_args() -> argparse.Namespace:
         description="Repair an existing benchmark narrative by incorporating target unused claims."
     )
     parser.add_argument("--selected-claims-json", required=True, help="Path to selected claims JSON.")
+    parser.add_argument("--results-root", default="benchmarks/results")
     parser.add_argument("--narrative-json", required=True, help="Path to current narrative JSON.")
     parser.add_argument(
         "--target-claim-ids",
@@ -472,10 +475,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    
+    results_root = Path(args.results_root).resolve()
 
     selected_claims_path = Path(args.selected_claims_json).resolve()
     narrative_json_path = Path(args.narrative_json).resolve()
     target_claim_ids = [str(x).strip() for x in args.target_claim_ids if str(x).strip()]
+    
+    if not selected_claims_path.exists():
+        raise FileNotFoundError(f"selected claims json not found: {selected_claims_path}")
+    if not narrative_json_path.exists():
+        raise FileNotFoundError(f"narrative json not found: {narrative_json_path}")
 
     selected_payload = load_json(selected_claims_path)
     narrative_payload = load_json(narrative_json_path)
@@ -521,6 +531,7 @@ def main() -> None:
 
     repaired_payload = build_repaired_payload(
         repaired_text=repaired_text,
+        results_root=results_root,
         original_narrative_payload=narrative_payload,
         selected_payload=selected_payload,
         selected_claims_path=selected_claims_path,
@@ -545,6 +556,7 @@ def main() -> None:
 
     repair_metadata = {
         "selected_claims_json": str(selected_claims_path),
+        "results_root": str(results_root),
         "narrative_json": str(narrative_json_path),
         "parent_narrative_json": str(narrative_json_path),
         "repair_iteration": next_repair_idx,

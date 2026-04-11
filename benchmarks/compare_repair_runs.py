@@ -8,10 +8,8 @@ from typing import Any
 
 import pandas as pd
 
-
-AGGREGATED_DIR = Path("benchmarks/results/aggregated")
-AUDIT_ITEMS_CSV = AGGREGATED_DIR / "audit_items.csv"
-CLAIM_COVERAGE_CSV = AGGREGATED_DIR / "claim_coverage.csv"
+ROOT = Path("benchmarks")
+DEFAULT_RESULTS_ROOT = ROOT / "results"
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,28 +22,33 @@ def parse_args() -> argparse.Namespace:
         help="Artifact name for the original narrative.",
     )
     parser.add_argument(
+        "--results-root",
+        default=str(DEFAULT_RESULTS_ROOT),
+        help="Run-scoped results root, e.g. benchmarks/results/runs/v1_4_4_scaled",
+    )
+    parser.add_argument(
         "--repaired-artifact",
         required=True,
         help="Artifact name for the repaired narrative.",
     )
     parser.add_argument(
         "--audit-items-csv",
-        default=str(AUDIT_ITEMS_CSV),
+        default=None,
         help="Path to aggregated audit_items.csv",
     )
     parser.add_argument(
         "--claim-coverage-csv",
-        default=str(CLAIM_COVERAGE_CSV),
+        default=None,
         help="Path to aggregated claim_coverage.csv",
     )
     parser.add_argument(
         "--output-csv",
-        default=str(AGGREGATED_DIR / "repair_comparison.csv"),
+        default=None,
         help="Output CSV path",
     )
     parser.add_argument(
         "--output-json",
-        default=str(AGGREGATED_DIR / "repair_comparison_summary.json"),
+        default=None,
         help="Output JSON path",
     )
     return parser.parse_args()
@@ -278,10 +281,14 @@ def build_summary(row: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     args = parse_args()
 
-    audit_items_path = Path(args.audit_items_csv).resolve()
-    claim_coverage_path = Path(args.claim_coverage_csv).resolve()
-    output_csv = Path(args.output_csv).resolve()
-    output_json = Path(args.output_json).resolve()
+    results_root = Path(args.results_root).resolve()
+    aggregated_dir = results_root / "aggregated"
+    aggregated_dir.mkdir(parents=True, exist_ok=True)
+
+    audit_items_path = Path(args.audit_items_csv).resolve() if args.audit_items_csv else (aggregated_dir / "audit_items.csv")
+    claim_coverage_path = Path(args.claim_coverage_csv).resolve() if args.claim_coverage_csv else (aggregated_dir / "claim_coverage.csv")
+    output_csv = Path(args.output_csv).resolve() if args.output_csv else (aggregated_dir / "repair_comparison.csv")
+    output_json = Path(args.output_json).resolve() if args.output_json else (aggregated_dir / "repair_comparison_summary.json")
 
     audit_items = load_csv(audit_items_path)
     claim_coverage = load_csv(claim_coverage_path)
