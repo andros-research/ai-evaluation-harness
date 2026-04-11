@@ -18,12 +18,53 @@ RAW_RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "raw_runs"
 AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 AGG_PARQUET = AGG_ROOT / "runs_master.parquet"
 AGG_CSV = AGG_ROOT / "runs_master.csv"
-NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
-AUDIT_ITEMS_CSV = AGG_ROOT / "audit_items.csv"
-AUDIT_SUMMARY_JSON = AGG_ROOT / "audit_summary.json"
-CLAIM_COVERAGE_CSV = AGG_ROOT / "claim_coverage.csv"
-CLAIM_COVERAGE_SUMMARY_JSON = AGG_ROOT / "claim_coverage_summary.json"
 
+RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "runs"
+ARCHIVE_ROOT = REPO_ROOT / "benchmarks" / "results" / "archive"
+LEGACY_NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
+LEGACY_AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
+
+
+# -------------------------
+# Scope discovery helpers
+# -------------------------
+def find_scope_folders(root: Path) -> list[str]:
+    if not root.exists():
+        return []
+    return sorted([p.name for p in root.iterdir() if p.is_dir()], reverse=True)
+
+def get_scope_options() -> dict[str, list[str]]:
+    return {
+        "runs": find_scope_folders(RUNS_ROOT),
+        "archive": find_scope_folders(ARCHIVE_ROOT),
+    }
+
+def resolve_scope_paths(scope_type: str, scope_name: str) -> dict[str, Path]:
+    if scope_type == "runs":
+        base = RUNS_ROOT / scope_name
+        return {
+            "base": base,
+            "narratives_root": base / "narratives",
+            "aggregated_root": base / "aggregated",
+        }
+
+    if scope_type == "archive":
+        base = ARCHIVE_ROOT / scope_name
+
+        # archive snapshots may be narrative-only
+        agg_candidate = base / "aggregated"
+        return {
+            "base": base,
+            "narratives_root": base if base.exists() else LEGACY_NARRATIVES_ROOT,
+            "aggregated_root": agg_candidate if agg_candidate.exists() else LEGACY_AGG_ROOT,
+        }
+
+    return {
+        "base": LEGACY_NARRATIVES_ROOT.parent,
+        "narratives_root": LEGACY_NARRATIVES_ROOT,
+        "aggregated_root": LEGACY_AGG_ROOT,
+    }
+    
 # -------------------------
 # Helpers
 # -------------------------
@@ -342,7 +383,7 @@ def make_delta_heatmap(delta_table: pd.DataFrame) -> pd.DataFrame:
 def find_narrative_files(narratives_root: Path, suffix: str) -> list[Path]:
     if not narratives_root.exists():
         return []
-    return sorted(narratives_root.glob(f"*{suffix}"))
+    return sorted(narratives_root.glob(f"*{suffix}"), reverse=True)
 
 def load_json_file(path: Path) -> dict[str, Any]:
     try:
@@ -391,30 +432,31 @@ def load_agg() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_audit_items() -> pd.DataFrame:
-    if AUDIT_ITEMS_CSV.exists():
-        return pd.read_csv(AUDIT_ITEMS_CSV)
+def load_audit_items(path: str) -> pd.DataFrame:
+    p = Path(path)
+    if p.exists():
+        return pd.read_csv(p)
     return pd.DataFrame()
 
-
 @st.cache_data(show_spinner=False)
-def load_audit_summary() -> dict[str, Any]:
-    if AUDIT_SUMMARY_JSON.exists():
-        return load_json_file(AUDIT_SUMMARY_JSON)
+def load_audit_summary(path: str) -> dict[str, Any]:
+    p = Path(path)
+    if p.exists():
+        return load_json_file(p)
     return {}
 
-
 @st.cache_data(show_spinner=False)
-def load_claim_coverage() -> pd.DataFrame:
-    if CLAIM_COVERAGE_CSV.exists():
-        return pd.read_csv(CLAIM_COVERAGE_CSV)
+def load_claim_coverage(path: str) -> pd.DataFrame:
+    p = Path(path)
+    if p.exists():
+        return pd.read_csv(p)
     return pd.DataFrame()
 
-
 @st.cache_data(show_spinner=False)
-def load_claim_coverage_summary() -> dict[str, Any]:
-    if CLAIM_COVERAGE_SUMMARY_JSON.exists():
-        return load_json_file(CLAIM_COVERAGE_SUMMARY_JSON)
+def load_claim_coverage_summary(path: str) -> dict[str, Any]:
+    p = Path(path)
+    if p.exists():
+        return load_json_file(p)
     return {}
 
 # -------------------------
@@ -940,12 +982,42 @@ with tab_agg:
 
 with tab_audit:
     st.subheader("Audit Analytics")
-
-    audit_items = load_audit_items()
-    audit_summary = load_audit_summary()
     
-    claim_coverage = load_claim_coverage()
-    claim_coverage_summary = load_claim_coverage_summary()
+    scope_options = get_scope_options()
+
+    sc1, sc2 = st.columns([1, 2])
+
+    with sc1:
+        selected_scope_type = st.selectbox(
+            "Artifact source",
+            options=["runs", "archive"],
+            key="scope_type",
+        )
+
+    available_scopes = scope_options.get(selected_scope_type, [])
+
+    with sc2:
+        if available_scopes:
+            selected_scope_name = st.selectbox(
+                "Scope folder",
+                options=available_scopes,
+                key="scope_name",
+            )
+        else:
+            selected_scope_name = None
+            st.info(f"No folders found under {selected_scope_type}.")
+            
+    if selected_scope_name is not None:
+        scope_paths = resolve_scope_paths(selected_scope_type, selected_scope_name)
+    else:
+        scope_paths = resolve_scope_paths("legacy", "")
+        
+    st.caption(f"Using scope: {selected_scope_type} / {selected_scope_name}")
+
+    audit_items = load_audit_items(str(scope_paths["aggregated_root"] / "audit_items.csv"))
+    audit_summary = load_audit_summary(str(scope_paths["aggregated_root"] / "audit_summary.json"))
+    claim_coverage = load_claim_coverage(str(scope_paths["aggregated_root"] / "claim_coverage.csv"))
+    claim_coverage_summary = load_claim_coverage_summary(str(scope_paths["aggregated_root"] / "claim_coverage_summary.json"))
 
     if audit_items.empty:
         st.info("No audit_items.csv found yet. Run summarize_audits.py first.")
@@ -1515,8 +1587,25 @@ with tab_audit:
 
 with tab_trace:
     st.subheader("Narrative Traceability")
+    
+    scope_options = get_scope_options()
+    if "scope_type" not in st.session_state:
+        st.session_state["scope_type"] = "runs"
+    if "scope_name" not in st.session_state:
+        run_scopes = scope_options.get("runs", [])
+        st.session_state["scope_name"] = run_scopes[0] if run_scopes else None
+    
+    selected_scope_type = st.session_state.get("scope_type", "runs")
+    selected_scope_name = st.session_state.get("scope_name")
 
-    parsed_files = find_narrative_files(NARRATIVES_ROOT, "__parsed_narrative.json")
+    if selected_scope_name is not None:
+        scope_paths = resolve_scope_paths(selected_scope_type, selected_scope_name)
+    else:
+        scope_paths = resolve_scope_paths("legacy", "")
+
+    parsed_files = find_narrative_files(scope_paths["narratives_root"], "__parsed_narrative.json")
+    
+    st.caption(f"Using scope: {selected_scope_type} / {selected_scope_name}")
 
     if not parsed_files:
         st.info("No parsed narrative artifacts found yet.")
