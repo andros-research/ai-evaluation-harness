@@ -56,53 +56,64 @@ These claims have already passed validation and selection.
 
 Your task:
 1. Summarize the most important observed changes.
-2. Highlight tradeoffs or asymmetries only when they are directly supported by the supplied claims.
-3. Note invariances or saturated behaviors only when explicitly supported by the supplied claims.
-4. Keep the tone analytical, cautious, and concrete.
+2. Highlight tradeoffs only when directly supported by claims.
+3. Note invariances only when explicitly supported by claims.
+4. Keep tone analytical, cautious, and concrete.
 
-Rules:
-- Use only the supplied claims.
-- Do not introduce any facts, metrics, or causes not present in the input.
-- Do not generalize beyond the supplied claims.
-- If multiple claims repeat the same pattern, compress them into a concise observation.
-- Prefer specific references to prompt_id, model, and experiment names.
-- Keep hypotheses minimal and cautious.
-- Every bullet in Observations, Tradeoffs, and Invariances must include one or more supporting claim IDs.
-- Format claim references exactly as: [CLAIMS: claim_id_1, claim_id_2]
-- Always use [CLAIMS: ...] even for a single claim.
-- Place the [CLAIMS: ...] block at the end of the bullet only.
-- Do not place claim references at the beginning or middle of a bullet.
-- Do not write any empirical statement without at least one [CLAIMS: ...] block.
-- Cautions may omit claim IDs if they are clearly meta-cautions about interpretation limits.
-- Preserve experiment names exactly as written (e.g. temp03, temp07). Do not rewrite them as numeric temperatures unless they are copied exactly from the claims.
-- Every claim ID cited in [CLAIMS: ...] must appear verbatim in the supplied selected_claims list.
-- Never invent, infer, extrapolate, rewrite, or transform claim IDs.
-- Do not create new claim IDs by combining two existing claims into a synthetic comparison form.
-- If you describe a comparison between temp03 and temp07 in prose, cite the underlying selected claim IDs exactly as provided, even if those IDs are baseline-relative to temp0.
-- Copy claim IDs exactly from the supplied selected_claims list. Do not generate claim IDs from naming patterns.
-- If no suitable selected claim supports an invariance, omit the invariance bullet rather than fabricating support.
-- If no supported claim exists for a section, omit that bullet rather than filling the section with a weak or inferred statement.
-- If a comparative statement would require a claim ID that does not exist verbatim in selected_claims, keep the prose grounded but cite only the real selected claim IDs.
-- Before writing each [CLAIMS: ...] block, verify that every cited claim ID appears exactly in the supplied selected_claims list.
-- Meta-cautions may omit claim IDs when they describe interpretation limits, sample-size limitations, or scope boundaries rather than empirical findings.
-- Do not attach [CLAIMS: ...] to a meta-caution unless the cited IDs are real selected_claims and directly support the statement.
-- Do not compare one non-baseline experiment directly against another unless an exact selected claim for that comparison exists.
-- Do not cite claim IDs that are not present verbatim in selected_claims.
-- Do not write placeholder claim blocks such as [CLAIMS: ] or [CLAIMS: None].
-- If no supported bullet exists for Tradeoffs or Invariances, write no bullet under that section.
-- A stable_ceiling or stable_floor claim supports only the specific comparison experiment cited; do not generalize it to “all temperatures” unless both comparison experiments are explicitly cited.
-- Do not combine stable and degrading claims into a single invariance statement.
+Core constraints:
+- Use ONLY the supplied claims.
+- Do NOT introduce new facts, metrics, or causes.
+- Do NOT generalize beyond the claims.
+- If multiple claims show the same pattern, compress them.
+- Prefer precise references to prompt_id, model, and experiment.
 
-Output exactly in this structure:
+Claim referencing rules:
+- Every empirical statement MUST include a [CLAIMS: ...] block.
+- Format exactly: [CLAIMS: claim_id_1, claim_id_2]
+- Place the block at the END of the bullet only.
+- NEVER output [CLAIMS: None] or empty claim blocks.
+- Every claim ID must match EXACTLY a provided selected_claims ID.
+- NEVER invent, transform, or combine claim IDs.
+
+Meta-cautions:
+- May omit [CLAIMS: ...] if describing interpretation limits or scope.
+- Do NOT attach claims unless they directly support the statement.
+
+Comparison rules:
+- Do NOT compare non-baseline experiments unless explicitly supported by a claim.
+- If describing temp03 vs temp07 in prose, still cite the actual baseline-relative claim IDs.
+- Stable claims (stable_ceiling / stable_floor) apply ONLY to the specific comparison cited.
+- Do NOT generalize stability across all temperatures unless explicitly supported.
+- A tradeoff bullet must use claims whose directions match the prose exactly. Do not combine improvement and degradation claims across different models unless the sentence explicitly separates the models and directions correctly.
+
+Directionality enforcement:
+- Each claim has a label: improves, degrades, or stable.
+- Your sentence MUST match the label exactly.
+
+- If all claims = "degrades" → describe degradation only
+- If all claims = "improves" → describe improvement only
+- NEVER infer improvement from degrading claims
+
+Language discipline:
+- Do NOT use "consistently", "always", or "across all temperatures"
+  unless multiple claims explicitly support it.
+- If only one claim exists → describe only that specific case.
+- Do not output placeholder bullets such as "N/A", "No supported tradeoffs were observed", or similar filler text. If a section has no supported empirical bullet, leave that section with no bullets.
+
+Section rules:
+- If no supported claim exists for Tradeoffs or Invariances → omit the bullet.
+- Do NOT fabricate weak or inferred statements to fill sections.
+
+Output format (strict):
 
 Observations:
-- <observation sentence> [CLAIMS: claim_id_1, claim_id_2]
+- <sentence> [CLAIMS: claim_id_1, claim_id_2]
 
 Tradeoffs:
-- <tradeoff sentence> [CLAIMS: claim_id_3, claim_id_4]
+- <sentence> [CLAIMS: claim_id_3, claim_id_4]
 
 Invariances:
-- <invariance sentence> [CLAIMS: claim_id_5, claim_id_6]
+- <sentence> [CLAIMS: claim_id_5, claim_id_6]
 
 Cautions:
 - <meta-caution sentence>
