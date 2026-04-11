@@ -1,8 +1,6 @@
 # ai-evaluation-harness
 
-A reproducible evaluation harness for studying LLM behavior through controlled prompt suites, repeated runs, and comparative experiment analysis — designed for local model experimentation and systematic behavioral measurement.
-
-This project is designed to systematically measure how local LLM behavior changes under controlled inference conditions (e.g., temperature sweeps), with a focus on identifying tradeoffs across competing constraints like structure, instruction following, and verbosity.
+A reproducible evaluation harness for studying LLM behavior through controlled prompt suites, repeated runs, and structured interpretation — including claim extraction, narrative synthesis, and audit-based validation — designed for systematic local-model experimentation.
 
 ## v1.0 milestone
 
@@ -18,8 +16,31 @@ This repository’s v1.0 milestone establishes the core behavioral harness:
   - within-suite experiment comparison tables
   - signed delta heatmaps
 
-This version is focused on **behavioral measurement and comparison**.  
+This version focuses on **closing the loop between measurement → interpretation → validation**, enabling model behavior to be not only observed but systematically explained and audited.
 Later versions extend this toward narrative generation, validation, and richer telemetry.
+
+## v1.4 milestone (current)
+
+The v1.4 system extends the behavioral harness into a structured evaluation and validation pipeline:
+
+- claim generation from benchmark deltas
+- claim selection and normalization
+- narrative synthesis grounded in validated claims
+- strict claim-reference constraints ([CLAIMS: ...])
+- narrative parsing and traceability mapping
+- audit system for evaluating:
+  - claim coverage
+  - trace-supported vs heuristic-supported statements
+  - overlap fidelity between narrative and source claims
+- repair loop for improving narrative fidelity
+- run-scoped experiment tracking under `benchmarks/results/runs/*`
+- expanded dashboard including:
+  - audit analytics
+  - narrative traceability
+  - claim coverage diagnostics
+- explicit narrative-to-claim traceability and coverage tracking
+
+This version focuses on **closing the loop between measurement → interpretation → validation**.
 
 ## Why this exists
 
@@ -38,7 +59,7 @@ From a risk perspective, this harness can be used to map how model behavior shif
 
 For example, a model that performs well on structured outputs at low temperature may degrade in instruction-following or verbosity control as temperature rises. By running repeated evaluations across prompt types and aggregating results, the harness surfaces these tradeoffs explicitly, allowing a user to identify stable operating regions and failure modes.
 
-In practice, this can inform model selection, prompt design, and guardrail strategies by making behavioral reliability measurable rather than anecdotal.
+In practice, this can inform model selection, prompt design, and guardrail strategies by making behavioral reliability measurable, explainable, and auditable rather than anecdotal
 
 ## Repository layout
 
@@ -109,9 +130,17 @@ These are early behavioral results rather than final scientific claims, but they
 
 ## Version roadmap
 
-- v1.0 — behavioral harness complete
-- v1.1 — early narrative generation over analysis payloads
-- v2.0 — richer telemetry inputs and PyTorch-backed execution
+- v1.0 — behavioral harness (measurement layer)
+- v1.2–v1.4 — interpretation + validation layer
+  - claim extraction and normalization
+  - narrative generation with strict grounding constraints
+  - audit system and fidelity metrics
+  - repair loop for improving narrative quality
+- v1.5 (next) — richer telemetry
+  - token-level metrics (logprobs, latency, etc.)
+  - deeper behavioral diagnostics
+  - early macro / external data integration (e.g. FRED)
+- v2.0 — full telemetry + analysis stack
 
 ## Notes
 
