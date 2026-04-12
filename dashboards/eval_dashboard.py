@@ -533,6 +533,11 @@ with tab_run:
     col5, col6 = st.columns(2)
     col5.metric("Avg Latency (s)", f"{df_filtered['elapsed_s'].mean():.2f}" if len(df_filtered) else "—")
     col6.metric("Avg Words", f"{df_filtered['words'].mean():.1f}" if len(df_filtered) else "—")
+    
+    t1, t2, t3 = st.columns(3)
+    t1.metric("Avg sentence count", f"{df_filtered['sentence_count'].mean():.2f}" if "sentence_count" in df_filtered.columns and len(df_filtered) else "—")
+    t2.metric("Avg sentence length", f"{df_filtered['avg_sentence_length_words'].mean():.2f}" if "avg_sentence_length_words" in df_filtered.columns and len(df_filtered) else "—")
+    t3.metric("Constraint failure rate", f"{(df_filtered['failure_type'] == 'constraint_failure').mean():.2%}" if "failure_type" in df_filtered.columns and len(df_filtered) else "—")
 
     st.subheader("Prompt × Model Summary")
     pm_summary = make_prompt_model_summary(df_filtered)
@@ -604,9 +609,21 @@ with tab_run:
     fig3, ax3 = plt.subplots()
     sns.boxplot(data=df_filtered, x="model", y="words_per_s", ax=ax3)
     st.pyplot(fig3)
-
+ 
+ 
 with tab_agg:
     master = load_agg()
+    
+    # Safety block for new telemetry fields that do not exist in earlier data
+    for col in ["task_type", "domain", "difficulty"]:
+        if col not in master.columns:
+            master[col] = pd.NA
+        master[col] = master[col].astype("string").fillna("")
+
+    for col in ["sentence_count", "avg_sentence_length_words"]:
+        if col not in master.columns:
+            master[col] = pd.NA
+        master[col] = pd.to_numeric(master[col], errors="coerce")
 
     if master.empty:
         st.error(f"No runs_master found. Expected: {AGG_PARQUET} or {AGG_CSV}")
@@ -691,6 +708,27 @@ with tab_agg:
         default=sorted(master["experiment_name"].dropna().astype("string").unique()),
         key="experiments_agg",
     )
+    
+    agg_task_types = st.sidebar.multiselect(
+        "Agg: Task types",
+        options=sorted(master["task_type"].dropna().astype("string").unique()),
+        default=sorted(master["task_type"].dropna().astype("string").unique()),
+        key="task_types_agg",
+    )
+
+    agg_domains = st.sidebar.multiselect(
+        "Agg: Domains",
+        options=sorted(master["domain"].dropna().astype("string").unique()),
+        default=sorted(master["domain"].dropna().astype("string").unique()),
+        key="domains_agg",
+    )
+
+    agg_difficulties = st.sidebar.multiselect(
+        "Agg: Difficulties",
+        options=sorted(master["difficulty"].dropna().astype("string").unique()),
+        default=sorted(master["difficulty"].dropna().astype("string").unique()),
+        key="difficulties_agg",
+    )
 
     ok_only = st.sidebar.selectbox("Agg: Outcomes", ["All", "Only ok", "Only failures"], index=0)
 
@@ -700,6 +738,9 @@ with tab_agg:
         & m["prompt_id"].isin(agg_prompts)
         & m["suite_name"].astype("string").isin(agg_suites)
         & m["experiment_name"].astype("string").isin(agg_experiments)
+        & m["task_type"].astype("string").isin(agg_task_types)
+        & m["domain"].astype("string").isin(agg_domains)
+        & m["difficulty"].astype("string").isin(agg_difficulties)
     ]
     experiment_summary_all = make_experiment_metric_summary(m)
     
@@ -872,6 +913,34 @@ with tab_agg:
         st.dataframe(show)
     else:
         st.info("Not enough data to build prompt × model summary.")
+
+    telem_src = m[
+        (m["task_type"].astype("string").str.strip() != "")
+        & (m["domain"].astype("string").str.strip() != "")
+    ].copy()
+
+    if not telem_src.empty:
+        telem_summary = (
+            telem_src.groupby(["task_type", "domain"], as_index=False)
+            .agg(
+                rows=("task_type", "size"),
+                avg_sentence_count=("sentence_count", "mean"),
+                avg_sentence_length=("avg_sentence_length_words", "mean"),
+                constraint_failure_rate=("failure_type", lambda s: (s == "constraint_failure").mean()),
+                pipeline_success_rate=("ok", "mean"),
+            )
+            .sort_values(["task_type", "domain"])
+        )
+        st.subheader("Telemetry Summary by Task Type / Domain")
+        st.dataframe(telem_summary, use_container_width=True)
+        
+    st.subheader("Constraint Failure Rate by Task Type")
+    cf = (
+        m.groupby("task_type", as_index=False)
+        .agg(constraint_failure_rate=("failure_type", lambda s: (s == "constraint_failure").mean()))
+    )
+    if not cf.empty:
+        st.bar_chart(cf.set_index("task_type"))
 
     st.subheader("Prompt × Model Pass-Rate Heatmap (All Runs)")
     heat_value_col_all = st.selectbox(
