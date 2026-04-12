@@ -914,10 +914,9 @@ with tab_agg:
     else:
         st.info("Not enough data to build prompt × model summary.")
 
-    telem_src = m[
-        (m["task_type"].astype("string").str.strip() != "")
-        & (m["domain"].astype("string").str.strip() != "")
-    ].copy()
+    telem_src = m.copy()
+    telem_src = telem_src[telem_src["task_type"].astype("string").str.strip() != ""].copy()
+    telem_src = telem_src[telem_src["domain"].astype("string").str.strip() != ""].copy()
 
     if not telem_src.empty:
         telem_summary = (
@@ -935,12 +934,19 @@ with tab_agg:
         st.dataframe(telem_summary, use_container_width=True)
         
     st.subheader("Constraint Failure Rate by Task Type")
+
+    cf_src = m[m["task_type"].astype("string").str.strip() != ""].copy()
+
     cf = (
-        m.groupby("task_type", as_index=False)
+        cf_src.groupby("task_type", as_index=False)
         .agg(constraint_failure_rate=("failure_type", lambda s: (s == "constraint_failure").mean()))
+        .sort_values("constraint_failure_rate", ascending=False)
     )
+
     if not cf.empty:
         st.bar_chart(cf.set_index("task_type"))
+    else:
+        st.info("No telemetry-tagged task types in current filter.")
 
     st.subheader("Prompt × Model Pass-Rate Heatmap (All Runs)")
     heat_value_col_all = st.selectbox(
