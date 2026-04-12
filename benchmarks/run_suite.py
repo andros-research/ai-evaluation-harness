@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Ensure experiment runs save to parent of parent
 from pathlib import Path
-import os
 
 BENCH_DIR = Path(__file__).resolve().parent          # /home/joe/ai-lab/benchmarks
 PROJECT_ROOT = BENCH_DIR.parent                     # /home/joe/ai-lab
@@ -445,7 +444,7 @@ def ollama_generate(host: str, model: str, prompt: str, options: Dict[str, Any],
         timed_out=timed_out,
     )
 
-def normalize_prompts(prompts_obj: Any) -> Dict[str, str]:
+def normalize_prompts(prompts_obj: Any) -> Dict[str, Dict[str, Any]]:
     """
     Accept:
       prompts:
@@ -455,22 +454,42 @@ def normalize_prompts(prompts_obj: Any) -> Dict[str, str]:
       prompts:
         - id: id1
           text: "..."
-        - id: id2
-          text: "..."
+          task_type: reasoning
+          domain: language
+          difficulty: medium
+    Returns:
+      {
+        "prompt_id": {
+          "text": "...",
+          "task_type": "...",
+          "domain": "...",
+          "difficulty": "...",
+        }
+      }
     """
     if isinstance(prompts_obj, dict):
-        out: Dict[str, str] = {}
+        out: Dict[str, Dict[str, Any]] = {}
         for k, v in prompts_obj.items():
             if isinstance(v, str):
-                out[str(k)] = v
+                out[str(k)] = {
+                    "text": v,
+                    "task_type": "",
+                    "domain": "",
+                    "difficulty": "",
+                }
             elif isinstance(v, dict) and isinstance(v.get("text"), str):
-                out[str(k)] = v["text"]
+                out[str(k)] = {
+                    "text": v["text"],
+                    "task_type": str(v.get("task_type", "") or ""),
+                    "domain": str(v.get("domain", "") or ""),
+                    "difficulty": str(v.get("difficulty", "") or ""),
+                }
             else:
                 raise ValueError("prompts must be mapping id -> text (or id -> {text:...})")
         return out
 
     if isinstance(prompts_obj, list):
-        out = {}
+        out: Dict[str, Dict[str, Any]] = {}
         for item in prompts_obj:
             if not isinstance(item, dict):
                 raise ValueError("prompt list entries must be mappings")
@@ -478,10 +497,16 @@ def normalize_prompts(prompts_obj: Any) -> Dict[str, str]:
             txt = item.get("text")
             if not isinstance(pid, str) or not isinstance(txt, str):
                 raise ValueError("prompt list entries need {id: str, text: str}")
-            out[pid] = txt
+
+            out[pid] = {
+                "text": txt,
+                "task_type": str(item.get("task_type", "") or ""),
+                "domain": str(item.get("domain", "") or ""),
+                "difficulty": str(item.get("difficulty", "") or ""),
+            }
         return out
 
-    raise ValueError("prompts must be a mapping of id -> text (or a list of {id,text})")
+    raise ValueError("prompts must be a mapping of id -> text (or a list of structured prompt entries)")
 
 
 def now_run_id() -> str:
@@ -549,12 +574,17 @@ def main() -> None:
         "suite_name",
         "experiment_name",
         "prompt_id",
+        "task_type",
+        "domain",
+        "difficulty",
         "rep",
         "model",
         "elapsed_s",
         "chars",
         "words",
         "lines",
+        "sentence_count",
+        "avg_sentence_length_words",
         "words_per_s",
         "checks_passed",
         "checks_total",
@@ -575,7 +605,11 @@ def main() -> None:
         w = csv.DictWriter(csvf, fieldnames=fieldnames)
         w.writeheader()
 
-        for pid, ptxt in prompts.items():
+        for pid, prompt_meta in prompts.items():
+            ptxt = prompt_meta["text"]
+            task_type = prompt_meta.get("task_type", "")
+            domain = prompt_meta.get("domain", "")
+            difficulty = prompt_meta.get("difficulty", "")
             prompt_dir = os.path.join(outdir, safe_slug(pid) + "_")
             os.makedirs(prompt_dir, exist_ok=True)
             # Save prompt text for auditability
@@ -597,15 +631,12 @@ def main() -> None:
                     chars = len(out_text)
                     words = count_words(out_text)
                     lines = count_lines(out_text)
+                    sentences = split_sentences_basic(out_text)
+                    sentence_count = len(sentences)
+                    avg_sentence_length_words = round(words / sentence_count, 3) if sentence_count > 0 else 0.0
                     words_per_s = (words / res.elapsed_s) if res.elapsed_s > 0 else 0.0
 
                     ok = compute_ok(res.exit_code, words)
-                    failure_type = classify_failure(
-                        res.exit_code, words,
-                        error=res.error,
-                        stderr=res.stderr,
-                        timed_out=res.timed_out
-                    )
 
                     # Persist artifacts (always)
                     rep_tag = f"rep{rep:02d}"
@@ -621,6 +652,7 @@ def main() -> None:
                         raw.setdefault("model", model)
                         raw.setdefault("prompt_id", pid)
                         raw.setdefault("rep", rep)
+                        
                     with open(json_path, "w", encoding="utf-8") as jf:
                         json.dump(raw if raw else {"model": model, "prompt_id": pid, "rep": rep, "response": out_text}, jf, indent=2)
 
@@ -633,6 +665,18 @@ def main() -> None:
                     overall_ok = int(ok == 1 and (checks_total == 0 or checks_ok == 1))
                     # Possibly stricter definition for later
                     # overall_ok = int(ok == 1 and checks_ok == 1)
+                    raw_failure_type = classify_failure(
+                        res.exit_code, words,
+                        error=res.error,
+                        stderr=res.stderr,
+                        timed_out=res.timed_out
+                    )
+                    if raw_failure_type != "ok":
+                        failure_type = raw_failure_type
+                    elif checks_total > 0 and checks_ok == 0:
+                        failure_type = "constraint_failure"
+                    else:
+                        failure_type = "ok"
 
                     row = {
                         "run_id": run_id,
@@ -640,12 +684,17 @@ def main() -> None:
                         "suite_name": suite_name,
                         "experiment_name": experiment_name,
                         "prompt_id": pid,
+                        "task_type": task_type,
+                        "domain": domain,
+                        "difficulty": difficulty,
                         "rep": rep,
                         "model": model,
                         "elapsed_s": round(res.elapsed_s, 3),
                         "chars": chars,
                         "words": words,
                         "lines": lines,
+                        "sentence_count": sentence_count,
+                        "avg_sentence_length_words": avg_sentence_length_words,
                         "words_per_s": round(words_per_s, 3),
                         "checks_passed": checks_passed,
                         "checks_total": checks_total,
@@ -659,19 +708,27 @@ def main() -> None:
                         "failure_type": failure_type,
                         "response_hash": hash_text(out_text),
                     }
-                    # inside the loops, after you compute row:
+                    # inside the loops, after computing row:
                     resp_record = {
                         "run_id": run_id,
                         "ts": ts,
                         "prompt_id": pid,
+                        "task_type": task_type,
+                        "domain": domain,
+                        "difficulty": difficulty,
                         "suite_name": suite_name,
                         "experiment_name": experiment_name,
                         "rep": rep,
                         "model": model,
-                        "prompt": ptxt,              # optional (handy early on; can remove later)
+                        "prompt": ptxt,
                         "response_text": out_text,
-                        "raw": raw,                  # full ollama JSON (if you want it)
+                        "raw": raw,
                         "elapsed_s": res.elapsed_s,
+                        "chars": chars,
+                        "words": words,
+                        "lines": lines,
+                        "sentence_count": sentence_count,
+                        "avg_sentence_length_words": avg_sentence_length_words,
                         "exit_code": res.exit_code,
                         "ok": ok,
                         "checks_ok": checks_ok,

@@ -10,10 +10,29 @@ reps: 5
 timeout_s: 600
 
 prompts:
-  attention_5sent: "Explain attention in transformers in 5 sentences."
-  follow_instr: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
-  style_hemi: "Write a Hemingway-lite paragraph about a quiet office morning. No metaphors. No adjectives longer than 8 letters."
-  verbosity_drift: "In one paragraph, explain what a yield curve is, for a smart non-expert."
+  - id: attention_5sent
+    text: "Explain attention in transformers in 5 sentences."
+    task_type: reasoning
+    domain: language
+    difficulty: medium
+
+  - id: follow_instr
+    text: "Write exactly 2 sentences. Sentence 1 must be 8 words. Sentence 2 must be 12 words."
+    task_type: instruction_following
+    domain: language
+    difficulty: medium
+
+  - id: style_hemi
+    text: "Write a Hemingway-lite paragraph about a quiet office morning. No metaphors. No adjectives longer than 8 letters."
+    task_type: instruction_following
+    domain: language
+    difficulty: medium
+
+  - id: verbosity_drift
+    text: "In one paragraph, explain what a yield curve is, for a smart non-expert."
+    task_type: instruction_following
+    domain: language
+    difficulty: medium
 
 checks:
   attention_5sent:
