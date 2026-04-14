@@ -1,0 +1,189 @@
+suite_name: suite_macro_fred
+
+models:
+  - mistral
+  - llama3
+  - llama3:70b
+
+reps: 3
+
+timeout_s: 600
+
+prompts:
+  - id: macro_regime_snapshot
+    text: |
+      You are given a macro snapshot.
+
+      Date: 2026-03-01
+      CPI_YOY: 3.29
+      UNRATE: 4.30
+      FEDFUNDS: 3.64
+      GS10: 4.25
+
+      Write one short paragraph describing the macro backdrop.
+      Mention inflation, labor, and rates.
+      Do not speculate about causes.
+    task_type: reasoning
+    domain: macro
+    difficulty: easy
+
+  - id: macro_compare_12m
+    text: |
+      You are given two macro snapshots.
+
+      Date A: 2025-03-01
+      CPI_YOY: 2.38
+      UNRATE: 4.20
+      FEDFUNDS: 4.33
+      GS10: 4.28
+      
+      Date B: 2026-03-01
+      CPI_YOY: 3.29
+      UNRATE: 4.30
+      FEDFUNDS: 3.64
+      GS10: 4.25
+
+      Write one short paragraph comparing Date A and Date B.
+      State what changed and what did not.
+      Do not speculate about causes.
+    task_type: reasoning
+    domain: macro
+    difficulty: medium
+
+  - id: policy_vs_inflation
+    text: |
+      You are given two macro snapshots.
+
+      Date A: 2025-03-01
+      CPI_YOY: 2.38
+      UNRATE: 4.20
+      FEDFUNDS: 4.33
+      GS10: 4.28
+      
+      Date B: 2026-03-01
+      CPI_YOY: 3.29
+      UNRATE: 4.30
+      FEDFUNDS: 3.64
+      GS10: 4.25
+
+      Write one short paragraph assessing whether policy rates appear tighter or looser relative to inflation at Date B versus Date A.
+      Use only the values shown.
+      Do not speculate about causes or future outcomes.
+    task_type: reasoning
+    domain: macro
+    difficulty: medium
+
+  - id: labor_inflation_balance
+    text: |
+      You are given a macro snapshot.
+
+      Date: 2026-03-01
+      CPI_YOY: 3.29
+      UNRATE: 4.30
+      FEDFUNDS: 3.64
+      GS10: 4.25
+
+      Write exactly 3 sentences describing the balance between inflation and labor-market conditions.
+      Use cautious language.
+      Do not infer a recession, soft landing, or policy decision unless directly stated in the data.
+    task_type: reasoning
+    domain: macro
+    difficulty: medium
+
+  - id: supported_statements
+    text: |
+      You are given a macro comparison.
+
+      Date A: 2025-03-01
+      CPI_YOY: 2.38
+      UNRATE: 4.20
+      FEDFUNDS: 4.33
+      GS10: 4.28
+      
+      Date B: 2026-03-01
+      CPI_YOY: 3.29
+      UNRATE: 4.30
+      FEDFUNDS: 3.64
+      GS10: 4.25
+
+      Evaluate the following statements using only the data shown:
+
+      1. Inflation is lower at Date B than at Date A.
+      2. Unemployment is lower at Date B than at Date A.
+      3. The policy rate is lower at Date B than at Date A.
+      4. The 10Y yield is unchanged between the two dates.
+
+      Return ONLY valid JSON with key "supported", whose value is an array of the statement numbers that are supported.
+    task_type: reasoning
+    domain: macro
+    difficulty: medium
+
+  - id: no_causality_discipline
+    text: |
+      You are given a macro snapshot.
+
+      Date: 2026-03-01
+      CPI_YOY: 3.29
+      UNRATE: 4.30
+      FEDFUNDS: 3.64
+      GS10: 4.25
+
+      Write one paragraph stating only what the data shows.
+      Do not use phrases like "because", "caused by", "due to", "therefore", or "as a result".
+      Do not infer any cause.
+    task_type: reasoning
+    domain: macro
+    difficulty: hard
+
+checks:
+  macro_regime_snapshot:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 5
+    - type: word_count_range
+      min: 45
+      max: 120
+
+  macro_compare_12m:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 5
+    - type: word_count_range
+      min: 45
+      max: 130
+
+  policy_vs_inflation:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 5
+    - type: word_count_range
+      min: 45
+      max: 130
+
+  labor_inflation_balance:
+    - type: exact_sentences
+      expected: 3
+
+  supported_statements:
+    - type: json_strict
+      required:
+        supported: array
+      rules:
+        array_item_types:
+          supported: number
+
+  no_causality_discipline:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 5
+    - type: word_count_range
+      min: 40
+      max: 120
