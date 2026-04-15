@@ -42,7 +42,7 @@ prompts:
 
       {{ comparison_12m }}
 
-      Write one short paragraph assessing whether policy rates appear tighter or looser relative to inflation at Date B versus Date A.
+      Compare Date A and Date B using only the difference between FEDFUNDS and CPI_YOY. State whether that gap is wider or narrower at Date B.
       Use only the values shown.
       Do not speculate about causes or future outcomes.
     task_type: reasoning
@@ -58,6 +58,7 @@ prompts:
       Write exactly 3 sentences describing the balance between inflation and labor-market conditions.
       Use cautious language.
       Do not infer a recession, soft landing, or policy decision unless directly stated in the data.
+      Do not mention forecasts, implications, policy intentions, overheating, soft landing, recession, or future risks.
     task_type: reasoning
     domain: macro
     difficulty: medium
