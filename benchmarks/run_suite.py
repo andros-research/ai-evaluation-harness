@@ -200,6 +200,25 @@ def check_long_word_count_max(text: str, max_len: int, max_count: int) -> Tuple[
     ok = (n <= max_count)
     return ok, f"long_words={'OK' if ok else 'FAIL'}(count={n},max_len={max_len},max_count={max_count})"
 
+def check_banned_phrases(text: str, phrases: List[str], case_sensitive: bool = False) -> Tuple[bool, str]:
+    haystack = text or ""
+    if not case_sensitive:
+        haystack_cmp = haystack.lower()
+        phrases_cmp = [p.lower() for p in phrases]
+    else:
+        haystack_cmp = haystack
+        phrases_cmp = phrases
+
+    found: List[str] = []
+    for original, probe in zip(phrases, phrases_cmp):
+        if probe and probe in haystack_cmp:
+            found.append(original)
+
+    ok = len(found) == 0
+    if ok:
+        return True, "banned_phrases=OK"
+    return False, f"banned_phrases=FAIL(found={','.join(found)})"
+
 def check_json_strict(text: str, required: Dict[str, str], rules: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
     """
     required: key -> type ("string","number","object","array","boolean")
@@ -342,6 +361,12 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
                 text,
                 int(chk.get("max_len", 8)),
                 int(chk.get("max_count", 3)),
+            )
+        elif ctype == "banned_phrases":
+            ok, msg = check_banned_phrases(
+                text,
+                list(chk.get("phrases", [])),
+                bool(chk.get("case_sensitive", False)),
             )
         elif ctype == "follow_instr_2sent_wordcounts":
             ok, msg = check_exact_sentences_and_wordcounts(

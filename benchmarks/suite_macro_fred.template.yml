@@ -104,6 +104,14 @@ checks:
     - type: word_count_range
       min: 45
       max: 120
+    - type: banned_phrases
+      phrases:
+        - "investor expectations"
+        - "cautiously optimistic"
+        - "no major red flags"
+        - "alarm bells"
+        - "robust"
+        - "elevated"
 
   macro_compare_12m:
     - type: exact_paragraphs
@@ -128,6 +136,16 @@ checks:
   labor_inflation_balance:
     - type: exact_sentences
       expected: 3
+    - type: banned_phrases
+      phrases:
+        - "delicate balance"
+        - "close monitoring"
+        - "future trends"
+        - "future risks"
+        - "policy intentions"
+        - "overheating"
+        - "soft landing"
+        - "recession"
 
   supported_statements:
     - type: json_strict
