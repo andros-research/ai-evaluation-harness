@@ -16,9 +16,16 @@ prompts:
 
       {{ latest_snapshot }}
 
-      Write one short paragraph describing the macro backdrop.
-      Mention inflation, labor, and rates.
-      Do not speculate about causes.
+      Write one short paragraph describing the macro snapshot using only the values provided.
+
+      You may:
+      - restate values
+      - compare values within the snapshot
+
+      You may NOT:
+      - describe conditions as strong, weak, robust, elevated, or stable
+      - infer economic conditions beyond the values shown
+      - introduce any interpretation not directly supported by the data
     task_type: reasoning
     domain: macro
     difficulty: easy
