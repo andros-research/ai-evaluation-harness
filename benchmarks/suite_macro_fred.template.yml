@@ -39,6 +39,8 @@ prompts:
       Write one short paragraph comparing Date A and Date B.
       State what changed and what did not.
       Do not speculate about causes.
+      Write exactly 3 to 4 sentences.
+      Do not exceed 4 sentences.
     task_type: reasoning
     domain: macro
     difficulty: medium
@@ -52,6 +54,9 @@ prompts:
       Compare Date A and Date B using only the difference between FEDFUNDS and CPI_YOY. State whether that gap is wider or narrower at Date B.
       Use only the values shown.
       Do not speculate about causes or future outcomes.
+      Write exactly 1 paragraph with 3 to 4 sentences.
+      Do not use bullet points or line breaks.
+      Do not show intermediate steps.
     task_type: reasoning
     domain: macro
     difficulty: medium
@@ -66,6 +71,7 @@ prompts:
       Use cautious language.
       Do not infer a recession, soft landing, or policy decision unless directly stated in the data.
       Do not mention forecasts, implications, policy intentions, overheating, soft landing, recession, or future risks.
+      Each sentence must directly reference at least one value from the data.
     task_type: reasoning
     domain: macro
     difficulty: medium
@@ -84,6 +90,9 @@ prompts:
       4. The 10Y yield is unchanged between the two dates.
 
       Return ONLY valid JSON with key "supported", whose value is an array of the statement numbers that are supported.
+      Return ONLY valid JSON.
+      Do not include any explanation.
+      Do not include any text before or after the JSON.
     task_type: reasoning
     domain: macro
     difficulty: medium
@@ -125,7 +134,7 @@ checks:
       expected: 1
     - type: sentence_count_range
       min: 3
-      max: 5
+      max: 4
     - type: word_count_range
       min: 45
       max: 130
@@ -135,7 +144,7 @@ checks:
       expected: 1
     - type: sentence_count_range
       min: 3
-      max: 5
+      max: 4
     - type: word_count_range
       min: 45
       max: 130
@@ -161,6 +170,10 @@ checks:
       rules:
         array_item_types:
           supported: number
+
+    - type: exact_match
+      expected:
+        supported: [3]
 
   no_causality_discipline:
     - type: exact_paragraphs

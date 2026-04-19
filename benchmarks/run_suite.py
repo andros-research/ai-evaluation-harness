@@ -286,6 +286,21 @@ def check_json_strict(text: str, required: Dict[str, str], rules: Optional[Dict[
 
     return True, "json_strict=OK"
 
+def check_exact_match_json(text: str, expected: Dict[str, Any]) -> Tuple[bool, str]:
+    try:
+        obj = json.loads(text)
+    except Exception as e:
+        return False, f"exact_match=FAIL(json_parse={type(e).__name__})"
+
+    if not isinstance(obj, dict):
+        return False, "exact_match=FAIL(not_object)"
+
+    ok = (obj == expected)
+    if ok:
+        return True, "exact_match=OK"
+
+    return False, f"exact_match=FAIL(expected={json.dumps(expected, sort_keys=True)},got={json.dumps(obj, sort_keys=True)})"
+
 def check_numeric_only_final_line(text: str) -> Tuple[bool, str]:
     lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
     if not lines:
@@ -378,6 +393,9 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
             required = chk.get("required", {"summary": "string", "bullets": "array"})
             rules = chk.get("rules", {})
             ok, msg = check_json_strict(text, required, rules)
+        elif ctype == "exact_match":
+            expected = chk.get("expected", {})
+            ok, msg = check_exact_match_json(text, expected)
         elif ctype == "numeric_only_final_line":
             ok, msg = check_numeric_only_final_line(text)
         elif ctype == "numeric_final_line_tolerance":
