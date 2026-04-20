@@ -51,12 +51,24 @@ prompts:
 
       {{ comparison_12m }}
 
-      Compare Date A and Date B using only the difference between FEDFUNDS and CPI_YOY. State whether that gap is wider or narrower at Date B.
-      Use only the values shown.
-      Do not speculate about causes or future outcomes.
-      Write exactly 1 paragraph with 3 to 4 sentences.
-      Do not use bullet points or line breaks.
-      Do not show intermediate steps.
+      Compare Date A and Date B using only the difference between FEDFUNDS and CPI_YOY.
+
+      Compute:
+      - gap_a = FEDFUNDS at Date A minus CPI_YOY at Date A
+      - gap_b = FEDFUNDS at Date B minus CPI_YOY at Date B
+
+      Then determine whether the gap at Date B is wider or narrower than at Date A.
+
+      Return ONLY valid JSON with keys:
+      - gap_a
+      - gap_b
+      - direction
+
+      Rules:
+      - direction must be exactly "wider" or "narrower"
+      - use only the values shown
+      - do not include any explanation
+      - do not include any text before or after the JSON
     task_type: reasoning
     domain: macro
     difficulty: medium
@@ -140,14 +152,29 @@ checks:
       max: 130
 
   policy_vs_inflation:
-    - type: exact_paragraphs
-      expected: 1
-    - type: sentence_count_range
-      min: 3
-      max: 4
-    - type: word_count_range
-      min: 45
-      max: 130
+    - type: json_strict
+      required:
+        gap_a: number
+        gap_b: number
+        direction: string
+      rules:
+        nonempty_strings: [direction]
+
+    - type: exact_match_fields
+      expected:
+        direction: narrower
+
+    - type: numeric_fields_tolerance
+      expected:
+        gap_a: 1.95
+        gap_b: 0.35
+      tol: 0.02
+
+    - type: required_terms
+      terms:
+        - "gap_a"
+        - "gap_b"
+        - "direction"
 
   labor_inflation_balance:
     - type: exact_sentences

@@ -330,6 +330,64 @@ def check_numeric_final_line_with_tolerance(text: str, expected: float, tol: flo
     ok = diff <= tol
     return ok, f"numeric_tolerance={'OK' if ok else 'FAIL'}(value={value:g},expected={expected:g},tol={tol:g})"
 
+def check_required_terms(text: str, terms: List[str], case_sensitive: bool = False) -> Tuple[bool, str]:
+    haystack = text or ""
+    if not case_sensitive:
+        haystack_cmp = haystack.lower()
+        probes = [(t, t.lower()) for t in terms]
+    else:
+        haystack_cmp = haystack
+        probes = [(t, t) for t in terms]
+
+    missing = [orig for orig, probe in probes if probe not in haystack_cmp]
+
+    if not missing:
+        return True, "required_terms=OK"
+
+    return False, f"required_terms=FAIL(missing={','.join(missing)})"
+
+def check_exact_match_fields_json(text: str, expected: Dict[str, Any]) -> Tuple[bool, str]:
+    try:
+        obj = json.loads(text)
+    except Exception as e:
+        return False, f"exact_match_fields=FAIL(json_parse={type(e).__name__})"
+
+    if not isinstance(obj, dict):
+        return False, "exact_match_fields=FAIL(not_object)"
+
+    mismatches = []
+    for k, v in expected.items():
+        if obj.get(k) != v:
+            mismatches.append(f"{k}:expected={v},got={obj.get(k)}")
+
+    if not mismatches:
+        return True, "exact_match_fields=OK"
+
+    return False, "exact_match_fields=FAIL(" + ";".join(mismatches) + ")"
+
+def check_numeric_fields_tolerance_json(text: str, expected: Dict[str, float], tol: float) -> Tuple[bool, str]:
+    try:
+        obj = json.loads(text)
+    except Exception as e:
+        return False, f"numeric_fields_tolerance=FAIL(json_parse={type(e).__name__})"
+
+    if not isinstance(obj, dict):
+        return False, "numeric_fields_tolerance=FAIL(not_object)"
+
+    mismatches = []
+    for k, v in expected.items():
+        got = obj.get(k)
+        if not isinstance(got, (int, float)):
+            mismatches.append(f"{k}:not_numeric")
+            continue
+        if abs(float(got) - float(v)) > tol:
+            mismatches.append(f"{k}:expected={v},got={got}")
+
+    if not mismatches:
+        return True, "numeric_fields_tolerance=OK"
+
+    return False, "numeric_fields_tolerance=FAIL(" + ";".join(mismatches) + ")"
+
 def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, int, str]:
     """
     suite supports either:
@@ -404,6 +462,19 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
                 float(chk.get("expected", 0)),
                 float(chk.get("tol", 0)),
             )
+        elif ctype == "required_terms":
+            ok, msg = check_required_terms(
+                text,
+                list(chk.get("terms", [])),
+                bool(chk.get("case_sensitive", False)),
+            )
+        elif ctype == "exact_match_fields":
+            expected = chk.get("expected", {})
+            ok, msg = check_exact_match_fields_json(text, expected)
+        elif ctype == "numeric_fields_tolerance":
+            expected = chk.get("expected", {})
+            tol = float(chk.get("tol", 0.0))
+            ok, msg = check_numeric_fields_tolerance_json(text, expected, tol)
         else:
             ok = False
             msg = f"unknown_check=FAIL(type={ctype})"
