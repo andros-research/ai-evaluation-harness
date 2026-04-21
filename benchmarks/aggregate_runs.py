@@ -193,10 +193,20 @@ def main() -> int:
         "run_timestamp_iso",
         "run_name",
         "run_dir",
+        "suite_name",
+        "experiment_name",
+        "prompt_id",
+        "task_type",
+        "domain",
+        "difficulty",
         "model",
-        "prompt",
-        "rep",  # if you have a rep column
-        "score",  # if you have a score column
+        "rep",
+        "ok",
+        "checks_ok",
+        "overall_ok",
+        "failure_type",
+        "failure_type_v2",
+        "response_hash",
         "responses_rows",
         "metrics_path",
         "responses_path",
@@ -214,6 +224,34 @@ def main() -> int:
         print(f"[OK] Wrote parquet -> {paths.out_parquet}")
     except Exception as e:
         print(f"[INFO] Parquet not written (install pyarrow to enable): {e}")
+
+    tax_df = master[master["failure_type_v2"].notna()].copy()
+
+    failure_summary = (
+        tax_df.groupby(["suite_name", "prompt_id", "model", "failure_type_v2"], dropna=False)
+        .size()
+        .reset_index(name="failure_count")
+    )
+
+    totals = (
+        tax_df.groupby(["suite_name", "prompt_id", "model"], dropna=False)
+        .size()
+        .reset_index(name="total_runs")
+    )
+
+    failure_summary = failure_summary.merge(
+        totals,
+        on=["suite_name", "prompt_id", "model"],
+        how="left",
+    )
+
+    failure_summary["bucket_rate"] = (
+        failure_summary["failure_count"] / failure_summary["total_runs"]
+    )
+
+    failure_csv = paths.aggregated_dir / "failure_taxonomy_summary.csv"
+    failure_summary.to_csv(failure_csv, index=False)
+    print(f"[OK] Wrote failure summary -> {failure_csv}")
 
     return 0
 

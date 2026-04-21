@@ -18,6 +18,7 @@ RAW_RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "raw_runs"
 AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 AGG_PARQUET = AGG_ROOT / "runs_master.parquet"
 AGG_CSV = AGG_ROOT / "runs_master.csv"
+FAILURE_SUMMARY_CSV = AGG_ROOT / "failure_taxonomy_summary.csv"
 
 RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "runs"
 ARCHIVE_ROOT = REPO_ROOT / "benchmarks" / "results" / "archive"
@@ -430,6 +431,11 @@ def load_agg() -> pd.DataFrame:
         return pd.read_csv(AGG_CSV)
     return pd.DataFrame()
 
+@st.cache_data(show_spinner=False)
+def load_failure_summary() -> pd.DataFrame:
+    if FAILURE_SUMMARY_CSV.exists():
+        return pd.read_csv(FAILURE_SUMMARY_CSV)
+    return pd.DataFrame()
 
 @st.cache_data(show_spinner=False)
 def load_audit_items(path: str) -> pd.DataFrame:
@@ -913,6 +919,68 @@ with tab_agg:
         st.dataframe(show)
     else:
         st.info("Not enough data to build prompt × model summary.")
+        
+    st.subheader("Failure Taxonomy v0.2")
+
+    failure_summary = load_failure_summary()
+
+    if failure_summary.empty:
+        st.info("No failure_taxonomy_summary.csv found yet. Run aggregate_runs.py first.")
+    else:
+        fsum = failure_summary.copy()
+        if "suite_macro_fred" in fsum["suite_name"].unique():
+            st.caption("Tip: taxonomy data is currently most meaningful for suite_macro_fred.")
+
+        for col in ["failure_count", "total_runs", "bucket_rate"]:
+            if col in fsum.columns:
+                fsum[col] = pd.to_numeric(fsum[col], errors="coerce")
+
+        for col in ["suite_name", "prompt_id", "model", "failure_type_v2"]:
+            if col in fsum.columns:
+                fsum[col] = fsum[col].astype("string").fillna("")
+
+        # Apply same aggregate filters
+        fsum = fsum[
+            fsum["suite_name"].isin(agg_suites)
+            & fsum["prompt_id"].isin(agg_prompts)
+            & fsum["model"].isin(agg_models)
+        ].copy()
+
+        # Optional toggle: exclude ok rows
+        show_ok_bucket = st.checkbox("Include ok bucket", value=True, key="show_ok_bucket")
+        if not show_ok_bucket:
+            fsum = fsum[fsum["failure_type_v2"] != "ok"].copy()
+
+        if fsum.empty:
+            st.info("No failure taxonomy rows in current filter.")
+        else:
+            show_fsum = fsum.copy()
+            if "bucket_rate" in show_fsum.columns:
+                show_fsum["bucket_rate"] = show_fsum["bucket_rate"].apply(
+                    lambda x: f"{x:.2%}" if pd.notna(x) else "—"
+                )
+
+            st.dataframe(
+                show_fsum.sort_values(
+                    ["prompt_id", "model", "failure_type_v2"]
+                ).reset_index(drop=True),
+                use_container_width=True,
+            )
+
+            chart_df = (
+                fsum.groupby(["failure_type_v2", "model"], as_index=False)["bucket_rate"]
+                .mean()
+            )
+
+            if not chart_df.empty:
+                pivot_chart = chart_df.pivot(
+                    index="failure_type_v2",
+                    columns="model",
+                    values="bucket_rate",
+                ).fillna(0.0)
+
+                st.markdown("#### Mean Bucket Rate by Failure Type")
+                st.bar_chart(pivot_chart)
 
     telem_src = m.copy()
     telem_src = telem_src[telem_src["task_type"].astype("string").str.strip() != ""].copy()

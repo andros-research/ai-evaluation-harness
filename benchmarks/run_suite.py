@@ -486,6 +486,57 @@ def run_checks(prompt_id: str, text: str, suite: Dict[str, Any]) -> Tuple[int, i
     return passed, total, ";".join(details)
 
 
+def classify_failure_v2(
+    raw_failure_type: str,
+    checks_detail: str,
+    response_text: str,
+) -> str:
+    """
+    Taxonomy label for constraint/semantic failures.
+    Assumes raw_failure_type already captures transport/runtime failures.
+    """
+
+    if raw_failure_type != "ok":
+        return raw_failure_type
+
+    detail = checks_detail or ""
+    text = response_text or ""
+
+    # Most informative first:
+    # symbolic pseudo-JSON / unevaluated arithmetic
+    if (
+        ("json_parse=FAIL" in detail or "exact_match_fields=FAIL" in detail or "numeric_fields_tolerance=FAIL" in detail)
+        and any(op in text for op in [" + ", " - ", " * ", " / "])
+        and ("gap_a" in text or "gap_b" in text)
+    ):
+        return "symbolic_output"
+
+    # plain schema / malformed JSON failure
+    if "json_parse=FAIL" in detail:
+        return "schema_failure"
+
+    # semantic errors on structured checks
+    if (
+        "exact_match=FAIL" in detail
+        or "exact_match_fields=FAIL" in detail
+        or "numeric_fields_tolerance=FAIL" in detail
+    ):
+        return "semantic_error"
+
+    # length / sentence discipline
+    if "sentence_range=FAIL" in detail or "exact_sentences=FAIL" in detail:
+        return "verbosity_drift"
+
+    # banned macro-template language
+    if "banned_phrases=FAIL" in detail:
+        return "narrative_drift"
+
+    # still failed checks, but no specific bucket yet
+    if detail not in ("", "no_checks") and "FAIL" in detail:
+        return "other_constraint_failure"
+
+    return "ok"
+
 # -------------------------
 # Ollama API
 # -------------------------
@@ -710,6 +761,7 @@ def main() -> None:
         "exit_code",
         "ok",
         "failure_type",
+        "failure_type_v2",
         "response_hash",
     ]
 
@@ -792,6 +844,12 @@ def main() -> None:
                     else:
                         failure_type = "ok"
 
+                    failure_type_v2 = classify_failure_v2(
+                        raw_failure_type=raw_failure_type,
+                        checks_detail=checks_detail,
+                        response_text=out_text,
+                    )
+
                     row = {
                         "run_id": run_id,
                         "ts": ts,
@@ -820,6 +878,7 @@ def main() -> None:
                         "exit_code": res.exit_code,
                         "ok": ok,
                         "failure_type": failure_type,
+                        "failure_type_v2": failure_type_v2,
                         "response_hash": hash_text(out_text),
                     }
                     # inside the loops, after computing row:
@@ -848,6 +907,7 @@ def main() -> None:
                         "checks_ok": checks_ok,
                         "overall_ok": overall_ok,
                         "failure_type": failure_type,
+                        "failure_type_v2": failure_type_v2,
                         "stderr": res.stderr,
                         "error": res.error,
                         "timed_out": res.timed_out,
