@@ -40,24 +40,20 @@ def main() -> None:
     payload = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     contexts = payload.get("contexts", {})
 
-    latest_snapshot = contexts.get("latest_snapshot")
-    comparison_12m = contexts.get("comparison_12m")
-
-    if not isinstance(latest_snapshot, str) or not isinstance(comparison_12m, str):
-        raise ValueError("Context JSON is missing required string fields under 'contexts'.")
+    if not isinstance(contexts, dict) or not contexts:
+        raise ValueError("Context JSON is missing 'contexts' dictionary.")
 
     template_text = TEMPLATE_PATH.read_text(encoding="utf-8")
 
-    rendered_text = render_placeholder(
-        template_text,
-        "{{ latest_snapshot }}",
-        latest_snapshot,
-    )
-    rendered_text = render_placeholder(
-        rendered_text,
-        "{{ comparison_12m }}",
-        comparison_12m,
-    )
+    rendered_text = template_text
+    for key, value in contexts.items():
+        if not isinstance(value, str):
+            raise ValueError(f"Context '{key}' is not a string.")
+        rendered_text = render_placeholder(
+            rendered_text,
+            f"{{{{ {key} }}}}",
+            value,
+        )
 
     OUT_PATH.write_text(rendered_text, encoding="utf-8")
     print(f"Rendered suite written to: {OUT_PATH}")

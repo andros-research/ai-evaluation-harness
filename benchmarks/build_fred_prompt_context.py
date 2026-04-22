@@ -138,6 +138,22 @@ def fmt_comparison(date_a: str, vals_a: Dict[str, float], date_b: str, vals_b: D
         f"FEDFUNDS: {vals_b['FEDFUNDS']:.2f}\n"
         f"GS10: {vals_b['GS10']:.2f}"
     )
+    
+
+def build_snapshot_values(
+    snapshot_date: str,
+    cpi_yoy_series: Dict[str, FredObservation],
+    raw_series: Dict[str, List[FredObservation]],
+) -> Dict[str, float]:
+    values = {
+        "CPI_YOY": nearest_on_or_before(list(cpi_yoy_series.values()), snapshot_date).value,
+        "UNRATE": nearest_on_or_before(raw_series["UNRATE"], snapshot_date).value,
+        "FEDFUNDS": nearest_on_or_before(raw_series["FEDFUNDS"], snapshot_date).value,
+        "GS10": nearest_on_or_before(raw_series["GS10"], snapshot_date).value,
+    }
+    if any(v is None for v in values.values()):
+        raise RuntimeError(f"Missing values in snapshot construction for {snapshot_date}.")
+    return values  # type: ignore[return-value]
 
 
 def main() -> None:
@@ -153,38 +169,46 @@ def main() -> None:
     cpi_yoy_series = compute_cpi_yoy(raw_series["CPI_YOY"])
 
     latest_date = latest_valid(raw_series["UNRATE"]).date
-    prior_date = add_months_approx(latest_date, 12)
+    prior_date_12m = add_months_approx(latest_date, 12)
+    prior_date_24m = add_months_approx(latest_date, 24)
+    prior_date_6m = add_months_approx(latest_date, 6)
 
-    latest_values = {
-        "CPI_YOY": cpi_yoy_series[latest_date].value,
-        "UNRATE": nearest_on_or_before(raw_series["UNRATE"], latest_date).value,
-        "FEDFUNDS": nearest_on_or_before(raw_series["FEDFUNDS"], latest_date).value,
-        "GS10": nearest_on_or_before(raw_series["GS10"], latest_date).value,
-    }
-    prior_values = {
-        "CPI_YOY": nearest_on_or_before(list(cpi_yoy_series.values()), prior_date).value,
-        "UNRATE": nearest_on_or_before(raw_series["UNRATE"], prior_date).value,
-        "FEDFUNDS": nearest_on_or_before(raw_series["FEDFUNDS"], prior_date).value,
-        "GS10": nearest_on_or_before(raw_series["GS10"], prior_date).value,
-    }
+    latest_values = build_snapshot_values(latest_date, cpi_yoy_series, raw_series)
+    prior_values_12m = build_snapshot_values(prior_date_12m, cpi_yoy_series, raw_series)
+    prior_values_24m = build_snapshot_values(prior_date_24m, cpi_yoy_series, raw_series)
+    prior_values_6m = build_snapshot_values(prior_date_6m, cpi_yoy_series, raw_series)
 
-    if any(v is None for v in latest_values.values()) or any(v is None for v in prior_values.values()):
-        raise RuntimeError("Missing values in latest/prior snapshot construction.")
+    latest_text = fmt_snapshot(latest_date, latest_values)
+    snapshot_alt_1_text = fmt_snapshot(prior_date_24m, prior_values_24m)
 
-    latest_text = fmt_snapshot(latest_date, latest_values)  # type: ignore[arg-type]
-    comparison_text = fmt_comparison(prior_date, prior_values, latest_date, latest_values)  # type: ignore[arg-type]
-
+    comparison_12m_text = fmt_comparison(
+        prior_date_12m, prior_values_12m, latest_date, latest_values
+    )
+    comparison_24m_text = fmt_comparison(
+        prior_date_24m, prior_values_24m, latest_date, latest_values
+    )
+    comparison_6m_text = fmt_comparison(
+        prior_date_6m, prior_values_6m, latest_date, latest_values
+    )
+    
     payload = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "latest_date": latest_date,
-        "prior_date_12m": prior_date,
+        "prior_date_6m": prior_date_6m,
+        "prior_date_12m": prior_date_12m,
+        "prior_date_24m": prior_date_24m,
         "series": SERIES_CONFIG,
         "contexts": {
             "latest_snapshot": latest_text,
-            "comparison_12m": comparison_text,
+            "snapshot_alt_1": snapshot_alt_1_text,
+            "comparison_6m": comparison_6m_text,
+            "comparison_12m": comparison_12m_text,
+            "comparison_24m": comparison_24m_text,
         },
         "latest_values": latest_values,
-        "prior_values_12m": prior_values,
+        "prior_values_6m": prior_values_6m,
+        "prior_values_12m": prior_values_12m,
+        "prior_values_24m": prior_values_24m,
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

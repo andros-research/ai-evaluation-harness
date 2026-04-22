@@ -30,11 +30,67 @@ prompts:
     domain: macro
     difficulty: easy
 
+  - id: macro_regime_snapshot_alt
+    text: |
+      You are given a macro snapshot.
+
+      {{ snapshot_alt_1 }}
+
+      Write one short paragraph describing the macro snapshot using only the values provided.
+
+      You may:
+      - restate values
+      - compare values within the snapshot
+
+      You may NOT:
+      - describe conditions as strong, weak, robust, elevated, or stable
+      - infer economic conditions beyond the values shown
+      - introduce any interpretation not directly supported by the data
+    task_type: reasoning
+    domain: macro
+    difficulty: easy
+
+  - id: supported_statements_6m
+    text: |
+      You are given a macro comparison.
+
+      {{ comparison_6m }}
+
+      Evaluate the following statements using only the data shown:
+
+      1. Inflation is lower at Date B than at Date A.
+      2. Unemployment is lower at Date B than at Date A.
+      3. The policy rate is lower at Date B than at Date A.
+      4. The 10Y yield is unchanged between the two dates.
+
+      Return ONLY valid JSON with key "supported", whose value is an array of the statement numbers that are supported.
+      Return ONLY valid JSON.
+      Do not include any explanation.
+      Do not include any text before or after the JSON.
+    task_type: reasoning
+    domain: macro
+    difficulty: medium
+
   - id: macro_compare_12m
     text: |
       You are given two macro snapshots.
 
       {{ comparison_12m }}
+
+      Write one short paragraph comparing Date A and Date B.
+      State what changed and what did not.
+      Do not speculate about causes.
+      Write exactly 3 to 4 sentences.
+      Do not exceed 4 sentences.
+    task_type: reasoning
+    domain: macro
+    difficulty: medium
+
+  - id: macro_compare_24m
+    text: |
+      You are given two macro snapshots.
+
+      {{ comparison_24m }}
 
       Write one short paragraph comparing Date A and Date B.
       State what changed and what did not.
@@ -140,8 +196,47 @@ checks:
         - "alarm bells"
         - "robust"
         - "elevated"
+  
+  macro_regime_snapshot_alt:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 5
+    - type: word_count_range
+      min: 45
+      max: 120
+    - type: banned_phrases
+      phrases:
+        - "investor expectations"
+        - "cautiously optimistic"
+        - "no major red flags"
+        - "alarm bells"
+        - "robust"
+        - "elevated"
+
+  supported_statements_6m:
+    - type: json_strict
+      required:
+        supported: array
+      rules:
+        array_item_types:
+          supported: number
+    - type: exact_match
+      expected:
+        supported: [2, 3]
 
   macro_compare_12m:
+    - type: exact_paragraphs
+      expected: 1
+    - type: sentence_count_range
+      min: 3
+      max: 4
+    - type: word_count_range
+      min: 45
+      max: 130
+  
+  macro_compare_24m:
     - type: exact_paragraphs
       expected: 1
     - type: sentence_count_range
