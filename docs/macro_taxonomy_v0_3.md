@@ -136,6 +136,7 @@ These are not random errors, but persistent behavioral tendencies.
 </p>
 
 Pass-rate across prompt × model combinations under baseline (temp0) conditions.
+Values represent proportion of runs passing all evaluation checks.
 
 ---
 
@@ -145,7 +146,10 @@ Pass-rate across prompt × model combinations under baseline (temp0) conditions.
   <img src="images/macro-delta-heatmap.png" width="800"/>
 </p>
 
-Change in pass rate across temperature regimes. Positive values indicate improvement at higher temperature; negative values indicate degradation.
+Change in pass rate across temperature regimes (temp0.3 − temp0).
+Positive values indicate improvement at higher temperature; negative values indicate degradation.
+
+**Key observation:** Structured tasks (e.g., supported_statements) remain invariant across temperature, while narrative tasks exhibit asymmetric sensitivity.
 
 ---
 
@@ -163,6 +167,8 @@ This structure enables:
 - deterministic failure classification
 - systematic comparison across models and regimes
 - transition from anecdotal debugging to reproducible analysis
+
+Crucially, these patterns are stable across repeated runs, indicating that model behavior can be characterized as a set of persistent, structured regimes rather than isolated stochastic failures.
 
 ---
 
