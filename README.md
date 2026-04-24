@@ -19,7 +19,7 @@ This repository’s v1.0 milestone establishes the core behavioral harness:
 This version focuses on **closing the loop between measurement → interpretation → validation**, enabling model behavior to be not only observed but systematically explained and audited.
 Later versions extend this toward narrative generation, validation, and richer telemetry.
 
-## v1.4 milestone (current)
+## v1.4 milestone
 
 The v1.4 system extends the behavioral harness into a structured evaluation and validation pipeline:
 
@@ -41,6 +41,20 @@ The v1.4 system extends the behavioral harness into a structured evaluation and 
 - explicit narrative-to-claim traceability and coverage tracking
 
 This version focuses on **closing the loop between measurement → interpretation → validation**.
+
+## v1.5 milestone (current)
+
+The v1.5 system introduces structured macro evaluation and failure taxonomy:
+
+- FRED-integrated macro prompt suite
+- semantic validation via JSON-constrained tasks
+- failure taxonomy (schema, semantic, symbolic, verbosity, narrative)
+- semantic pattern classification (v0.3)
+- experiment comparison across temperature regimes
+- dashboard extensions:
+  - failure taxonomy tables
+  - semantic pattern distributions
+  - pass-rate delta heatmaps
 
 ## Why this exists
 

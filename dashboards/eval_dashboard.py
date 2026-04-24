@@ -24,6 +24,7 @@ RUNS_ROOT = REPO_ROOT / "benchmarks" / "results" / "runs"
 ARCHIVE_ROOT = REPO_ROOT / "benchmarks" / "results" / "archive"
 LEGACY_NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
 LEGACY_AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
+SEMANTIC_PATTERN_CSV = AGG_ROOT / "semantic_pattern_summary.csv"
 
 
 # -------------------------
@@ -354,15 +355,17 @@ def make_experiment_delta_table(
     merged = base.merge(
         comp,
         on=["suite_name", "prompt_id", "model"],
-        how="outer",
+        how="inner",
     )
 
     merged["baseline_pass_rate"] = pd.to_numeric(
         merged["baseline_pass_rate"], errors="coerce"
-    ).fillna(0.0)
+    )
     merged["comparison_pass_rate"] = pd.to_numeric(
         merged["comparison_pass_rate"], errors="coerce"
-    ).fillna(0.0)
+    )
+
+    merged = merged.dropna(subset=["baseline_pass_rate", "comparison_pass_rate"]).copy()
     merged["delta_pass_rate"] = merged["comparison_pass_rate"] - merged["baseline_pass_rate"]
     merged["abs_delta"] = merged["delta_pass_rate"].abs()
 
@@ -464,6 +467,12 @@ def load_claim_coverage_summary(path: str) -> dict[str, Any]:
     if p.exists():
         return load_json_file(p)
     return {}
+
+@st.cache_data(show_spinner=False)
+def load_semantic_patterns():
+    if SEMANTIC_PATTERN_CSV.exists():
+        return pd.read_csv(SEMANTIC_PATTERN_CSV)
+    return pd.DataFrame()
 
 # -------------------------
 # Tabs
@@ -770,6 +779,48 @@ with tab_agg:
         & compare_src["suite_name"].astype("string").isin(agg_suites)
     ].copy()
     
+    compare_mode = st.radio(
+        "Comparison run scope",
+        options=["All pooled runs", "Latest run per experiment"],
+        index=1,
+        horizontal=True,
+        key="comparison_run_scope",
+    )
+    
+    if compare_mode == "Latest run per experiment":
+        tmp = compare_src.copy()
+
+        if "run_timestamp_iso" in tmp.columns:
+            tmp["_dt"] = pd.to_datetime(tmp["run_timestamp_iso"], errors="coerce")
+        elif "run_date" in tmp.columns:
+            tmp["_dt"] = pd.to_datetime(tmp["run_date"], errors="coerce")
+        else:
+            tmp["_dt"] = pd.NaT
+
+        # fallback if timestamp is missing
+        if tmp["_dt"].isna().all() and "run_id" in tmp.columns:
+            latest_run_ids = (
+                tmp.groupby(["suite_name", "experiment_name"])["run_id"]
+                .max()
+                .reset_index()
+            )
+            compare_src = tmp.merge(
+                latest_run_ids,
+                on=["suite_name", "experiment_name", "run_id"],
+                how="inner",
+            )
+        else:
+            latest = (
+                tmp.dropna(subset=["_dt"])
+                .groupby(["suite_name", "experiment_name"], as_index=False)["_dt"]
+                .max()
+            )
+            compare_src = tmp.merge(
+                latest,
+                on=["suite_name", "experiment_name", "_dt"],
+                how="inner",
+            )
+    
     experiment_summary_compare = make_experiment_metric_summary(compare_src)
 
     available_compare_suites = sorted(
@@ -824,7 +875,11 @@ with tab_agg:
                 index=0,
                 key="comparison_metric",
             )
-
+            
+            st.caption(
+                f"Note: comparison mode = {compare_mode}. "
+                "Use latest-run mode when comparing recent suite changes."
+            )
             delta_table = make_experiment_delta_table(
                 experiment_summary_compare,
                 suite_name=comparison_suite,
@@ -981,6 +1036,62 @@ with tab_agg:
 
                 st.markdown("#### Mean Bucket Rate by Failure Type")
                 st.bar_chart(pivot_chart)
+                
+    st.subheader("Semantic Pattern Distribution (v0.3)")
+
+    semantic_df = load_semantic_patterns()
+
+    if semantic_df.empty:
+        st.info("No semantic_pattern_summary.csv found yet.")
+    else:
+        s = semantic_df.copy()
+
+        for col in ["suite_name", "prompt_id", "model", "semantic_pattern"]:
+            if col in s.columns:
+                s[col] = s[col].astype("string").fillna("")
+
+        for col in ["pattern_count", "total_runs", "pattern_rate"]:
+            if col in s.columns:
+                s[col] = pd.to_numeric(s[col], errors="coerce")
+
+        # Apply same filters
+        s = s[
+            s["suite_name"].isin(agg_suites)
+            & s["prompt_id"].isin(agg_prompts)
+            & s["model"].isin(agg_models)
+        ].copy()
+
+        if s.empty:
+            st.info("No semantic pattern rows in current filter.")
+        else:
+            # Table view
+            show_s = s.copy()
+            show_s["pattern_rate"] = show_s["pattern_rate"].apply(
+                lambda x: f"{x:.2%}" if pd.notna(x) else "—"
+            )
+
+            st.dataframe(
+                show_s.sort_values(
+                    ["prompt_id", "model", "semantic_pattern"]
+                ),
+                use_container_width=True,
+            )
+
+            # 🔥 Chart: model × semantic pattern
+            st.markdown("#### Pattern Distribution by Model")
+
+            chart_df = (
+                s.groupby(["model", "semantic_pattern"], as_index=False)["pattern_rate"]
+                .mean()
+            )
+
+            pivot_chart = chart_df.pivot(
+                index="semantic_pattern",
+                columns="model",
+                values="pattern_rate",
+            ).fillna(0.0)
+
+            st.bar_chart(pivot_chart)
 
     telem_src = m.copy()
     telem_src = telem_src[telem_src["task_type"].astype("string").str.strip() != ""].copy()
