@@ -4,7 +4,7 @@
 
 This document summarizes the first structured failure taxonomy results from the macro evaluation suite introduced in v1.5.
 
-The goal is to move beyond aggregate pass rates and instead classify *how* and *why* models fail under controlled macro reasoning tasks.
+The objective is to move beyond aggregate pass rates and instead characterize failure modes in terms of their structure, frequency, and repeatability under controlled macro reasoning tasks.
 
 All results are based on repeated runs across:
 - multiple prompt types (snapshot, comparison, structured JSON tasks)
@@ -60,11 +60,11 @@ In addition, structured tasks include **semantic pattern classification**, captu
 
 ---
 
-## Key Observations
+## Empirical Findings
 
-### 1. Failures are highly structured and repeatable
+### 1. Failure modes are structured and repeatable
 
-Across repeated runs, models frequently produce identical outputs (same response hash), indicating:
+Models frequently produce identical outputs across repeated runs (identical response hashes), indicating low stochastic variance at fixed temperature.
 
 - low stochastic variance at fixed temperature
 - stable failure behavior rather than random noise
@@ -77,7 +77,7 @@ This enables deterministic classification of failure modes.
 
 In `supported_statements` tasks:
 
-- models consistently exhibit:
+Models exhibit stable, repeatable error patterns::
   - over-selection (adding unsupported statements)
   - under-selection (missing valid statements)
 
@@ -127,25 +127,42 @@ These are not random errors, but persistent behavioral tendencies.
 
 ---
 
+## Example Results
+
+### Pass-rate heatmap
+
+<p align="center">
+  <img src="images/macro-passrate-heatmap.png" width="800"/>
+</p>
+
+Pass-rate across prompt × model combinations under baseline (temp0) conditions.
+
+---
+
+### Temperature comparison (temp0 vs temp0.3)
+
+<p align="center">
+  <img src="images/macro-delta-heatmap.png" width="800"/>
+</p>
+
+Change in pass rate across temperature regimes. Positive values indicate improvement at higher temperature; negative values indicate degradation.
+
+---
+
 ## Interpretation
 
-These results suggest that LLM behavior can be decomposed into:
+These results indicate that LLM behavior can be decomposed into:
 
-- **task-dependent failure regimes**
-- **model-specific error biases**
-- **temperature-dependent tradeoffs**
+- task-dependent failure regimes
+- model-specific error biases
+- temperature-dependent tradeoffs
 
-Rather than treating failures as isolated mistakes, they can be:
+Failures are not isolated events, but arise from stable behavioral patterns that persist across repeated runs and controlled inference conditions.
 
-- classified
-- measured
-- compared across controlled conditions
-
-This opens the door to:
-
-- systematic model selection
-- targeted prompt design
-- structured guardrail development
+This structure enables:
+- deterministic failure classification
+- systematic comparison across models and regimes
+- transition from anecdotal debugging to reproducible analysis
 
 ---
 
@@ -174,6 +191,4 @@ The v0.3 macro taxonomy demonstrates that:
 - semantic errors follow identifiable patterns
 - different models exhibit distinct failure biases
 
-This provides a foundation for moving from:
-
-**“Does the model pass?” → “How and why does the model fail?”**
+This work demonstrates that LLM evaluation can shift from binary success metrics to structured analysis of failure modes, providing a foundation for interpretable and controllable model behavior.
