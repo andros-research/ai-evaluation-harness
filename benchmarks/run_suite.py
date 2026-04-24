@@ -537,6 +537,52 @@ def classify_failure_v2(
 
     return "ok"
 
+def classify_semantic_pattern(
+    prompt_id: str,
+    response_text: str,
+    suite: Dict[str, Any],
+) -> str:
+    """
+    Classify structured semantic-selection behavior for supported_statements-style prompts.
+    Only applies to prompts whose checks include exact_match with expected.supported.
+    """
+    checks = suite.get("checks", {}).get(prompt_id, [])
+    expected_supported = None
+
+    for chk in checks:
+        if chk.get("type") == "exact_match":
+            expected = chk.get("expected", {})
+            if isinstance(expected, dict) and isinstance(expected.get("supported"), list):
+                expected_supported = set(expected["supported"])
+
+    if expected_supported is None:
+        return ""
+
+    try:
+        obj = json.loads(response_text)
+    except Exception:
+        return "unparseable_selection"
+
+    actual_raw = obj.get("supported") if isinstance(obj, dict) else None
+    if not isinstance(actual_raw, list):
+        return "missing_supported_array"
+
+    try:
+        actual_supported = set(int(x) for x in actual_raw)
+    except Exception:
+        return "invalid_supported_values"
+
+    if actual_supported == expected_supported:
+        return "correct_selection"
+
+    if actual_supported.issubset(expected_supported):
+        return "under_selection"
+
+    if actual_supported.issuperset(expected_supported):
+        return "over_selection"
+
+    return "mixed_selection_error"
+
 # -------------------------
 # Ollama API
 # -------------------------
@@ -762,6 +808,7 @@ def main() -> None:
         "ok",
         "failure_type",
         "failure_type_v2",
+        "semantic_pattern",
         "response_hash",
     ]
 
@@ -849,6 +896,12 @@ def main() -> None:
                         checks_detail=checks_detail,
                         response_text=out_text,
                     )
+                    
+                    semantic_pattern = classify_semantic_pattern(
+                        prompt_id=pid,
+                        response_text=out_text,
+                        suite=suite,
+                    )
 
                     row = {
                         "run_id": run_id,
@@ -879,6 +932,7 @@ def main() -> None:
                         "ok": ok,
                         "failure_type": failure_type,
                         "failure_type_v2": failure_type_v2,
+                        "semantic_pattern": semantic_pattern,
                         "response_hash": hash_text(out_text),
                     }
                     # inside the loops, after computing row:
@@ -908,6 +962,7 @@ def main() -> None:
                         "overall_ok": overall_ok,
                         "failure_type": failure_type,
                         "failure_type_v2": failure_type_v2,
+                        "semantic_pattern": semantic_pattern,
                         "stderr": res.stderr,
                         "error": res.error,
                         "timed_out": res.timed_out,

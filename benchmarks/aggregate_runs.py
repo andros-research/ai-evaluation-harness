@@ -206,6 +206,7 @@ def main() -> int:
         "overall_ok",
         "failure_type",
         "failure_type_v2",
+        "semantic_pattern",
         "response_hash",
         "responses_rows",
         "metrics_path",
@@ -252,6 +253,43 @@ def main() -> int:
     failure_csv = paths.aggregated_dir / "failure_taxonomy_summary.csv"
     failure_summary.to_csv(failure_csv, index=False)
     print(f"[OK] Wrote failure summary -> {failure_csv}")
+    
+    sem_df = master[
+        master.get("semantic_pattern", pd.Series(index=master.index, dtype="object"))
+        .notna()
+    ].copy()
+
+    sem_df = sem_df[sem_df["semantic_pattern"].astype(str).str.len() > 0].copy()
+
+    if not sem_df.empty:
+        semantic_summary = (
+            sem_df.groupby(
+                ["suite_name", "prompt_id", "model", "semantic_pattern"],
+                dropna=False,
+            )
+            .size()
+            .reset_index(name="pattern_count")
+        )
+
+        totals = (
+            sem_df.groupby(["suite_name", "prompt_id", "model"], dropna=False)
+            .size()
+            .reset_index(name="total_runs")
+        )
+
+        semantic_summary = semantic_summary.merge(
+            totals,
+            on=["suite_name", "prompt_id", "model"],
+            how="left",
+        )
+
+        semantic_summary["pattern_rate"] = (
+            semantic_summary["pattern_count"] / semantic_summary["total_runs"]
+        )
+
+        semantic_csv = paths.aggregated_dir / "semantic_pattern_summary.csv"
+        semantic_summary.to_csv(semantic_csv, index=False)
+        print(f"[OK] Wrote semantic pattern summary -> {semantic_csv}")
 
     return 0
 
