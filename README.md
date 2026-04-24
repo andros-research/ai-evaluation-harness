@@ -44,17 +44,44 @@ This version focuses on **closing the loop between measurement → interpretatio
 
 ## v1.5 milestone (current)
 
-The v1.5 system introduces structured macro evaluation and failure taxonomy:
+The v1.5 system introduces structured macro evaluation and a formal failure-mode taxonomy, marking a transition from measuring behavior to systematically classifying and explaining model failures.
 
 - FRED-integrated macro prompt suite
 - semantic validation via JSON-constrained tasks
-- failure taxonomy (schema, semantic, symbolic, verbosity, narrative)
+- failure-mode taxonomy (schema, semantic, symbolic, verbosity, narrative)
 - semantic pattern classification (v0.3)
 - experiment comparison across temperature regimes
 - dashboard extensions:
-  - failure taxonomy tables
+  - failure-mode taxonomy tables
   - semantic pattern distributions
   - pass-rate delta heatmaps
+
+## Key findings (v1.5)
+
+Early results from structured macro evaluations reveal that model failures are not random but highly structured and repeatable:
+
+- **Failure modes cluster by task type**
+  - structured JSON tasks exhibit consistent semantic and selection errors
+  - freeform reasoning tasks primarily degrade via verbosity and narrative drift
+
+- **Semantic errors are systematic, not stochastic**
+  - models repeatedly exhibit the same incorrect selection patterns across runs
+  - failure behavior is stable even under identical prompts and low temperature
+
+- **Temperature introduces asymmetric tradeoffs**
+  - moderate temperature increases can improve fluency and format adherence
+  - but often degrade strict semantic correctness (e.g. selection tasks)
+
+- **Model differences are qualitative, not just quantitative**
+  - some models over-select, adding unsupported claims
+  - others under-select, missing valid claims
+  - these behaviors are consistent across prompts and datasets
+
+- **Deterministic classification is feasible**
+  - failure taxonomy + semantic pattern classification allows failures to be categorized reliably
+  - this enables reproducible analysis rather than anecdotal debugging
+
+These results suggest that LLM behavior can be decomposed into stable, interpretable failure regimes, providing a foundation for systematic evaluation and future control strategies.
 
 ## Why this exists
 
@@ -150,10 +177,10 @@ These are early behavioral results rather than final scientific claims, but they
   - narrative generation with strict grounding constraints
   - audit system and fidelity metrics
   - repair loop for improving narrative quality
-- v1.5 (next) — richer telemetry
+- v1.5 — structured macro evaluation + failure taxonomy (current)
+- v1.6 (next) — richer telemetry
   - token-level metrics (logprobs, latency, etc.)
   - deeper behavioral diagnostics
-  - early macro / external data integration (e.g. FRED)
 - v2.0 — full telemetry + analysis stack
 
 ## Notes
