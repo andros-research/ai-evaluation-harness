@@ -23,6 +23,12 @@ PROJECT_ROOT = BENCH_DIR.parent                     # /home/joe/ai-lab
 os.chdir(PROJECT_ROOT)
 print(f"Working directory set to: {PROJECT_ROOT}")
 
+HARNESS_VERSION = "v1.5.1"
+CHECK_SCHEMA_VERSION = "macro_checks_v0.3"
+FAILURE_TAXONOMY_VERSION = "failure_taxonomy_v0.3"
+SEMANTIC_PATTERN_VERSION = "semantic_pattern_v0.3"
+TELEMETRY_SCHEMA_VERSION = "telemetry_schema_v0.1"
+
 
 def resolve_config_path(p: str) -> Path:
     """
@@ -773,6 +779,13 @@ def main() -> None:
         "timeout_s": timeout_s,
         "suite_file": str(suite_path),
         "runner_file": str(runner_path) if runner_path else "",
+        "schema_versions": {
+            "harness_version": HARNESS_VERSION,
+            "check_schema_version": CHECK_SCHEMA_VERSION,
+            "failure_taxonomy_version": FAILURE_TAXONOMY_VERSION,
+            "semantic_pattern_version": SEMANTIC_PATTERN_VERSION,
+            "telemetry_schema_version": TELEMETRY_SCHEMA_VERSION,
+        },
     }
     with open(os.path.join(outdir, "metadata.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
@@ -810,6 +823,11 @@ def main() -> None:
         "failure_type_v2",
         "semantic_pattern",
         "response_hash",
+        "harness_version",
+        "check_schema_version",
+        "failure_taxonomy_version",
+        "semantic_pattern_version",
+        "telemetry_schema_version",
     ]
 
     print(f"Running benchmark suite -> {outdir}")
@@ -934,6 +952,11 @@ def main() -> None:
                         "failure_type_v2": failure_type_v2,
                         "semantic_pattern": semantic_pattern,
                         "response_hash": hash_text(out_text),
+                        "harness_version": HARNESS_VERSION,
+                        "check_schema_version": CHECK_SCHEMA_VERSION,
+                        "failure_taxonomy_version": FAILURE_TAXONOMY_VERSION,
+                        "semantic_pattern_version": SEMANTIC_PATTERN_VERSION,
+                        "telemetry_schema_version": TELEMETRY_SCHEMA_VERSION,
                     }
                     # inside the loops, after computing row:
                     resp_record = {
@@ -967,6 +990,18 @@ def main() -> None:
                         "error": res.error,
                         "timed_out": res.timed_out,
                         "response_hash": hash_text(out_text),
+                        "harness_version": HARNESS_VERSION,
+                        "check_schema_version": CHECK_SCHEMA_VERSION,
+                        "failure_taxonomy_version": FAILURE_TAXONOMY_VERSION,
+                        "semantic_pattern_version": SEMANTIC_PATTERN_VERSION,
+                        "telemetry_schema_version": TELEMETRY_SCHEMA_VERSION,
+                        "schema_versions": {
+                            "harness_version": HARNESS_VERSION,
+                            "check_schema_version": CHECK_SCHEMA_VERSION,
+                            "failure_taxonomy_version": FAILURE_TAXONOMY_VERSION,
+                            "semantic_pattern_version": SEMANTIC_PATTERN_VERSION,
+                            "telemetry_schema_version": TELEMETRY_SCHEMA_VERSION,
+                        },
                     }
                     respf.write(json.dumps(resp_record, ensure_ascii=False) + "\n")
                     respf.flush()
