@@ -26,6 +26,29 @@ LEGACY_NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
 LEGACY_AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 SEMANTIC_PATTERN_CSV = AGG_ROOT / "semantic_pattern_summary.csv"
 
+VERSION_COLS = [
+    "harness_version",
+    "check_schema_version",
+    "failure_taxonomy_version",
+    "semantic_pattern_version",
+    "telemetry_schema_version",
+]
+
+REQUIRED_TELEMETRY_COLS = [
+    "suite_name",
+    "experiment_name",
+    "prompt_id",
+    "model",
+    "overall_ok",
+    "checks_ok",
+    "checks_total",
+    "failure_type_v2",
+    "semantic_pattern",
+    "task_type",
+    "domain",
+    "difficulty",
+    "response_hash",
+]
 
 # -------------------------
 # Scope discovery helpers
@@ -383,6 +406,143 @@ def make_delta_heatmap(delta_table: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     return delta_table.pivot(index="prompt_id", columns="model", values="delta_pass_rate").sort_index()
 
+def telemetry_complete_subset(df: pd.DataFrame) -> pd.DataFrame:
+    d = df.copy()
+    missing = [c for c in REQUIRED_TELEMETRY_COLS if c not in d.columns]
+    if missing:
+        return d.iloc[0:0].copy()
+
+    mask = pd.Series(True, index=d.index)
+
+    for col in REQUIRED_TELEMETRY_COLS:
+        if col == "semantic_pattern":
+            # Blank/NA is expected for non-selection tasks.
+            continue
+
+        mask &= d[col].notna()
+        mask &= d[col].astype("string").str.strip().ne("")
+
+    mask &= pd.to_numeric(d["checks_total"], errors="coerce").fillna(0).gt(0)
+
+    return d[mask].copy()
+
+
+def add_run_datetime(df: pd.DataFrame) -> pd.DataFrame:
+    d = df.copy()
+
+    if "run_timestamp_iso" in d.columns:
+        d["_run_dt"] = pd.to_datetime(d["run_timestamp_iso"], errors="coerce")
+    elif "run_date" in d.columns:
+        d["_run_dt"] = pd.to_datetime(d["run_date"], errors="coerce")
+    elif "ts" in d.columns:
+        d["_run_dt"] = pd.to_datetime(d["ts"], errors="coerce")
+    else:
+        d["_run_dt"] = pd.NaT
+
+    if d["_run_dt"].isna().all() and "run_id" in d.columns:
+        d["_run_dt"] = pd.to_datetime(d["run_id"], errors="coerce")
+
+    return d
+
+
+def latest_n_runs_per_experiment(df: pd.DataFrame, n: int = 3) -> pd.DataFrame:
+    if df.empty or "run_id" not in df.columns:
+        return df.iloc[0:0].copy()
+
+    d = add_run_datetime(df)
+
+    run_level = (
+        d.groupby(["suite_name", "experiment_name", "run_id"], as_index=False)
+        .agg(run_dt=("_run_dt", "max"))
+    )
+
+    if run_level["run_dt"].isna().all():
+        run_level = run_level.sort_values(
+            ["suite_name", "experiment_name", "run_id"],
+            ascending=[True, True, False],
+        )
+    else:
+        run_level = run_level.sort_values(
+            ["suite_name", "experiment_name", "run_dt", "run_id"],
+            ascending=[True, True, False, False],
+        )
+
+    run_level["_rank"] = run_level.groupby(
+        ["suite_name", "experiment_name"]
+    ).cumcount() + 1
+
+    keep = run_level[run_level["_rank"] <= n][
+        ["suite_name", "experiment_name", "run_id"]
+    ]
+
+    return d.merge(keep, on=["suite_name", "experiment_name", "run_id"], how="inner")
+
+
+def make_model_behavior_summary(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
+
+    d = df.copy()
+
+    # Ensure numeric
+    for col in ["overall_ok", "checks_ok", "sentence_count", "avg_sentence_length_words", "words"]:
+        if col in d.columns:
+            d[col] = pd.to_numeric(d[col], errors="coerce")
+
+    grouped = []
+
+    for (suite, experiment, model), g in d.groupby(["suite_name", "experiment_name", "model"]):
+        rows = len(g)
+
+        overall_pass = g["overall_ok"].mean() if "overall_ok" in g else None
+
+        checks_only = g[g["checks_total"].fillna(0) > 0]
+        checks_pass = checks_only["checks_ok"].mean() if len(checks_only) else None
+
+        # Dominant failure type
+        failure_mode = None
+        if "failure_type_v2" in g:
+            vc = g["failure_type_v2"].value_counts()
+            if len(vc):
+                failure_mode = vc.index[0]
+
+        # Dominant semantic pattern
+        semantic_mode = None
+        if "semantic_pattern" in g:
+            sp = g["semantic_pattern"].dropna()
+            if len(sp):
+                vc = sp.value_counts()
+                if len(vc):
+                    semantic_mode = vc.index[0]
+
+        # Style
+        avg_sent = g["sentence_count"].mean() if "sentence_count" in g else None
+        avg_sent_len = g["avg_sentence_length_words"].mean() if "avg_sentence_length_words" in g else None
+        avg_words = g["words"].mean() if "words" in g else None
+
+        # Stability
+        unique_hashes = g["response_hash"].nunique() if "response_hash" in g else None
+        stability = None
+        if unique_hashes is not None and rows > 0:
+            stability = 1 - (unique_hashes / rows)
+
+        grouped.append({
+            "suite_name": suite,
+            "experiment_name": experiment,
+            "model": model,
+            "rows": rows,
+            "overall_pass_rate": overall_pass,
+            "checks_pass_rate": checks_pass,
+            "dominant_failure_type_v2": failure_mode,
+            "dominant_semantic_pattern": semantic_mode,
+            "avg_sentence_count": avg_sent,
+            "avg_sentence_length": avg_sent_len,
+            "avg_words": avg_words,
+            "unique_response_hashes": unique_hashes,
+            "response_hash_stability_rate": stability,
+        })
+
+    return pd.DataFrame(grouped)
 
 def find_narrative_files(narratives_root: Path, suffix: str) -> list[Path]:
     if not narratives_root.exists():
@@ -644,6 +804,11 @@ with tab_agg:
         st.error(f"No runs_master found. Expected: {AGG_PARQUET} or {AGG_CSV}")
         st.stop()
     
+    for col in VERSION_COLS:
+        if col not in master.columns:
+            master[col] = pd.NA
+        master[col] = master[col].astype("string").fillna("")
+    
     # Prompt-id normalizer
     master["prompt_id"] = normalize_prompt_id_series(master["prompt_id"])
     
@@ -770,56 +935,91 @@ with tab_agg:
     # -------------------------   
     st.subheader("Experiment Comparison (within suite)")
 
-    # Comparison should operate off master, constrained by current model/prompt filters,
-    # but not accidentally constrained by Agg: Experiments multiselect.
     compare_src = master.copy()
     compare_src = compare_src[
         compare_src["model"].isin(agg_models)
         & compare_src["prompt_id"].isin(agg_prompts)
         & compare_src["suite_name"].astype("string").isin(agg_suites)
     ].copy()
-    
+
+    st.markdown("#### Comparison Data Scope")
+
+    scope_col1, scope_col2, scope_col3 = st.columns(3)
+
+    with scope_col1:
+        use_telemetry_complete = st.checkbox(
+            "Core telemetry-complete rows only",
+            value=True,
+            key="compare_telemetry_complete",
+        )
+
+    with scope_col2:
+        same_schema_only = st.checkbox(
+            "Same schema/version cohort only",
+            value=True,
+            key="compare_same_schema_only",
+        )
+
+    with scope_col3:
+        latest_n = st.number_input(
+            "Latest N runs per experiment",
+            min_value=1,
+            max_value=25,
+            value=3,
+            step=1,
+            key="compare_latest_n",
+        )
+
+    if use_telemetry_complete:
+        compare_src = telemetry_complete_subset(compare_src)
+
+    if same_schema_only:
+        schema_filter_cols = [c for c in VERSION_COLS if c in compare_src.columns]
+
+        if schema_filter_cols and not compare_src.empty:
+            st.caption("Schema/version cohort filters")
+
+            selected_versions = {}
+            cols = st.columns(len(schema_filter_cols))
+
+            for i, col in enumerate(schema_filter_cols):
+                vals = sorted(
+                    [
+                        v for v in compare_src[col].dropna().astype("string").unique().tolist()
+                        if str(v).strip()
+                    ]
+                )
+
+                default_vals = vals[-1:] if vals else []
+
+                selected_versions[col] = cols[i].multiselect(
+                    col,
+                    options=vals,
+                    default=default_vals,
+                    key=f"schema_filter_{col}",
+                )
+
+            for col, selected in selected_versions.items():
+                if selected:
+                    compare_src = compare_src[
+                        compare_src[col].astype("string").isin(selected)
+                    ].copy()
+
     compare_mode = st.radio(
         "Comparison run scope",
-        options=["All pooled runs", "Latest run per experiment"],
+        options=["All pooled matching rows", "Latest N runs per experiment"],
         index=1,
         horizontal=True,
         key="comparison_run_scope",
     )
-    
-    if compare_mode == "Latest run per experiment":
-        tmp = compare_src.copy()
 
-        if "run_timestamp_iso" in tmp.columns:
-            tmp["_dt"] = pd.to_datetime(tmp["run_timestamp_iso"], errors="coerce")
-        elif "run_date" in tmp.columns:
-            tmp["_dt"] = pd.to_datetime(tmp["run_date"], errors="coerce")
-        else:
-            tmp["_dt"] = pd.NaT
+    if compare_mode == "Latest N runs per experiment":
+        compare_src = latest_n_runs_per_experiment(compare_src, int(latest_n))
 
-        # fallback if timestamp is missing
-        if tmp["_dt"].isna().all() and "run_id" in tmp.columns:
-            latest_run_ids = (
-                tmp.groupby(["suite_name", "experiment_name"])["run_id"]
-                .max()
-                .reset_index()
-            )
-            compare_src = tmp.merge(
-                latest_run_ids,
-                on=["suite_name", "experiment_name", "run_id"],
-                how="inner",
-            )
-        else:
-            latest = (
-                tmp.dropna(subset=["_dt"])
-                .groupby(["suite_name", "experiment_name"], as_index=False)["_dt"]
-                .max()
-            )
-            compare_src = tmp.merge(
-                latest,
-                on=["suite_name", "experiment_name", "_dt"],
-                how="inner",
-            )
+    st.caption(
+        f"Comparison rows after scope filters: {len(compare_src):,} | "
+        f"Unique runs: {compare_src['run_id'].nunique() if 'run_id' in compare_src.columns else '—'}"
+    )
     
     experiment_summary_compare = make_experiment_metric_summary(compare_src)
 
@@ -947,6 +1147,29 @@ with tab_agg:
             st.info("Need at least two experiments within the selected suite to compare.")
     else:
         st.info("No suites available for comparison.")
+    
+    # -------------------------
+    # Model Behavior table
+    # -------------------------   
+    st.subheader("Model Behavioral Summary")
+
+    model_summary = make_model_behavior_summary(compare_src)
+
+    if not model_summary.empty:
+        show = model_summary.copy()
+
+        for col in ["overall_pass_rate", "checks_pass_rate", "response_hash_stability_rate"]:
+            if col in show.columns:
+                show[col] = show[col].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "—")
+
+        for col in ["avg_sentence_count", "avg_sentence_length", "avg_words"]:
+            if col in show.columns:
+                show[col] = show[col].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—")
+
+        st.dataframe(show, use_container_width=True)
+    else:
+        st.info("Not enough data to build model behavioral summary.")
+        
     
     mN = normalize_master(m)  # if you want filtered run health/hotspots
 
