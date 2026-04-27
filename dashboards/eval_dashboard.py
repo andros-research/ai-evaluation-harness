@@ -406,6 +406,92 @@ def make_delta_heatmap(delta_table: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     return delta_table.pivot(index="prompt_id", columns="model", values="delta_pass_rate").sort_index()
 
+def classify_delta(x: float) -> str:
+    if pd.isna(x):
+        return "unknown"
+    if x >= 0.15:
+        return "strong improvement"
+    if x >= 0.05:
+        return "mild improvement"
+    if x <= -0.15:
+        return "strong degradation"
+    if x <= -0.05:
+        return "mild degradation"
+    return "stable"
+
+
+def describe_sensitivity(avg_abs_delta: float) -> str:
+    if pd.isna(avg_abs_delta):
+        return "unknown"
+    if avg_abs_delta >= 0.15:
+        return "high"
+    if avg_abs_delta >= 0.07:
+        return "moderate"
+    return "low"
+
+
+def make_model_delta_summary(delta_table: pd.DataFrame) -> pd.DataFrame:
+    if delta_table.empty:
+        return pd.DataFrame()
+
+    d = delta_table.copy()
+    d["delta_pass_rate"] = pd.to_numeric(d["delta_pass_rate"], errors="coerce")
+
+    rows = []
+
+    for model, g in d.groupby("model"):
+        avg_delta = g["delta_pass_rate"].mean()
+        avg_abs_delta = g["delta_pass_rate"].abs().mean()
+
+        best = g.sort_values("delta_pass_rate", ascending=False).head(1)
+        worst = g.sort_values("delta_pass_rate", ascending=True).head(1)
+
+        best_prompt = best["prompt_id"].iloc[0] if len(best) else "—"
+        best_delta = best["delta_pass_rate"].iloc[0] if len(best) else pd.NA
+
+        worst_prompt = worst["prompt_id"].iloc[0] if len(worst) else "—"
+        worst_delta = worst["delta_pass_rate"].iloc[0] if len(worst) else pd.NA
+
+        profile = classify_delta(avg_delta)
+        sensitivity = describe_sensitivity(avg_abs_delta)
+
+        rows.append({
+            "model": model,
+            "avg_delta": avg_delta,
+            "avg_abs_delta": avg_abs_delta,
+            "temperature_sensitivity": sensitivity,
+            "overall_direction": profile,
+            "best_prompt": best_prompt,
+            "best_delta": best_delta,
+            "worst_prompt": worst_prompt,
+            "worst_delta": worst_delta,
+        })
+
+    return pd.DataFrame(rows)
+
+def render_model_delta_sentence(row: pd.Series, baseline_experiment: str, comparison_experiment: str) -> str:
+    model = row["model"]
+    sensitivity = row["temperature_sensitivity"]
+    direction = row["overall_direction"]
+
+    avg_delta = row["avg_delta"]
+    best_prompt = row["best_prompt"]
+    best_delta = row["best_delta"]
+    worst_prompt = row["worst_prompt"]
+    worst_delta = row["worst_delta"]
+
+    avg_txt = f"{avg_delta:+.0%}" if pd.notna(avg_delta) else "unknown"
+    best_txt = f"{best_delta:+.0%}" if pd.notna(best_delta) else "unknown"
+    worst_txt = f"{worst_delta:+.0%}" if pd.notna(worst_delta) else "unknown"
+
+    return (
+        f"{model} shows {sensitivity} temperature sensitivity from "
+        f"{baseline_experiment} to {comparison_experiment}, with an average delta of {avg_txt}. "
+        f"Overall direction is {direction}. "
+        f"Strongest relative area: {best_prompt} ({best_txt}); "
+        f"weakest relative area: {worst_prompt} ({worst_txt})."
+    )
+
 def telemetry_complete_subset(df: pd.DataFrame) -> pd.DataFrame:
     d = df.copy()
     missing = [c for c in REQUIRED_TELEMETRY_COLS if c not in d.columns]
@@ -1149,6 +1235,33 @@ with tab_agg:
         st.info("No suites available for comparison.")
     
     # -------------------------
+    # Model delta summary (determinisitc)
+    # ------------------------- 
+    st.subheader("Deterministic Model Delta Summaries")
+
+    model_delta_summary = make_model_delta_summary(delta_table)
+
+    if not model_delta_summary.empty:
+        show_mds = model_delta_summary.copy()
+
+        for col in ["avg_delta", "avg_abs_delta", "best_delta", "worst_delta"]:
+            show_mds[col] = show_mds[col].apply(lambda x: f"{x:+.2%}" if pd.notna(x) else "—")
+
+        st.dataframe(show_mds, use_container_width=True)
+
+        st.markdown("#### Summary Sentences")
+        for _, row in model_delta_summary.iterrows():
+            st.write(
+                "- " + render_model_delta_sentence(
+                    row,
+                    baseline_experiment=baseline_experiment,
+                    comparison_experiment=comparison_experiment,
+                )
+            )
+    else:
+        st.info("Not enough data to generate model delta summaries.")
+    
+    # -------------------------
     # Model Behavior table
     # -------------------------   
     st.subheader("Model Behavioral Summary")
@@ -1400,7 +1513,9 @@ with tab_agg:
     elif ok_only == "Only failures":
         m = m[m["ok"] == 0]
 
-    
+    # -------------------------
+    # Lab growth chart
+    # -------------------------  
     st.subheader("Lab Growth Over Time")
     metric_choice = st.selectbox(
         "Growth metric",
