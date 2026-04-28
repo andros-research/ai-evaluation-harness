@@ -492,6 +492,110 @@ def render_model_delta_sentence(row: pd.Series, baseline_experiment: str, compar
         f"weakest relative area: {worst_prompt} ({worst_txt})."
     )
 
+
+def make_model_profile_summary(
+    delta_summary: pd.DataFrame,
+    behavior_summary: pd.DataFrame,
+    comparison_experiment: str,
+) -> pd.DataFrame:
+    if delta_summary.empty or behavior_summary.empty:
+        return pd.DataFrame()
+
+    b = behavior_summary.copy()
+    b = b[b["experiment_name"].astype("string") == str(comparison_experiment)].copy()
+
+    merged = delta_summary.merge(
+        b,
+        on="model",
+        how="left",
+        suffixes=("_delta", "_behavior"),
+    )
+
+    return merged
+
+
+def format_failure_mode(x: str) -> str:
+    if pd.isna(x) or str(x).strip() == "":
+        return "unknown"
+    if str(x).strip().lower() == "ok":
+        return "no dominant failure mode"
+    return str(x)
+ 
+def article(word):
+    return "an" if word[0].lower() in "aeiou" else "a"
+
+
+def render_model_profile_sentence(row, baseline_experiment, comparison_experiment):
+    failure_str = format_failure_mode(row["dominant_failure_type_v2"])
+    if failure_str == "no dominant failure mode":
+        failure_sentence = "It shows no dominant failure mode"
+    else:
+        failure_sentence = f"Its dominant failure mode is {failure_str}"
+    role = row.get("model_role", "mixed")
+    return (
+        f"{row['model']} shows {row['temperature_sensitivity']} sensitivity from "
+        f"{baseline_experiment} to {comparison_experiment}, with average delta "
+        f"{row['avg_delta']:+.0%}. "
+        f"{failure_sentence} and its dominant semantic pattern is "
+        f"{row['dominant_semantic_pattern']}. "
+        f"Response hash stability is {row['response_hash_stability_rate']:.0%}. "
+        f"This model behaves as {article(role)} {role} under this comparison. "
+        f"Consistency is {row['consistency']}; adaptability is {row['adaptability']}."
+    )
+
+
+def classify_model_role(row):
+    if row["temperature_sensitivity"] == "low" and row["overall_direction"] == "stable":
+        return "anchor"
+
+    if row["overall_direction"] in ["mild degradation"]:
+        return "drifting_capacity"
+
+    if row["overall_direction"] in ["mild improvement"] and row["avg_abs_delta"] > 0.1:
+        return "explorer"
+
+    return "mixed"
+
+
+def classify_consistency(hash_stability: float) -> str:
+    x = pd.to_numeric(hash_stability, errors="coerce")
+    if pd.isna(x):
+        return "unknown"
+    if x >= 0.75:
+        return "high"
+    if x >= 0.40:
+        return "medium"
+    return "low"
+
+
+def classify_adaptability(avg_abs_delta: float) -> str:
+    x = pd.to_numeric(avg_abs_delta, errors="coerce")
+    if pd.isna(x):
+        return "unknown"
+    if x >= 0.15:
+        return "high"
+    if x >= 0.07:
+        return "medium"
+    return "low"
+
+
+def classify_model_role(row: pd.Series) -> str:
+    sensitivity = str(row.get("temperature_sensitivity", "")).lower()
+    direction = str(row.get("overall_direction", "")).lower()
+    avg_abs_delta = pd.to_numeric(row.get("avg_abs_delta"), errors="coerce")
+
+    if sensitivity == "low" and direction == "stable":
+        return "anchor"
+
+    if "degradation" in direction:
+        return "drifting_capacity"
+
+    if "improvement" in direction and pd.notna(avg_abs_delta) and avg_abs_delta >= 0.08:
+        return "explorer"
+
+    return "mixed"
+
+
 def telemetry_complete_subset(df: pd.DataFrame) -> pd.DataFrame:
     d = df.copy()
     missing = [c for c in REQUIRED_TELEMETRY_COLS if c not in d.columns]
@@ -1260,6 +1364,30 @@ with tab_agg:
             )
     else:
         st.info("Not enough data to generate model delta summaries.")
+    
+    # model profile = dynamic change + static behavior
+    behavior_summary = make_model_behavior_summary(compare_src)
+    model_profile = make_model_profile_summary(
+        model_delta_summary,
+        behavior_summary,
+        comparison_experiment=comparison_experiment,
+    )
+    model_profile["model_role"] = model_profile.apply(classify_model_role, axis=1)
+    model_profile["consistency"] = model_profile["response_hash_stability_rate"].apply(classify_consistency)
+    model_profile["adaptability"] = model_profile["avg_abs_delta"].apply(classify_adaptability)
+    
+    st.subheader("Merged Model Profiles")
+
+    st.dataframe(model_profile, use_container_width=True)
+
+    for _, row in model_profile.iterrows():
+        st.write(
+            "- " + render_model_profile_sentence(
+                row,
+                baseline_experiment,
+                comparison_experiment,
+            )
+        )
     
     # -------------------------
     # Model Behavior table
