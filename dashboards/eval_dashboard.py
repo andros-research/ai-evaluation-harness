@@ -521,6 +521,7 @@ def format_failure_mode(x: str) -> str:
         return "no dominant failure mode"
     return str(x)
  
+ 
 def article(word):
     return "an" if word[0].lower() in "aeiou" else "a"
 
@@ -542,19 +543,6 @@ def render_model_profile_sentence(row, baseline_experiment, comparison_experimen
         f"This model behaves as {article(role)} {role} under this comparison. "
         f"Consistency is {row['consistency']}; adaptability is {row['adaptability']}."
     )
-
-
-def classify_model_role(row):
-    if row["temperature_sensitivity"] == "low" and row["overall_direction"] == "stable":
-        return "anchor"
-
-    if row["overall_direction"] in ["mild degradation"]:
-        return "drifting_capacity"
-
-    if row["overall_direction"] in ["mild improvement"] and row["avg_abs_delta"] > 0.1:
-        return "explorer"
-
-    return "mixed"
 
 
 def classify_consistency(hash_stability: float) -> str:
@@ -733,6 +721,30 @@ def make_model_behavior_summary(df: pd.DataFrame) -> pd.DataFrame:
         })
 
     return pd.DataFrame(grouped)
+
+
+def build_model_profile(row):
+    return {
+        "model": row["model"],
+        "role": classify_model_role(row),
+        "performance": {
+            "avg_delta": row["avg_delta"],
+            "temperature_sensitivity": row["temperature_sensitivity"],
+            "overall_direction": row["overall_direction"],
+        },
+        "behavior": {
+            "dominant_pattern": row["dominant_semantic_pattern"],
+            "failure_mode": row["dominant_failure_type_v2"],
+        },
+        "reliability": {
+            "consistency": compute_consistency(row),
+            "adaptability": compute_adaptability(row),
+            "hash_stability": row["response_hash_stability_rate"],
+        },
+        "strengths": row["best_prompt"],
+        "weaknesses": row["worst_prompt"],
+    }
+
 
 def find_narrative_files(narratives_root: Path, suffix: str) -> list[Path]:
     if not narratives_root.exists():
@@ -1388,6 +1400,64 @@ with tab_agg:
                 comparison_experiment,
             )
         )
+    
+    # -------------------------
+    # Model Profile Cards
+    # -------------------------
+    st.subheader("Model Profile Cards")
+
+    if not model_profile.empty:
+        for _, row in model_profile.iterrows():
+            role = row.get("model_role", "mixed")
+            failure_str = format_failure_mode(row.get("dominant_failure_type_v2", "unknown"))
+
+            with st.container(border=True):
+                st.markdown(f"### {row['model']}")
+
+                c1, c2, c3, c4 = st.columns(4)
+
+                c1.metric("Role", role)
+                c2.metric("Sensitivity", row.get("temperature_sensitivity", "unknown"))
+                c3.metric("Direction", row.get("overall_direction", "unknown"))
+                c4.metric(
+                    "Hash Stability",
+                    f"{row['response_hash_stability_rate']:.0%}"
+                    if pd.notna(row.get("response_hash_stability_rate"))
+                    else "—",
+                )
+
+                c5, c6, c7, c8 = st.columns(4)
+
+                c5.metric(
+                    "Avg Delta",
+                    f"{row['avg_delta']:+.0%}" if pd.notna(row.get("avg_delta")) else "—",
+                )
+                c6.metric(
+                    "Pass Rate",
+                    f"{row['overall_pass_rate']:.0%}" if pd.notna(row.get("overall_pass_rate")) else "—",
+                )
+                c7.metric("Consistency", row.get("consistency", "unknown"))
+                c8.metric("Adaptability", row.get("adaptability", "unknown"))
+
+                st.markdown(
+                    f"""
+    **Behavior**
+    - Failure mode: `{failure_str}`
+    - Semantic pattern: `{row.get("dominant_semantic_pattern", "unknown")}`
+
+    **Strength / Weakness**
+    - Strongest relative area: `{row.get("best_prompt", "—")}` ({row.get("best_delta", 0):+.0%})
+    - Weakest relative area: `{row.get("worst_prompt", "—")}` ({row.get("worst_delta", 0):+.0%})
+                    """
+                )
+    else:
+        st.info("Not enough data to build model profile cards.")
+        
+    st.caption(
+        f"Profile comparison: {comparison_experiment} minus {baseline_experiment} "
+        f"| comparison mode: {compare_mode} "
+        f"| latest N={int(latest_n) if compare_mode == 'Latest N runs per experiment' else 'all'}"
+    )
     
     # -------------------------
     # Model Behavior table
