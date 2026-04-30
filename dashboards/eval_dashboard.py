@@ -221,6 +221,14 @@ def format_delta_labels(df: pd.DataFrame) -> pd.DataFrame:
         return df
     return df.applymap(lambda x: f"{x:+.0%}" if pd.notna(x) else "")
 
+def green_tag(x):
+    return (
+        f"<span style='color:#22c55e; background-color:#111827; "
+        f"padding:2px 6px; border-radius:5px; font-family:monospace;'>"
+        f"{x}</span>"
+    )
+    
+
 def make_prompt_model_summary(df: pd.DataFrame) -> pd.DataFrame:
     if not {"prompt_id", "model"}.issubset(df.columns):
         return pd.DataFrame()
@@ -565,6 +573,34 @@ def classify_adaptability(avg_abs_delta: float) -> str:
     if x >= 0.07:
         return "medium"
     return "low"
+
+
+REPAIR_STRATEGIES = {
+    "over_selection": ["tighten_selection"],
+    "verbosity_drift": ["compress_output"],
+    "mixed_selection_error": ["refine_filtering"],
+    "symbolic_output": ["enforce_literal_output"],
+    "narrative_drift": ["tighten_claim_scope"],
+    "semantic_error": ["recheck_evidence_alignment"],
+}
+
+
+def infer_repair_focus(row: pd.Series) -> list[str]:
+    strategies = []
+
+    semantic_pattern = str(row.get("dominant_semantic_pattern", "")).strip()
+    failure_type = str(row.get("dominant_failure_type_v2", "")).strip()
+
+    strategies.extend(REPAIR_STRATEGIES.get(semantic_pattern, []))
+    strategies.extend(REPAIR_STRATEGIES.get(failure_type, []))
+
+    if row.get("consistency") == "low":
+        strategies.append("enforce_structured_output")
+
+    if row.get("adaptability") == "high":
+        strategies.append("allow_exploration_then_constrain")
+
+    return sorted(set(strategies)) if strategies else ["minimal_repair"]
 
 
 def classify_model_role(row: pd.Series) -> str:
@@ -1387,6 +1423,7 @@ with tab_agg:
     model_profile["model_role"] = model_profile.apply(classify_model_role, axis=1)
     model_profile["consistency"] = model_profile["response_hash_stability_rate"].apply(classify_consistency)
     model_profile["adaptability"] = model_profile["avg_abs_delta"].apply(classify_adaptability)
+    model_profile["repair_focus"] = model_profile.apply(infer_repair_focus, axis=1)
     
     st.subheader("Merged Model Profiles")
 
@@ -1438,18 +1475,31 @@ with tab_agg:
                 )
                 c7.metric("Consistency", row.get("consistency", "unknown"))
                 c8.metric("Adaptability", row.get("adaptability", "unknown"))
+                
+                repair_focus = row.get("repair_focus", ["minimal_repair"])
+                if not isinstance(repair_focus, list):
+                    repair_focus = [str(repair_focus)]
+                
+                st.markdown(
+                    f"**Behavior** - Failure mode: {green_tag(failure_str)} - "
+                    f"Semantic pattern: {green_tag(row.get('dominant_semantic_pattern', 'unknown'))}",
+                    unsafe_allow_html=True,
+                )
+
+                st.markdown("**Repair Focus**")
+
+                for strategy in repair_focus:
+                    st.markdown(green_tag(strategy), unsafe_allow_html=True)
 
                 st.markdown(
-                    f"""
-    **Behavior**
-    - Failure mode: `{failure_str}`
-    - Semantic pattern: `{row.get("dominant_semantic_pattern", "unknown")}`
-
-    **Strength / Weakness**
-    - Strongest relative area: `{row.get("best_prompt", "—")}` ({row.get("best_delta", 0):+.0%})
-    - Weakest relative area: `{row.get("worst_prompt", "—")}` ({row.get("worst_delta", 0):+.0%})
-                    """
+                    f"**Strength / Weakness** - "
+                    f"Strongest relative area: {green_tag(row.get('best_prompt', '—'))} "
+                    f"({row.get('best_delta', 0):+.0%}) - "
+                    f"Weakest relative area: {green_tag(row.get('worst_prompt', '—'))} "
+                    f"({row.get('worst_delta', 0):+.0%})",
+                    unsafe_allow_html=True,
                 )
+                
     else:
         st.info("Not enough data to build model profile cards.")
         
