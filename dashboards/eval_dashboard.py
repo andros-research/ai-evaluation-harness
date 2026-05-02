@@ -583,6 +583,32 @@ REPAIR_STRATEGIES = {
     "narrative_drift": ["tighten_claim_scope"],
     "semantic_error": ["recheck_evidence_alignment"],
 }
+REPAIR_STRATEGY_DESCRIPTIONS = {
+    "tighten_selection": "Reduce over-selection by requiring fewer, more directly supported claims.",
+    "compress_output": "Shorten output and reduce narrative drift.",
+    "refine_filtering": "Improve distinction between relevant and irrelevant evidence.",
+    "enforce_structured_output": "Force stricter schema, formatting, and response shape.",
+    "allow_exploration_then_constrain": "Use the model for broader idea generation, then apply stricter validation and compression.",
+    "minimal_repair": "Apply only light cleanup; no major behavioral correction indicated.",
+}
+REPAIR_PROMPT_PATCHES = {
+    "tighten_selection": "Select only the strongest directly supported claims. Exclude weakly related or redundant evidence.",
+    "compress_output": "Rewrite the answer in fewer sentences while preserving only the core supported claims.",
+    "refine_filtering": "Re-check each selected claim against the prompt objective and remove mismatched evidence.",
+    "enforce_structured_output": "Return only the requested schema. Do not add commentary outside the schema.",
+    "allow_exploration_then_constrain": "First identify plausible interpretations, then rank them by evidence quality and keep only the strongest.",
+    "minimal_repair": "Make only minor clarity edits without changing the substance.",
+}
+
+def describe_repair_strategy(strategy: str) -> str:
+    return REPAIR_STRATEGY_DESCRIPTIONS.get(
+        strategy,
+        "No description available for this repair strategy.",
+    )
+    
+
+def get_repair_prompt_patch(strategy: str) -> str:
+    return REPAIR_PROMPT_PATCHES.get(strategy, "")
 
 
 def infer_repair_focus(row: pd.Series) -> list[str]:
@@ -1489,7 +1515,10 @@ with tab_agg:
                 st.markdown("**Repair Focus**")
 
                 for strategy in repair_focus:
-                    st.markdown(green_tag(strategy), unsafe_allow_html=True)
+                    st.markdown(
+                        f"{green_tag(strategy)} — {describe_repair_strategy(strategy)}",
+                        unsafe_allow_html=True,
+                    )
 
                 st.markdown(
                     f"**Strength / Weakness** - "
@@ -1499,6 +1528,11 @@ with tab_agg:
                     f"({row.get('worst_delta', 0):+.0%})",
                     unsafe_allow_html=True,
                 )
+                
+                with st.expander("Repair prompt patches"):
+                    for strategy in repair_focus:
+                        st.markdown(f"**{strategy}**")
+                        st.code(get_repair_prompt_patch(strategy), language="text")
                 
     else:
         st.info("Not enough data to build model profile cards.")
