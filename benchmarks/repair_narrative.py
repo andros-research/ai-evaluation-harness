@@ -10,6 +10,19 @@ from typing import Any
 
 REPAIR_SUFFIX_RE = re.compile(r"__narrative_repair_(\d+)$")
 
+REPAIR_PROMPT_PATCHES = {
+    "tighten_selection": "Select only the strongest directly supported claims. Exclude weakly related or redundant evidence.",
+    "compress_output": "Rewrite the answer in fewer sentences while preserving only the core supported claims.",
+    "refine_filtering": "Re-check each selected claim against the prompt objective and remove mismatched evidence.",
+    "enforce_structured_output": "Return only the requested schema. Do not add commentary outside the schema.",
+    "allow_exploration_then_constrain": "First identify plausible interpretations, then rank them by evidence quality and keep only the strongest.",
+    "minimal_repair": "Make only minor clarity edits without changing the substance.",
+}
+
+
+def get_repair_prompt_patch(strategy: str) -> str:
+    return REPAIR_PROMPT_PATCHES.get(strategy, "")
+
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -234,17 +247,29 @@ def build_prompt(
     selected_claims: list[dict[str, Any]],
     target_claim_ids: list[str],
     target_claims: list[dict[str, Any]],
+    repair_strategies: list[str],
 ) -> str:
     instruction = build_instruction()
 
-    payload = {
-        "target_claim_ids": target_claim_ids,
-        "target_claims": target_claims,
-        "selected_claims": selected_claims,
-    }
+    # payload = {
+    #     "target_claim_ids": target_claim_ids,
+    #     "target_claims": target_claims,
+    #     "selected_claims": selected_claims,
+    # }
+    
+    repair_patches = [
+        {
+            "strategy": strategy,
+            "instruction": get_repair_prompt_patch(strategy),
+        }
+        for strategy in repair_strategies
+        if get_repair_prompt_patch(strategy)
+    ]
 
     return (
         f"{instruction}\n\n"
+        f"REPAIR STRATEGIES:\n"
+        f"{json.dumps(repair_patches, indent=2)}\n\n"
         f"CURRENT NARRATIVE:\n"
         f"{current_narrative_text}\n\n"
         f"REPAIR TARGET CLAIM IDS:\n"
@@ -381,6 +406,7 @@ def build_repaired_payload(
     model: str,
     temperature: float,
     num_predict: int,
+    repair_strategies: list[str],
 ) -> dict[str, Any]:
     sections = parse_repaired_text_to_sections(repaired_text)
     meta = infer_metadata_from_selected_payload(selected_payload, selected_claims_path)
@@ -403,6 +429,11 @@ def build_repaired_payload(
         "prompt": build_instruction(),
         "narrative": repaired_text,
         "sections": sections,
+        "repair_strategies": repair_strategies,
+        "repair_prompt_patches": {
+            strategy: get_repair_prompt_patch(strategy)
+            for strategy in repair_strategies
+        },
     }
 
 
@@ -467,6 +498,12 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="One or more target unused claim IDs to incorporate if possible.",
     )
+    parser.add_argument(
+        "--repair-strategies",
+        nargs="*",
+        default=[],
+        help="Optional repair strategies to apply, e.g. tighten_selection compress_output.",
+    )
     parser.add_argument("--model", default="mistral", help="Ollama model name.")
     parser.add_argument("--temperature", type=float, default=0.1, help="Generation temperature.")
     parser.add_argument("--num-predict", type=int, default=768, help="Max generated tokens.")
@@ -481,6 +518,15 @@ def main() -> None:
     selected_claims_path = Path(args.selected_claims_json).resolve()
     narrative_json_path = Path(args.narrative_json).resolve()
     target_claim_ids = [str(x).strip() for x in args.target_claim_ids if str(x).strip()]
+    repair_strategies = [str(x).strip() for x in args.repair_strategies if str(x).strip()]
+    unknown_strategies = [s for s in repair_strategies if s not in REPAIR_PROMPT_PATCHES]
+    if unknown_strategies:
+        raise ValueError(
+            "Unknown repair strategies:\n"
+            + "\n".join(unknown_strategies)
+            + "\n\nKnown strategies:\n"
+            + "\n".join(sorted(REPAIR_PROMPT_PATCHES))
+        )
     
     if not selected_claims_path.exists():
         raise FileNotFoundError(f"selected claims json not found: {selected_claims_path}")
@@ -513,6 +559,7 @@ def main() -> None:
         selected_claims=selected_claims,
         target_claim_ids=target_claim_ids,
         target_claims=target_claims,
+        repair_strategies=repair_strategies,
     )
 
     repaired_text = call_ollama_generate(
@@ -541,6 +588,7 @@ def main() -> None:
         model=args.model,
         temperature=args.temperature,
         num_predict=args.num_predict,
+        repair_strategies=repair_strategies,
     )
     
     validation_errors = validate_repaired_sections(
@@ -566,6 +614,11 @@ def main() -> None:
         "num_predict": args.num_predict,
         "output_json": str(output_paths["json"]),
         "output_md": str(output_paths["md"]),
+        "repair_strategies": repair_strategies,
+        "repair_prompt_patches": {
+            strategy: get_repair_prompt_patch(strategy)
+            for strategy in repair_strategies
+        },
     }
 
     save_json(repaired_payload, output_paths["json"])
