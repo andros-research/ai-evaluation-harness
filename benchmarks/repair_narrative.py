@@ -224,6 +224,7 @@ Important:
 - Cross-model comparisons are only valid if the prose explicitly compares the same prompt_id and experiment across models, and all cited claims correspond to that exact comparison.
 - If a target claim cannot be incorporated cleanly into an existing bullet without changing the cited model names, add a new bullet for that target claim.
 
+The REPAIR STRATEGIES are instructions for you only. Do not quote, summarize, or include the REPAIR STRATEGIES section in the final narrative.
 
 Output exactly in this structure:
 
@@ -393,6 +394,21 @@ def infer_metadata_from_selected_payload(
     }
     
 
+def render_sections_to_text(sections: dict[str, list[str]]) -> str:
+    lines = []
+    for title, key in [
+        ("Observations", "observations"),
+        ("Tradeoffs", "tradeoffs"),
+        ("Invariances", "invariances"),
+        ("Cautions", "cautions"),
+    ]:
+        lines.append(f"{title}:")
+        for bullet in sections.get(key, []):
+            lines.append(f"- {bullet}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 def build_repaired_payload(
     *,
     results_root: Path,
@@ -409,6 +425,15 @@ def build_repaired_payload(
     repair_strategies: list[str],
 ) -> dict[str, Any]:
     sections = parse_repaired_text_to_sections(repaired_text)
+    
+    for section_name in ["observations", "tradeoffs", "invariances"]:
+        sections[section_name] = [
+            b for b in sections.get(section_name, [])
+            if not b.strip().lower().startswith("none")
+        ]
+    
+    repaired_text = render_sections_to_text(sections)
+    
     meta = infer_metadata_from_selected_payload(selected_payload, selected_claims_path)
 
     return {

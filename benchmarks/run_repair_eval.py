@@ -44,6 +44,12 @@ def parse_args() -> argparse.Namespace:
         help="Target unused claim IDs to incorporate",
     )
     parser.add_argument(
+        "--repair-strategies",
+        nargs="*",
+        default=[],
+        help="Optional repair strategies to pass through to repair_narrative.py.",
+    )
+    parser.add_argument(
         "--model",
         default="mistral",
         help="Ollama model for repair generation",
@@ -176,6 +182,8 @@ def main() -> None:
         str(narrative_json),
         "--target-claim-ids",
         *args.target_claim_ids,
+        "--repair-strategies",
+        *args.repair_strategies,
         "--model",
         args.model,
         "--temperature",
