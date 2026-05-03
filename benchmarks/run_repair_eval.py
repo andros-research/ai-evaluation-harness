@@ -50,6 +50,11 @@ def parse_args() -> argparse.Namespace:
         help="Optional repair strategies to pass through to repair_narrative.py.",
     )
     parser.add_argument(
+        "--repair-label",
+        default=None,
+        help="Optional label for this repair experiment variant, e.g. structure_only.",
+    )
+    parser.add_argument(
         "--model",
         default="mistral",
         help="Ollama model for repair generation",
@@ -241,6 +246,27 @@ def main() -> None:
     run_cmd(compare_cmd)
 
     comparison_summary = load_json((agg_dir / "repair_comparison_summary.json").resolve())
+    
+    repair_eval_record = {
+        "repair_label": args.repair_label or "unlabeled_repair",
+        "repair_strategies": args.repair_strategies,
+        "original_artifact": args.original_artifact,
+        "repaired_artifact": repaired["repaired_artifact_name"],
+        "selected_claims_json": str(selected_claims_json),
+        "narrative_json": str(narrative_json),
+        "target_claim_ids": args.target_claim_ids,
+        "model": args.model,
+        "temperature": args.temperature,
+        "num_predict": args.num_predict,
+        "repair_metadata_json": str(repaired["repair_metadata_json"]),
+        "repaired_json": str(repaired["repaired_json"]),
+        "repaired_audit_json": str(repaired["repaired_audit_json"]),
+        "repaired_parsed_json": str(repaired["repaired_parsed_json"]),
+        "comparison_summary": comparison_summary,
+    }
+
+    record_path = agg_dir / f"repair_eval__{repair_eval_record['repair_label']}.json"
+    record_path.write_text(json.dumps(repair_eval_record, indent=2), encoding="utf-8")
 
     print("\n=== REPAIR EVAL COMPLETE ===")
     print("Original artifact:", args.original_artifact)
@@ -250,6 +276,8 @@ def main() -> None:
     print("Repaired parsed JSON:", repaired["repaired_parsed_json"])
     print("Repair metadata JSON:", repaired["repair_metadata_json"])
     print("Repair success:", comparison_summary.get("repair_success"))
+    print("Repair label:", repair_eval_record["repair_label"])
+    print("Repair eval record:", record_path)
     print(
         "Used-claim ratio: {before} -> {after} (delta {delta})".format(
             before=comparison_summary.get("claim_coverage", {}).get("before", {}).get("used_claim_ratio"),
