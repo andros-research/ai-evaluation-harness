@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 import re
 from typing import Any
+from pandas.errors import EmptyDataError
 
 st.set_page_config(layout="wide")
 st.title("AI Evaluation Harness Dashboard")
@@ -820,6 +821,24 @@ def load_json_file(path: Path) -> dict[str, Any]:
     except Exception:
         return {}
 
+
+def load_repair_matrix_summary(results_root: Path) -> pd.DataFrame:
+    path = results_root / "aggregated" / "repair_matrix_summary.csv"
+    if not path.exists() or path.stat().st_size == 0:
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path)
+    except EmptyDataError:
+        return pd.DataFrame()
+
+
+def load_repair_strategy_recommendation(results_root: Path) -> dict:
+    path = results_root / "aggregated" / "repair_strategy_recommendation.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text())
+
+
 def narrative_label_from_path(path: Path) -> str:
     return path.name
 
@@ -867,9 +886,12 @@ def load_failure_summary() -> pd.DataFrame:
 @st.cache_data(show_spinner=False)
 def load_audit_items(path: str) -> pd.DataFrame:
     p = Path(path)
-    if p.exists():
+    if not p.exists() or p.stat().st_size == 0:
+        return pd.DataFrame()
+    try:
         return pd.read_csv(p)
-    return pd.DataFrame()
+    except EmptyDataError:
+        return pd.DataFrame()
 
 @st.cache_data(show_spinner=False)
 def load_audit_summary(path: str) -> dict[str, Any]:
@@ -881,9 +903,12 @@ def load_audit_summary(path: str) -> dict[str, Any]:
 @st.cache_data(show_spinner=False)
 def load_claim_coverage(path: str) -> pd.DataFrame:
     p = Path(path)
-    if p.exists():
+    if not p.exists() or p.stat().st_size == 0:
+        return pd.DataFrame()
+    try:
         return pd.read_csv(p)
-    return pd.DataFrame()
+    except EmptyDataError:
+        return pd.DataFrame()
 
 @st.cache_data(show_spinner=False)
 def load_claim_coverage_summary(path: str) -> dict[str, Any]:
@@ -1052,6 +1077,30 @@ with tab_run:
  
 with tab_agg:
     master = load_agg()
+
+    scope_options = get_scope_options()
+
+    selected_scope_type = st.sidebar.selectbox(
+        "Repair Matrix: Scope type",
+        options=["runs", "archive"],
+        index=0,
+        key="repair_matrix_scope_type",
+    )
+
+    selected_scope_names = scope_options.get(selected_scope_type, [])
+
+    if selected_scope_names:
+        selected_scope_name = st.sidebar.selectbox(
+            "Repair Matrix: Scope",
+            options=selected_scope_names,
+            index=0,
+            key="repair_matrix_scope_name",
+        )
+
+        scope_paths = resolve_scope_paths(selected_scope_type, selected_scope_name)
+        repair_results_root = scope_paths["base"]
+    else:
+        repair_results_root = REPO_ROOT / "benchmarks" / "results"
     
     # Safety block for new telemetry fields that do not exist in earlier data
     for col in ["task_type", "domain", "difficulty"]:
@@ -1542,6 +1591,76 @@ with tab_agg:
         f"| comparison mode: {compare_mode} "
         f"| latest N={int(latest_n) if compare_mode == 'Latest N runs per experiment' else 'all'}"
     )
+    
+    # -------------------------
+    # Repair Matrix summary
+    # -------------------------     
+    st.subheader("Repair Matrix Summary")
+    
+    repair_matrix_path = repair_results_root / "aggregated" / "repair_matrix_summary.csv"
+    repair_rec_path = repair_results_root / "aggregated" / "repair_strategy_recommendation.json"
+
+    show_repair_debug = st.checkbox(
+        "Show repair matrix debug paths",
+        value=False,
+        key="show_repair_matrix_debug",
+    )
+
+    if show_repair_debug:
+        st.caption(f"Repair results root: `{repair_results_root}`")
+        st.caption(f"Looking for matrix: `{repair_matrix_path}` | exists={repair_matrix_path.exists()}")
+        st.caption(f"Looking for recommendation: `{repair_rec_path}` | exists={repair_rec_path.exists()}")
+
+    repair_matrix_df = load_repair_matrix_summary(repair_results_root)
+    repair_rec = load_repair_strategy_recommendation(repair_results_root)
+
+    if repair_matrix_df.empty:
+        st.info("No repair matrix summary found. Run summarize_repair_matrix.py first.")
+    else:
+        display_cols = [
+            "rank",
+            "repair_label",
+            "repair_strategies",
+            "repair_success",
+            "used_claim_ratio_delta",
+            "flagged_after",
+            "missing_claim_refs_after",
+            "unknown_claim_ids_after",
+            "repair_score",
+        ]
+
+        st.dataframe(
+            repair_matrix_df[[c for c in display_cols if c in repair_matrix_df.columns]],
+            use_container_width=True,
+        )
+    
+    st.subheader("Recommended Repair Strategy")
+
+    if not repair_rec:
+        st.info("No repair strategy recommendation found.")
+    else:
+        with st.container(border=True):
+            st.markdown(f"### {repair_rec.get('repair_label', 'unknown')}")
+
+            c1, c2, c3, c4 = st.columns(4)
+
+            c1.metric("Repair Score", f"{repair_rec.get('repair_score', 0):.1f}")
+            c2.metric("Repair Success", str(repair_rec.get("repair_success", "unknown")))
+            c3.metric("Coverage Δ", f"{repair_rec.get('used_claim_ratio_delta', 0):+.2f}")
+            c4.metric("Flagged", repair_rec.get("flagged_after", "—"))
+
+            st.markdown("**Strategies**")
+            strategies = repair_rec.get("repair_strategies", "")
+            if strategies:
+                for s in [x.strip() for x in strategies.split(",") if x.strip()]:
+                    st.markdown(f"- {s}")
+            else:
+                st.markdown("- baseline / no explicit strategy")
+
+            st.caption(
+                "Recommendation selected from repair matrix by score, excluding baseline when a successful non-baseline strategy is available."
+            )
+    
     
     # -------------------------
     # Model Behavior table
