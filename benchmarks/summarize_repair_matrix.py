@@ -28,6 +28,26 @@ def load_json(path: Path) -> dict[str, Any]:
         return json.load(f)
 
 
+def select_best_repair_strategy(df: pd.DataFrame) -> dict:
+    candidates = df.copy()
+
+    # Prefer actual strategies over the no-strategy baseline when possible
+    non_baseline = candidates[candidates["repair_label"] != "baseline_repair"].copy()
+    if not non_baseline.empty:
+        candidates = non_baseline
+
+    successful = candidates[candidates["repair_success"] == True].copy()
+    if not successful.empty:
+        candidates = successful
+
+    ranked = candidates.sort_values(
+        ["repair_score", "flagged_after", "missing_claim_refs_after", "unknown_claim_ids_after"],
+        ascending=[False, True, True, True],
+    )
+
+    return ranked.iloc[0].to_dict()
+
+
 def score_repair_eval(record: dict[str, Any]) -> float:
     summary = record.get("comparison_summary", {})
 
@@ -127,6 +147,7 @@ def main() -> None:
     ).reset_index(drop=True)
 
     df["rank"] = range(1, len(df) + 1)
+    best_strategy = select_best_repair_strategy(df)
 
     out_csv = agg_dir / "repair_matrix_summary.csv"
     out_json = agg_dir / "repair_matrix_summary.json"
@@ -136,10 +157,17 @@ def main() -> None:
         json.dumps(df.to_dict(orient="records"), indent=2),
         encoding="utf-8",
     )
+    
+    best_out = agg_dir / "repair_strategy_recommendation.json"
+    best_out.write_text(
+        json.dumps(best_strategy, indent=2),
+        encoding="utf-8",
+    )
 
     print(f"Loaded repair eval records: {len(files)}")
     print(f"Saved repair matrix CSV: {out_csv}")
     print(f"Saved repair matrix JSON: {out_json}")
+    print(f"Saved repair strategy recommendations JSON: {best_out}")
 
     print("\n=== REPAIR MATRIX SUMMARY ===")
     cols = [
@@ -154,6 +182,12 @@ def main() -> None:
         "repair_score",
     ]
     print(df[cols].to_string(index=False))
+    
+    print("\n=== RECOMMENDED REPAIR STRATEGY ===")
+    print(f"repair_label: {best_strategy['repair_label']}")
+    print(f"repair_strategies: {best_strategy['repair_strategies']}")
+    print(f"repair_score: {best_strategy['repair_score']}")
+    print(f"repair_success: {best_strategy['repair_success']}")
 
 
 if __name__ == "__main__":
