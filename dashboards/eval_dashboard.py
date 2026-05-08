@@ -576,6 +576,52 @@ def classify_adaptability(avg_abs_delta: float) -> str:
     return "low"
 
 
+def parse_strategy_list(value) -> list[str]:
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if str(x).strip()]
+
+    if pd.isna(value):
+        return []
+
+    return [x.strip() for x in str(value).split(",") if x.strip()]
+
+
+def get_recommended_repair_label(repair_rec: dict) -> str:
+    if not repair_rec:
+        return "none"
+
+    return repair_rec.get("repair_label", "unknown")
+
+
+def get_recommended_repair_strategies(repair_rec: dict) -> list[str]:
+    if not repair_rec:
+        return []
+
+    return parse_strategy_list(repair_rec.get("repair_strategies", ""))
+
+
+def format_strategy_chip(strategy: str) -> str:
+    strategy = str(strategy).strip()
+    return (
+        "<span style='"
+        "background-color:#0f172a;"
+        "color:#00e676;"
+        "padding:4px 8px;"
+        "border-radius:6px;"
+        "margin-right:6px;"
+        "display:inline-block;"
+        "white-space:nowrap;"
+        "font-family:monospace;"
+        "font-size:0.9em;"
+        "'>"
+        f"{strategy}"
+        "</span>"
+    )
+    
+
 REPAIR_STRATEGIES = {
     "over_selection": ["tighten_selection"],
     "verbosity_drift": ["compress_output"],
@@ -1513,6 +1559,11 @@ with tab_agg:
             )
         )
     
+    repair_rec = load_repair_strategy_recommendation(repair_results_root)
+
+    recommended_repair_label = get_recommended_repair_label(repair_rec)
+    recommended_repair_strategies = get_recommended_repair_strategies(repair_rec)
+    
     # -------------------------
     # Model Profile Cards
     # -------------------------
@@ -1554,6 +1605,11 @@ with tab_agg:
                 repair_focus = row.get("repair_focus", ["minimal_repair"])
                 if not isinstance(repair_focus, list):
                     repair_focus = [str(repair_focus)]
+                    
+                profile_focus_set = set(repair_focus)
+                matrix_strategy_set = set(recommended_repair_strategies)
+
+                overlap = sorted(profile_focus_set.intersection(matrix_strategy_set))
                 
                 st.markdown(
                     f"**Behavior** - Failure mode: {green_tag(failure_str)} - "
@@ -1568,7 +1624,35 @@ with tab_agg:
                         f"{green_tag(strategy)} — {describe_repair_strategy(strategy)}",
                         unsafe_allow_html=True,
                     )
+                
+                st.markdown("**Matrix-Tested Recommendation**")
 
+                if repair_rec:
+                    st.markdown(
+                        f"Recommended strategy: `{recommended_repair_label}` "
+                        f"(score={repair_rec.get('repair_score', 0):.1f}, "
+                        f"success={repair_rec.get('repair_success', 'unknown')})"
+                    )
+
+                    if recommended_repair_strategies:
+                        st.markdown(
+                            " ".join(format_strategy_chip(s) for s in recommended_repair_strategies),
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown("_No explicit repair strategies found._")
+
+                    if overlap:
+                        st.success(
+                            "Profile repair focus overlaps with the current matrix-tested recommendation."
+                        )
+                    else:
+                        st.warning(
+                            "Profile repair focus does not directly overlap with the current best matrix-tested strategy."
+                        )
+                else:
+                    st.info("No matrix-tested repair recommendation available for this scope.")
+                    
                 st.markdown(
                     f"**Strength / Weakness** - "
                     f"Strongest relative area: {green_tag(row.get('best_prompt', '—'))} "
