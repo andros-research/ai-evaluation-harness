@@ -177,49 +177,68 @@ def dominant_value(series: pd.Series) -> str:
     return s.value_counts().idxmax()
 
 
+def dominant_value(series: pd.Series) -> str:
+    s = series.dropna().astype(str)
+    if s.empty:
+        return "unknown"
+    return s.value_counts().idxmax()
+
+
 def aggregate_raw_runs_to_behavior_summary(raw_df: pd.DataFrame) -> pd.DataFrame:
-    required = {"suite_name", "experiment_name", "model"}
+    """
+    Aggregate raw row-level telemetry to prompt-level behavioral summary.
+
+    Important:
+    Keep prompt_id in the grouping so model profile deltas can be computed
+    prompt-by-prompt before rolling up to the model level.
+    """
+    required = {"suite_name", "experiment_name", "model", "prompt_id"}
     missing = required - set(raw_df.columns)
     if missing:
-        raise ValueError(f"Cannot aggregate raw runs; missing columns: {sorted(missing)}")
+        raise ValueError(
+            f"Cannot aggregate raw runs; missing columns: {sorted(missing)}"
+        )
 
     df = raw_df.copy()
 
-    # Prefer modern telemetry columns, but tolerate older column names.
     if "checks_ok" in df.columns:
-        df["checks_pass_numeric"] = df["checks_ok"].fillna(False).astype(bool).astype(float)
+        df["checks_pass_numeric"] = (
+            df["checks_ok"].fillna(False).astype(bool).astype(float)
+        )
     elif "overall_ok" in df.columns:
-        df["checks_pass_numeric"] = df["overall_ok"].fillna(False).astype(bool).astype(float)
+        df["checks_pass_numeric"] = (
+            df["overall_ok"].fillna(False).astype(bool).astype(float)
+        )
     else:
         df["checks_pass_numeric"] = 0.0
 
     if "overall_ok" in df.columns:
-        df["overall_pass_numeric"] = df["overall_ok"].fillna(False).astype(bool).astype(float)
+        df["overall_pass_numeric"] = (
+            df["overall_ok"].fillna(False).astype(bool).astype(float)
+        )
     elif "ok" in df.columns:
-        df["overall_pass_numeric"] = df["ok"].fillna(False).astype(bool).astype(float)
+        df["overall_pass_numeric"] = (
+            df["ok"].fillna(False).astype(bool).astype(float)
+        )
     else:
         df["overall_pass_numeric"] = df["checks_pass_numeric"]
 
-    if "response_hash" not in df.columns:
-        df["response_hash"] = pd.NA
-
-    if "sentence_count" not in df.columns:
-        df["sentence_count"] = pd.NA
-
-    if "avg_sentence_length_words" not in df.columns:
-        df["avg_sentence_length_words"] = pd.NA
-
-    if "words" not in df.columns:
-        df["words"] = pd.NA
-
-    if "failure_type_v2" not in df.columns:
-        df["failure_type_v2"] = pd.NA
-
-    if "semantic_pattern" not in df.columns:
-        df["semantic_pattern"] = pd.NA
+    for col in [
+        "response_hash",
+        "sentence_count",
+        "avg_sentence_length_words",
+        "words",
+        "failure_type_v2",
+        "semantic_pattern",
+    ]:
+        if col not in df.columns:
+            df[col] = pd.NA
 
     grouped = (
-        df.groupby(["suite_name", "experiment_name", "model"], dropna=False)
+        df.groupby(
+            ["suite_name", "experiment_name", "model", "prompt_id"],
+            dropna=False,
+        )
         .agg(
             rows=("model", "size"),
             overall_pass_rate=("overall_pass_numeric", "mean"),
@@ -241,7 +260,10 @@ def aggregate_raw_runs_to_behavior_summary(raw_df: pd.DataFrame) -> pd.DataFrame
     return grouped
 
 
-def make_behavior_summary(behavior_df: pd.DataFrame, comparison_experiment: str) -> pd.DataFrame:
+def make_behavior_summary(
+    behavior_df: pd.DataFrame,
+    comparison_experiment: str,
+) -> pd.DataFrame:
     if behavior_df.empty:
         return pd.DataFrame()
 
@@ -250,24 +272,37 @@ def make_behavior_summary(behavior_df: pd.DataFrame, comparison_experiment: str)
     if "experiment_name" in df.columns:
         df = df[df["experiment_name"] == comparison_experiment].copy()
 
-    keep_cols = [
-        "suite_name",
-        "experiment_name",
-        "model",
-        "rows",
-        "overall_pass_rate",
-        "checks_pass_rate",
-        "dominant_failure_type_v2",
-        "dominant_semantic_pattern",
-        "avg_sentence_count",
-        "avg_sentence_length",
-        "avg_words",
-        "unique_response_hashes",
-        "response_hash_stability_rate",
-    ]
+    if df.empty:
+        return pd.DataFrame()
 
-    keep_cols = [c for c in keep_cols if c in df.columns]
-    return df[keep_cols].copy()
+    required = {"suite_name", "experiment_name", "model"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Cannot build behavior summary; missing columns: {sorted(missing)}"
+        )
+
+    grouped = (
+        df.groupby(["suite_name", "experiment_name", "model"], dropna=False)
+        .agg(
+            rows=("rows", "sum"),
+            overall_pass_rate=("overall_pass_rate", "mean"),
+            checks_pass_rate=("checks_pass_rate", "mean"),
+            dominant_failure_type_v2=("dominant_failure_type_v2", dominant_value),
+            dominant_semantic_pattern=("dominant_semantic_pattern", dominant_value),
+            avg_sentence_count=("avg_sentence_count", "mean"),
+            avg_sentence_length=("avg_sentence_length", "mean"),
+            avg_words=("avg_words", "mean"),
+            unique_response_hashes=("unique_response_hashes", "sum"),
+        )
+        .reset_index()
+    )
+
+    grouped["response_hash_stability_rate"] = (
+        1.0 - (grouped["unique_response_hashes"] / grouped["rows"])
+    ).clip(lower=0.0, upper=1.0)
+
+    return grouped
 
 
 def make_delta_summary(
@@ -275,54 +310,72 @@ def make_delta_summary(
     baseline_experiment: str,
     comparison_experiment: str,
 ) -> pd.DataFrame:
-    required = {"model", "experiment_name", "checks_pass_rate"}
+    required = {"model", "experiment_name", "prompt_id", "checks_pass_rate"}
     if behavior_df.empty or not required.issubset(set(behavior_df.columns)):
+        missing = required - set(behavior_df.columns)
+        print(
+            "Warning: cannot compute prompt-level delta summary; "
+            f"missing columns: {sorted(missing)}"
+        )
         return pd.DataFrame()
 
     df = behavior_df.copy()
 
-    base = df[df["experiment_name"] == baseline_experiment][
-        ["model", "checks_pass_rate"]
-    ].rename(columns={"checks_pass_rate": "baseline_checks_pass_rate"})
+    prompt_rates = (
+        df.groupby(["experiment_name", "model", "prompt_id"], dropna=False)
+        .agg(checks_pass_rate=("checks_pass_rate", "mean"))
+        .reset_index()
+    )
 
-    comp = df[df["experiment_name"] == comparison_experiment][
-        ["model", "checks_pass_rate"]
-    ].rename(columns={"checks_pass_rate": "comparison_checks_pass_rate"})
+    base = prompt_rates[
+        prompt_rates["experiment_name"] == baseline_experiment
+    ][["model", "prompt_id", "checks_pass_rate"]].rename(
+        columns={"checks_pass_rate": "baseline_checks_pass_rate"}
+    )
 
-    merged = comp.merge(base, on="model", how="inner")
+    comp = prompt_rates[
+        prompt_rates["experiment_name"] == comparison_experiment
+    ][["model", "prompt_id", "checks_pass_rate"]].rename(
+        columns={"checks_pass_rate": "comparison_checks_pass_rate"}
+    )
+
+    merged = comp.merge(base, on=["model", "prompt_id"], how="inner")
 
     if merged.empty:
         return pd.DataFrame()
 
-    merged["avg_delta"] = (
-        merged["comparison_checks_pass_rate"] - merged["baseline_checks_pass_rate"]
+    merged["delta"] = (
+        merged["comparison_checks_pass_rate"]
+        - merged["baseline_checks_pass_rate"]
     )
-    merged["avg_abs_delta"] = merged["avg_delta"].abs()
+    merged["abs_delta"] = merged["delta"].abs()
 
-    # Best/worst prompt are unknown in this fallback unless prompt-level delta file exists.
-    merged["best_prompt"] = "unknown"
-    merged["best_delta"] = 0.0
-    merged["worst_prompt"] = "unknown"
-    merged["worst_delta"] = 0.0
+    rows = []
 
-    merged["temperature_sensitivity"] = merged["avg_abs_delta"].apply(
-        classify_temperature_sensitivity
-    )
-    merged["overall_direction"] = merged["avg_delta"].apply(classify_overall_direction)
+    for model, g in merged.groupby("model", dropna=False):
+        best = g.sort_values("delta", ascending=False).iloc[0]
+        worst = g.sort_values("delta", ascending=True).iloc[0]
 
-    return merged[
-        [
-            "model",
-            "avg_delta",
-            "avg_abs_delta",
-            "temperature_sensitivity",
-            "overall_direction",
-            "best_prompt",
-            "best_delta",
-            "worst_prompt",
-            "worst_delta",
-        ]
-    ]
+        rows.append(
+            {
+                "model": model,
+                "avg_delta": g["delta"].mean(),
+                "avg_abs_delta": g["abs_delta"].mean(),
+                "temperature_sensitivity": classify_temperature_sensitivity(
+                    g["abs_delta"].mean()
+                ),
+                "overall_direction": classify_overall_direction(
+                    g["delta"].mean()
+                ),
+                "best_prompt": best["prompt_id"],
+                "best_delta": best["delta"],
+                "worst_prompt": worst["prompt_id"],
+                "worst_delta": worst["delta"],
+                "prompt_delta_count": len(g),
+            }
+        )
+
+    return pd.DataFrame(rows)
 
 
 def try_load_behavior_summary(
