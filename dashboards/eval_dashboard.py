@@ -885,6 +885,26 @@ def load_repair_strategy_recommendation(results_root: Path) -> dict:
     return json.loads(path.read_text())
 
 
+def load_model_profile_summary(results_root: Path) -> pd.DataFrame:
+    path = results_root / "aggregated" / "model_profile_summary.csv"
+    if not path.exists() or path.stat().st_size == 0:
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path)
+    except EmptyDataError:
+        return pd.DataFrame()
+
+
+def load_repair_policy_recommendations(results_root: Path) -> pd.DataFrame:
+    path = results_root / "aggregated" / "repair_policy_recommendations.csv"
+    if not path.exists() or path.stat().st_size == 0:
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path)
+    except EmptyDataError:
+        return pd.DataFrame()
+    
+
 def narrative_label_from_path(path: Path) -> str:
     return path.name
 
@@ -1534,17 +1554,46 @@ with tab_agg:
     else:
         st.info("Not enough data to generate model delta summaries.")
     
-    # model profile = dynamic change + static behavior
+    # model profile = durable artifact when available; inline fallback otherwise
     behavior_summary = make_model_behavior_summary(compare_src)
-    model_profile = make_model_profile_summary(
-        model_delta_summary,
-        behavior_summary,
-        comparison_experiment=comparison_experiment,
-    )
-    model_profile["model_role"] = model_profile.apply(classify_model_role, axis=1)
-    model_profile["consistency"] = model_profile["response_hash_stability_rate"].apply(classify_consistency)
-    model_profile["adaptability"] = model_profile["avg_abs_delta"].apply(classify_adaptability)
-    model_profile["repair_focus"] = model_profile.apply(infer_repair_focus, axis=1)
+
+    artifact_model_profile = load_model_profile_summary(repair_results_root)
+    repair_policy_df = load_repair_policy_recommendations(repair_results_root)
+
+    if not artifact_model_profile.empty:
+        model_profile = artifact_model_profile.copy()
+        st.caption("Model profile source: artifact model_profile_summary.csv")
+    else:
+        st.caption("Model profile source: dashboard inline calculation")
+
+        model_profile = make_model_profile_summary(
+            model_delta_summary,
+            behavior_summary,
+            comparison_experiment=comparison_experiment,
+        )
+
+        if not model_profile.empty:
+            model_profile["model_role"] = model_profile.apply(classify_model_role, axis=1)
+            model_profile["consistency"] = model_profile["response_hash_stability_rate"].apply(classify_consistency)
+            model_profile["adaptability"] = model_profile["avg_abs_delta"].apply(classify_adaptability)
+            model_profile["repair_focus"] = model_profile.apply(infer_repair_focus, axis=1)
+
+    policy_cols = [
+        "model",
+        "selected_repair_label",
+        "selected_repair_strategies",
+        "selection_reason",
+        "policy_confidence",
+        "overlap",
+        "has_overlap",
+    ]
+
+    if not repair_policy_df.empty and not model_profile.empty:
+        model_profile = model_profile.merge(
+            repair_policy_df[[c for c in policy_cols if c in repair_policy_df.columns]],
+            on="model",
+            how="left",
+        )
     
     st.subheader("Merged Model Profiles")
 
@@ -1602,9 +1651,18 @@ with tab_agg:
                 c7.metric("Consistency", row.get("consistency", "unknown"))
                 c8.metric("Adaptability", row.get("adaptability", "unknown"))
                 
-                repair_focus = row.get("repair_focus", ["minimal_repair"])
-                if not isinstance(repair_focus, list):
-                    repair_focus = [str(repair_focus)]
+                repair_focus = parse_strategy_list(row.get("repair_focus", "minimal_repair"))
+                if not repair_focus:
+                    repair_focus = ["minimal_repair"]
+                    
+                selected_repair_label = row.get("selected_repair_label", recommended_repair_label)
+                selected_repair_strategies = parse_strategy_list(
+                    row.get("selected_repair_strategies", "")
+                )
+
+                policy_confidence = row.get("policy_confidence", "unknown")
+                selection_reason = row.get("selection_reason", "")
+                policy_overlap = parse_strategy_list(row.get("overlap", ""))
                     
                 profile_focus_set = set(repair_focus)
                 matrix_strategy_set = set(recommended_repair_strategies)
@@ -1625,33 +1683,33 @@ with tab_agg:
                         unsafe_allow_html=True,
                     )
                 
-                st.markdown("**Matrix-Tested Recommendation**")
+                st.markdown("**Selected Repair Policy**")
 
-                if repair_rec:
+                if pd.notna(selected_repair_label) and str(selected_repair_label).strip():
                     st.markdown(
-                        f"Recommended strategy: `{recommended_repair_label}` "
-                        f"(score={repair_rec.get('repair_score', 0):.1f}, "
-                        f"success={repair_rec.get('repair_success', 'unknown')})"
+                        f"Selected policy: `{selected_repair_label}` "
+                        f"(confidence={policy_confidence})"
                     )
 
-                    if recommended_repair_strategies:
+                    if selected_repair_strategies:
                         st.markdown(
-                            " ".join(format_strategy_chip(s) for s in recommended_repair_strategies),
+                            " ".join(format_strategy_chip(s) for s in selected_repair_strategies),
                             unsafe_allow_html=True,
                         )
-                    else:
-                        st.markdown("_No explicit repair strategies found._")
 
-                    if overlap:
+                    if policy_overlap:
                         st.success(
-                            "Profile repair focus overlaps with the current matrix-tested recommendation."
+                            "Profile repair focus overlaps with the selected repair policy."
                         )
                     else:
                         st.warning(
-                            "Profile repair focus does not directly overlap with the current best matrix-tested strategy."
+                            "Profile repair focus does not directly overlap with the selected repair policy."
                         )
+
+                    if selection_reason:
+                        st.caption(selection_reason)
                 else:
-                    st.info("No matrix-tested repair recommendation available for this scope.")
+                    st.info("No repair policy recommendation available for this model.")
                     
                 st.markdown(
                     f"**Strength / Weakness** - "
