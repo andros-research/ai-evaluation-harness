@@ -5,6 +5,7 @@ import seaborn as sns
 from pathlib import Path
 import json
 import re
+import ast
 from typing import Any
 from pandas.errors import EmptyDataError
 
@@ -583,10 +584,30 @@ def parse_strategy_list(value) -> list[str]:
     if isinstance(value, list):
         return [str(x).strip() for x in value if str(x).strip()]
 
-    if pd.isna(value):
+    try:
+        if pd.isna(value):
+            return []
+    except TypeError:
+        pass
+
+    text = str(value).strip()
+
+    if not text:
         return []
 
-    return [x.strip() for x in str(value).split(",") if x.strip()]
+    # Handles CSV-loaded Python-list strings:
+    # "['compress_output', 'enforce_structured_output']"
+    if text.startswith("[") and text.endswith("]"):
+        try:
+            parsed = ast.literal_eval(text)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed if str(x).strip()]
+        except Exception:
+            pass
+
+    # Fallback for comma-separated artifact strings:
+    # "compress_output, enforce_structured_output"
+    return [x.strip().strip("'").strip('"') for x in text.split(",") if x.strip()]
 
 
 def get_recommended_repair_label(repair_rec: dict) -> str:
@@ -1654,8 +1675,9 @@ with tab_agg:
                 repair_focus = parse_strategy_list(row.get("repair_focus", "minimal_repair"))
                 if not repair_focus:
                     repair_focus = ["minimal_repair"]
-                    
+
                 selected_repair_label = row.get("selected_repair_label", recommended_repair_label)
+
                 selected_repair_strategies = parse_strategy_list(
                     row.get("selected_repair_strategies", "")
                 )
