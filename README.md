@@ -2,6 +2,24 @@
 
 A reproducible evaluation harness for studying LLM behavior through controlled prompt suites, repeated runs, and structured interpretation — including claim extraction, narrative synthesis, and audit-based validation — designed for systematic local-model experimentation.
 
+## Conceptual framing
+
+This project is currently focused on **behavioral interpretability**.
+
+Mechanistic interpretability asks what internal model structures produced a behavior. This project begins one layer outward: what stable behaviors can be observed, classified, measured, repaired, and eventually related back to deeper internal structure?
+
+The working progression is:
+
+```text
+claims
+  → audits
+  → repairs
+  → telemetry
+  → model profiles
+  → uncertainty signatures
+  → token-level diagnostics
+  → possible mechanistic probes
+
 ## v1.0 milestone
 
 This repository’s v1.0 milestone establishes the core behavioral harness:
@@ -44,75 +62,149 @@ This version focuses on **closing the loop between measurement → interpretatio
 
 ## v1.5 milestone (current)
 
-The v1.5 system introduces structured macro evaluation and a formal failure-mode taxonomy, marking a transition from measuring behavior to systematically classifying and explaining model failures.
+The v1.5 system extends the harness from structured macro evaluation into a **behavioral interpretability and repair-policy layer**.
+
+This version moves beyond measuring whether a model passes or fails a prompt. It begins to characterize *how* models fail, whether those failures recur, which repair strategies improve outputs, and how those repair recommendations can be persisted as reusable pipeline artifacts.
+
+Core additions include:
 
 - FRED-integrated macro prompt suite
-- semantic validation via JSON-constrained tasks
-- failure-mode taxonomy (schema, semantic, symbolic, verbosity, narrative)
-- semantic pattern classification (v0.3)
-- experiment comparison across temperature regimes
-- dashboard extensions:
-  - failure-mode taxonomy tables
-  - semantic pattern distributions
-  - pass-rate delta heatmaps
+- structured macro validation via check-based and JSON-constrained tasks
+- failure-mode taxonomy for schema, semantic, symbolic, verbosity, and narrative failures
+- semantic pattern classification for structured selection errors
+- prompt-level experiment comparison across temperature regimes
+- model behavior summaries with:
+  - pass rates
+  - dominant failure modes
+  - response hash stability
+  - sentence/word telemetry
+- model profile artifacts:
+  - `model_profile_summary.csv`
+  - `model_profile_summary.json`
+- repair matrix evaluation:
+  - strategy-aware repair runs
+  - repair success scoring
+  - coverage and audit deltas
+  - selected matrix-tested repair recommendation
+- repair policy artifacts:
+  - `repair_strategy_recommendation.json`
+  - `repair_policy_recommendations.csv`
+  - `repair_policy_recommendations.json`
+- dashboard integration for:
+  - model profile cards
+  - repair focus
+  - selected repair policy
+  - profile/policy overlap
+  - repair prompt patches
+
+This version focuses on **behavioral interpretability**: mapping stable model failure signatures across tasks, temperatures, prompt types, and repair strategies.
 
 ## Key findings (v1.5)
 
-Early results from structured macro evaluations reveal that model failures are not random but highly structured and repeatable:
+v1.5 suggests that model behavior can be usefully analyzed as a set of stable, task-dependent failure regimes rather than as isolated prompt failures.
 
-- **Failure modes cluster by task type**
-  - structured JSON tasks exhibit consistent semantic and selection errors
-  - freeform reasoning tasks primarily degrade via verbosity and narrative drift
+- **Failure modes are structured and repeatable**
+  - model failures cluster by task type
+  - structured tasks often fail through semantic or selection errors
+  - freeform tasks often fail through verbosity or narrative drift
+  - repeated runs reveal stable behavioral signatures rather than purely random noise
 
-- **Semantic errors are systematic, not stochastic**
-  - models repeatedly exhibit the same incorrect selection patterns across runs
-  - failure behavior is stable even under identical prompts and low temperature
+- **Model differences are qualitative, not only quantitative**
+  - models differ not just in pass rate, but in *how* they fail
+  - some models act as stable anchors
+  - some models show drifting capacity under temperature changes
+  - some models behave more like explorers, improving on some prompts while degrading on others
 
-- **Temperature introduces asymmetric tradeoffs**
-  - moderate temperature increases can improve fluency and format adherence
-  - but often degrade strict semantic correctness (e.g. selection tasks)
+- **Prompt-level deltas matter**
+  - suite-level averages can hide important behavioral variation
+  - prompt-level comparison surfaces best/worst prompt regimes
+  - this enables model profiles that distinguish stability, adaptability, and temperature sensitivity
 
-- **Model differences are qualitative, not just quantitative**
-  - some models over-select, adding unsupported claims
-  - others under-select, missing valid claims
-  - these behaviors are consistent across prompts and datasets
+- **Repair can be evaluated rather than guessed**
+  - repair strategies can be run as controlled experiments
+  - repair outputs can be audited before/after
+  - repair success can be scored using claim coverage, missing references, unknown claim IDs, and audit flags
+  - selected repair policies can be written as durable artifacts for downstream use
 
-- **Deterministic classification is feasible**
-  - failure taxonomy + semantic pattern classification allows failures to be categorized reliably
-  - this enables reproducible analysis rather than anecdotal debugging
+- **Dashboard outputs are becoming control-room artifacts**
+  - model profile cards summarize behavioral role, sensitivity, direction, consistency, adaptability, and repair focus
+  - repair policy recommendations show which tested strategy currently aligns with each model profile
+  - the dashboard increasingly reads from pipeline artifacts rather than recomputing interpretive logic inline
 
-These results suggest that LLM behavior can be decomposed into stable, interpretable failure regimes, providing a foundation for systematic evaluation and future control strategies.
+These results frame the harness as a practical system for **behavioral interpretability**: observing, classifying, repairing, and tracking model failure signatures before attempting deeper token-level or mechanistic analysis.
+
+## Current artifact pipeline
+
+The current v1.5 pipeline produces durable artifacts that can be inspected directly or consumed by the dashboard:
+
+```text
+raw benchmark runs
+  → runs_master.csv / runs_master.parquet
+  → model behavior summaries
+  → prompt-level model deltas
+  → model_profile_summary.csv/json
+  → repair matrix evaluations
+  → repair_matrix_summary.csv/json
+  → repair_strategy_recommendation.json
+  → repair_policy_recommendations.csv/json
+  → dashboard profile cards and repair-policy views
 
 ## Why this exists
 
-The goal of this project is to build a practical local-model evaluation lab for measuring:
+The goal of this project is to build a practical local-model evaluation lab for studying LLM behavior from the outside inward.
+
+The harness is designed to measure:
 
 - reliability across prompt types
 - behavioral drift under inference changes
-- tradeoffs across constraints like structure, style, verbosity, and attention
-- foundations for later interpretability / telemetry work
+- temperature-sensitive tradeoffs across structure, style, verbosity, and attention
+- stable model-specific failure signatures
+- claim and narrative fidelity
+- repair effectiveness across strategy types
+- foundations for later token-level and mechanistic interpretability work
 
 Temperature is treated here not just as “randomness,” but as a behavioral control knob that can shift model performance across competing dimensions.
 
+The project’s current focus is **behavioral interpretability**: not identifying which internal neurons caused a behavior, but building a reproducible map of what stable failure signatures a model exhibits under specific tasks, data regimes, temperatures, and repair strategies.
+
 ## How this can be used
 
-From a risk perspective, this harness can be used to map how model behavior shifts under controlled inference changes (e.g., temperature sweeps), similar to stress testing a system across different regimes. 
+From a risk perspective, this harness maps how model behavior shifts under controlled inference changes, similar to stress testing a system across regimes.
 
-For example, a model that performs well on structured outputs at low temperature may degrade in instruction-following or verbosity control as temperature rises. By running repeated evaluations across prompt types and aggregating results, the harness surfaces these tradeoffs explicitly, allowing a user to identify stable operating regions and failure modes.
+A model can be treated as having behavioral exposures:
 
-In practice, this can inform model selection, prompt design, and guardrail strategies by making behavioral reliability measurable, explainable, and auditable rather than anecdotal
+- prompt-type exposure
+- temperature sensitivity
+- schema reliability
+- verbosity drift
+- semantic selection bias
+- claim-reference reliability
+- repair responsiveness
+
+By running repeated evaluations across prompt types, temperatures, and models, the harness surfaces behavioral tradeoffs explicitly. This can inform:
+
+- model selection
+- prompt design
+- repair strategy selection
+- guardrail design
+- human review workflows
+- model risk reporting
+
+In practice, the harness aims to make model reliability measurable, explainable, repairable, and auditable rather than anecdotal.
 
 ## Repository layout
 
 ```
 benchmarks/
-  Core benchmark suites, runners, aggregation, and analysis helpers
+  Prompt suites, runners, aggregation, claim/narrative/audit/repair scripts,
+  model profile builders, and repair policy artifact generation
 
 dashboards/
-  Streamlit dashboard for evaluation analytics
+  Streamlit dashboard for run analytics, model profiles, repair matrix summaries,
+  narrative audit views, and repair-policy inspection
 
 docs/
-  Research notes, images, and project documentation
+  Research notes, roadmap documents, project logs, images, and schema notes
 
 experiments/
   Scratch / future experimental work
@@ -171,17 +263,53 @@ These are early behavioral results rather than final scientific claims, but they
 
 ## Version roadmap
 
-- v1.0 — behavioral harness (measurement layer)
-- v1.2–v1.4 — interpretation + validation layer
+## Version roadmap
+
+- **v1.0 — Behavioral harness**
+  - modular YAML suites
+  - repeated local-model runs
+  - aggregated `runs_master`
+  - dashboard pass-rate and delta analysis
+
+- **v1.2–v1.4 — Claim, narrative, and audit layer**
   - claim extraction and normalization
   - narrative generation with strict grounding constraints
-  - audit system and fidelity metrics
-  - repair loop for improving narrative quality
-- v1.5 — structured macro evaluation + failure taxonomy (current)
-- v1.6 (next) — richer telemetry
-  - token-level metrics (logprobs, latency, etc.)
-  - deeper behavioral diagnostics
-- v2.0 — full telemetry + analysis stack
+  - `[CLAIMS: ...]` reference discipline
+  - parsing, audit, traceability, and repair loops
+
+- **v1.5 — Behavioral interpretability and repair-policy layer**
+  - FRED-integrated macro evaluation
+  - failure taxonomy and semantic pattern classification
+  - prompt-level model delta summaries
+  - model profile cards and durable profile artifacts
+  - repair matrix evaluation and scoring
+  - repair strategy recommendations
+  - per-model repair policy artifacts
+  - dashboard control-room integration
+
+- **v1.6 — FRED-native claim/evidence layer**
+  - macro-native claim schema
+  - FRED/CPI evidence objects
+  - structured claim IDs tied to source series, prompt, model, and experiment
+  - CPI-oriented claim generation and selection
+  - narrative generation from macro-native claims
+
+- **v1.7 — CPI demo loop**
+  - data → claim → narrative → audit → repair → re-audit
+  - repair-policy-driven narrative improvement
+  - dashboard traceability from final narrative back to source evidence
+
+- **v2.0 — Token/probabilistic telemetry**
+  - token probabilities / logprobs where available
+  - entropy and uncertainty signatures
+  - token-level diagnostics around numbers, citations, and unsupported claims
+  - behavioral confidence signals before audit failure
+
+- **v3.0 — Early mechanistic probing**
+  - hidden states / activations on open models
+  - attention and residual-stream inspection
+  - activation patching or ablation experiments
+  - sparse-feature or circuit-style probes informed by prior behavioral maps
 
 ## Notes
 
