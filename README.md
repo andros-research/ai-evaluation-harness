@@ -19,6 +19,7 @@ claims
   → uncertainty signatures
   → token-level diagnostics
   → possible mechanistic probes
+  ```
 
 ## v1.0 milestone
 
@@ -34,7 +35,7 @@ This repository’s v1.0 milestone establishes the core behavioral harness:
   - within-suite experiment comparison tables
   - signed delta heatmaps
 
-This version focuses on **closing the loop between measurement → interpretation → validation**, enabling model behavior to be not only observed but systematically explained and audited.
+This version focuses on the **measurement layer**: running controlled prompt suites, aggregating outputs, and visualizing model behavior across repeated local runs.
 Later versions extend this toward narrative generation, validation, and richer telemetry.
 
 ## v1.4 milestone
@@ -260,8 +261,6 @@ Across repeated temperature sweeps on the initial suites, the harness has alread
 - some attention constraints remain stable at low temperature and degrade only at higher temperature
 
 These are early behavioral results rather than final scientific claims, but they demonstrate that the harness can detect real tradeoff surfaces in model behavior.
-
-## Version roadmap
 
 ## Version roadmap
 

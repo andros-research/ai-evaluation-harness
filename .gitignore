@@ -44,3 +44,6 @@ notebooks/
 !docs/images/*.png
 !docs/images/*.jpg
 !docs/images/*.jpeg
+# Local / curated result artifacts
+benchmarks/results/runs/*/aggregated/*.csv
+benchmarks/results/runs/*/aggregated/*.json
