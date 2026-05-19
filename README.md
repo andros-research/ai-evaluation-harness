@@ -100,6 +100,14 @@ Core additions include:
 
 This version focuses on **behavioral interpretability**: mapping stable model failure signatures across tasks, temperatures, prompt types, and repair strategies.
 
+## Example dashboard output
+
+<p align="center">
+  <img src="docs/images/model-profile-card-v1-5.png" width="900"/>
+</p>
+
+Sample v1.5 model profile card showing behavioral role, repair focus, selected repair policy, and strategy-specific prompt patches.
+
 ## Key findings (v1.5)
 
 v1.5 suggests that model behavior can be usefully analyzed as a set of stable, task-dependent failure regimes rather than as isolated prompt failures.
