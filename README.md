@@ -149,6 +149,9 @@ raw benchmark runs
   → repair_strategy_recommendation.json
   → repair_policy_recommendations.csv/json
   → dashboard profile cards and repair-policy views
+```
+
+The dashboard increasingly acts as a read-only control room over these artifacts rather than as the primary source of interpretive logic.
 
 ## Why this exists
 
