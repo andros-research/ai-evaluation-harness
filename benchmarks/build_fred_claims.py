@@ -64,6 +64,13 @@ def build_empty_claims_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=CLAIM_COLUMNS)
 
 
+def round_metric_value(value: float | None, digits: int = 6) -> float | None:
+    """Round numeric metric values for stable claim artifacts."""
+    if value is None:
+        return None
+    return round(float(value), digits)
+
+
 def classify_direction(delta_value: float, tolerance: float = 1e-9) -> str:
     """Classify numeric direction from a delta."""
     if delta_value > tolerance:
@@ -104,7 +111,9 @@ def build_prior_comparison_claim(
     """Build a deterministic prior-comparison FRED claim record."""
     claim_type = "prior_comparison"
     comparison_window = "prior_observation"
-    delta_value = current_value - prior_value
+    current_value = round_metric_value(current_value)
+    prior_value = round_metric_value(prior_value)
+    delta_value = round_metric_value(current_value - prior_value)
     direction = classify_direction(delta_value)
 
     if direction == "up":
