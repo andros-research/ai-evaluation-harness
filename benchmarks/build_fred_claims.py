@@ -64,6 +64,131 @@ def build_empty_claims_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=CLAIM_COLUMNS)
 
 
+def classify_direction(delta_value: float, tolerance: float = 1e-9) -> str:
+    """Classify numeric direction from a delta."""
+    if delta_value > tolerance:
+        return "up"
+    if delta_value < -tolerance:
+        return "down"
+    return "unchanged"
+
+
+def make_claim_id(
+    metric_name: str,
+    source_series: str,
+    claim_type: str,
+    source_observation_date: str,
+) -> str:
+    """Build a stable, human-readable FRED claim ID."""
+    return (
+        f"fred__{metric_name}__{source_series}__"
+        f"{claim_type}__{source_observation_date}"
+    )
+
+
+def build_prior_comparison_claim(
+    *,
+    metric_name: str,
+    metric_label: str,
+    source_series: str,
+    source_series_name: str,
+    current_date: str,
+    current_value: float,
+    prior_date: str,
+    prior_value: float,
+    units: str,
+    created_at: str,
+    source_release_date: str | None = None,
+    prompt_id: str | None = None,
+) -> dict:
+    """Build a deterministic prior-comparison FRED claim record."""
+    claim_type = "prior_comparison"
+    comparison_window = "prior_observation"
+    delta_value = current_value - prior_value
+    direction = classify_direction(delta_value)
+
+    if direction == "up":
+        direction_word = "increased"
+    elif direction == "down":
+        direction_word = "decreased"
+    else:
+        direction_word = "was unchanged"
+
+    abs_delta = abs(delta_value)
+
+    if direction == "unchanged":
+        claim_text = (
+            f"{metric_label} was unchanged versus the prior observation "
+            f"at {current_value:g} {units}."
+        )
+    else:
+        claim_text = (
+            f"{metric_label} {direction_word} by {abs_delta:g} {units} "
+            f"versus the prior observation, from {prior_value:g} to "
+            f"{current_value:g}."
+        )
+
+    supporting_values = {
+        "current_date": current_date,
+        "current_value": current_value,
+        "prior_date": prior_date,
+        "prior_value": prior_value,
+        "delta_value": delta_value,
+        "units": units,
+    }
+
+    return {
+        "claim_id": make_claim_id(
+            metric_name=metric_name,
+            source_series=source_series,
+            claim_type=claim_type,
+            source_observation_date=current_date,
+        ),
+        "claim_text": claim_text,
+        "source_type": "fred",
+        "source_series": source_series,
+        "source_series_name": source_series_name,
+        "source_observation_date": current_date,
+        "source_release_date": source_release_date,
+        "prompt_id": prompt_id,
+        "model": None,
+        "experiment_name": None,
+        "claim_type": claim_type,
+        "metric_name": metric_name,
+        "comparison_window": comparison_window,
+        "current_value": current_value,
+        "prior_value": prior_value,
+        "delta_value": delta_value,
+        "direction": direction,
+        "supporting_values": supporting_values,
+        "claim_strength": "deterministic",
+        "eligible_for_narrative": True,
+        "generation_method": GENERATION_METHOD,
+        "schema_version": SCHEMA_VERSION,
+        "created_at": created_at,
+    }
+
+
+def build_sample_claims(created_at: str) -> list[dict]:
+    """Build a tiny sample claim set for validating the v0.1 schema."""
+    return [
+        build_prior_comparison_claim(
+            metric_name="cpi_yoy",
+            metric_label="CPI year-over-year inflation",
+            source_series="CPIAUCSL",
+            source_series_name="Consumer Price Index for All Urban Consumers: All Items in U.S. City Average",
+            current_date="2026-04-01",
+            current_value=3.1,
+            prior_date="2026-03-01",
+            prior_value=3.0,
+            units="percentage points",
+            created_at=created_at,
+            source_release_date=None,
+            prompt_id="macro_fred_cpi_snapshot",
+        )
+    ]
+    
+
 def write_json(path: Path, payload: object) -> None:
     """Write JSON with stable formatting."""
     path.write_text(
@@ -72,21 +197,28 @@ def write_json(path: Path, payload: object) -> None:
     )
 
 
-def write_artifacts(output_dir: Path) -> None:
-    """Write empty-but-valid FRED claim artifacts."""
+def write_artifacts(output_dir: Path, include_sample: bool = False) -> None:
+    """Write FRED claim artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     created_at = utc_now_iso()
-    claims_df = build_empty_claims_frame()
+    claim_records = build_sample_claims(created_at) if include_sample else []
+
+    claims_df = pd.DataFrame(claim_records, columns=CLAIM_COLUMNS)
 
     claims_csv = output_dir / "fred_claims.csv"
     claims_json = output_dir / "fred_claims.json"
     metadata_json = output_dir / "fred_claims_metadata.json"
 
-    claims_df.to_csv(claims_csv, index=False)
+    csv_df = claims_df.copy()
+    if not csv_df.empty:
+        csv_df["supporting_values"] = csv_df["supporting_values"].apply(
+            lambda value: json.dumps(value, sort_keys=True)
+        )
 
-    # Empty list for now; future versions will write records.
-    write_json(claims_json, [])
+    csv_df.to_csv(claims_csv, index=False)
+
+    write_json(claims_json, claim_records)
 
     metadata = {
         "schema_version": SCHEMA_VERSION,
@@ -94,8 +226,17 @@ def write_artifacts(output_dir: Path) -> None:
         "input_file": None,
         "created_at": created_at,
         "n_claims": int(len(claims_df)),
-        "series_included": [],
-        "claim_types_included": [],
+        "series_included": sorted(
+            claims_df["source_series"].dropna().unique().tolist()
+        )
+        if not claims_df.empty
+        else [],
+        "claim_types_included": sorted(
+            claims_df["claim_type"].dropna().unique().tolist()
+        )
+        if not claims_df.empty
+        else [],
+        "include_sample": include_sample,
         "output_files": {
             "claims_csv": str(claims_csv),
             "claims_json": str(claims_json),
@@ -109,7 +250,7 @@ def write_artifacts(output_dir: Path) -> None:
     print(f"  {claims_json}")
     print(f"  {metadata_json}")
     print(f"n_claims={len(claims_df)}")
-
+    
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -121,12 +262,17 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_DIR,
         help="Directory where FRED claim artifacts will be written.",
     )
+    parser.add_argument(
+        "--include-sample",
+        action="store_true",
+        help="Emit a tiny deterministic sample claim for schema validation.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    write_artifacts(args.output_dir)
+    write_artifacts(args.output_dir, include_sample=args.include_sample)
 
 
 if __name__ == "__main__":
