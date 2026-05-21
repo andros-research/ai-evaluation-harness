@@ -19,10 +19,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-import re
-
-import yaml
-
 
 SCHEMA_VERSION = "fred_claim_schema_v0_1"
 GENERATION_METHOD = "deterministic_fred_rule"
@@ -139,12 +135,12 @@ def build_prior_comparison_claim(
     prior_value: float,
     units: str,
     created_at: str,
+    comparison_window: str = "prior_observation",
     source_release_date: str | None = None,
     prompt_id: str | None = None,
 ) -> dict:
     """Build a deterministic prior-comparison FRED claim record."""
     claim_type = "prior_comparison"
-    comparison_window = "prior_observation"
     current_value = round_metric_value(current_value)
     prior_value = round_metric_value(prior_value)
     delta_value = round_metric_value(current_value - prior_value)
@@ -277,6 +273,7 @@ def build_claims_from_context(
                 prior_value=prior_values[metric_key],
                 units=config["units"],
                 created_at=created_at,
+                comparison_window=comparison_window,
                 source_release_date=None,
                 prompt_id=prompt_id,
             )
