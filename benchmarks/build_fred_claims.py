@@ -52,6 +52,23 @@ CLAIM_COLUMNS = [
     "created_at",
 ]
 
+REQUIRED_CLAIM_FIELDS = [
+    "claim_id",
+    "claim_text",
+    "source_type",
+    "source_series",
+    "source_observation_date",
+    "claim_type",
+    "metric_name",
+    "comparison_window",
+    "supporting_values",
+    "claim_strength",
+    "eligible_for_narrative",
+    "generation_method",
+    "schema_version",
+    "created_at",
+]
+
 METRIC_CONFIG = {
     "CPI_YOY": {
         "metric_name": "cpi_yoy",
@@ -92,6 +109,49 @@ def utc_now_iso() -> str:
 def build_empty_claims_frame() -> pd.DataFrame:
     """Return an empty claims DataFrame with the v0.1 schema columns."""
     return pd.DataFrame(columns=CLAIM_COLUMNS)
+
+
+def validate_claim_records(claim_records: list[dict]) -> None:
+    """Validate required fields before writing claim artifacts."""
+    errors: list[str] = []
+
+    for idx, claim in enumerate(claim_records):
+        claim_id = claim.get("claim_id", f"<row {idx}>")
+
+        for field in REQUIRED_CLAIM_FIELDS:
+            if field not in claim:
+                errors.append(f"{claim_id}: missing required field {field!r}")
+                continue
+
+            value = claim[field]
+
+            if value is None:
+                errors.append(f"{claim_id}: required field {field!r} is None")
+                continue
+
+            if isinstance(value, str) and not value.strip():
+                errors.append(f"{claim_id}: required field {field!r} is empty")
+
+        if claim.get("schema_version") != SCHEMA_VERSION:
+            errors.append(
+                f"{claim_id}: schema_version={claim.get('schema_version')!r} "
+                f"expected {SCHEMA_VERSION!r}"
+            )
+
+        if claim.get("generation_method") != GENERATION_METHOD:
+            errors.append(
+                f"{claim_id}: generation_method={claim.get('generation_method')!r} "
+                f"expected {GENERATION_METHOD!r}"
+            )
+
+        if not isinstance(claim.get("supporting_values"), dict):
+            errors.append(
+                f"{claim_id}: supporting_values must be a dict before JSON serialization"
+            )
+
+    if errors:
+        joined = "\n".join(f"- {err}" for err in errors)
+        raise ValueError(f"FRED claim validation failed:\n{joined}")
 
 
 def round_metric_value(value: float | None, digits: int = 6) -> float | None:
@@ -311,6 +371,8 @@ def write_artifacts(
         claim_records = build_sample_claims(created_at)
     else:
         claim_records = []
+
+    validate_claim_records(claim_records)
 
     claims_df = pd.DataFrame(claim_records, columns=CLAIM_COLUMNS)
 
