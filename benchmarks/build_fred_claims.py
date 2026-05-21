@@ -19,6 +19,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+import re
+
+import yaml
 
 
 SCHEMA_VERSION = "fred_claim_schema_v0_1"
@@ -52,6 +55,37 @@ CLAIM_COLUMNS = [
     "schema_version",
     "created_at",
 ]
+
+METRIC_CONFIG = {
+    "CPI_YOY": {
+        "metric_name": "cpi_yoy",
+        "metric_label": "CPI year-over-year inflation",
+        "source_series": "CPIAUCSL",
+        "source_series_name": "Consumer Price Index for All Urban Consumers: All Items",
+        "units": "percentage points",
+    },
+    "UNRATE": {
+        "metric_name": "unrate",
+        "metric_label": "Unemployment rate",
+        "source_series": "UNRATE",
+        "source_series_name": "Unemployment Rate",
+        "units": "percentage points",
+    },
+    "FEDFUNDS": {
+        "metric_name": "fedfunds",
+        "metric_label": "Effective federal funds rate",
+        "source_series": "FEDFUNDS",
+        "source_series_name": "Effective Federal Funds Rate",
+        "units": "percentage points",
+    },
+    "GS10": {
+        "metric_name": "gs10",
+        "metric_label": "10-year Treasury yield",
+        "source_series": "GS10",
+        "source_series_name": "10-Year Treasury Constant Maturity Rate",
+        "units": "percentage points",
+    },
+}
 
 
 def utc_now_iso() -> str:
@@ -198,6 +232,59 @@ def build_sample_claims(created_at: str) -> list[dict]:
     ]
     
 
+def load_fred_context(path: Path) -> dict:
+    """Load structured FRED macro context JSON."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def build_claims_from_context(
+    *,
+    context_path: Path,
+    comparison_window: str,
+    created_at: str,
+    prompt_id: str | None = "macro_compare_12m",
+) -> list[dict]:
+    """Build deterministic FRED claims from structured macro context JSON."""
+    context = load_fred_context(context_path)
+
+    if comparison_window not in {"6m", "12m", "24m"}:
+        raise ValueError(
+            f"Unsupported comparison_window={comparison_window!r}. "
+            "Expected one of: 6m, 12m, 24m."
+        )
+
+    latest_date = context["latest_date"]
+    prior_date = context[f"prior_date_{comparison_window}"]
+
+    latest_values = context["latest_values"]
+    prior_values = context[f"prior_values_{comparison_window}"]
+
+    claim_records = []
+
+    for metric_key, config in METRIC_CONFIG.items():
+        if metric_key not in latest_values or metric_key not in prior_values:
+            continue
+
+        claim_records.append(
+            build_prior_comparison_claim(
+                metric_name=config["metric_name"],
+                metric_label=config["metric_label"],
+                source_series=config["source_series"],
+                source_series_name=config["source_series_name"],
+                current_date=latest_date,
+                current_value=latest_values[metric_key],
+                prior_date=prior_date,
+                prior_value=prior_values[metric_key],
+                units=config["units"],
+                created_at=created_at,
+                source_release_date=None,
+                prompt_id=prompt_id,
+            )
+        )
+
+    return claim_records
+
+
 def write_json(path: Path, payload: object) -> None:
     """Write JSON with stable formatting."""
     path.write_text(
@@ -206,12 +293,27 @@ def write_json(path: Path, payload: object) -> None:
     )
 
 
-def write_artifacts(output_dir: Path, include_sample: bool = False) -> None:
+def write_artifacts(
+    output_dir: Path,
+    include_sample: bool = False,
+    input_context: Path | None = None,
+    comparison_window: str = "12m",
+) -> None:
     """Write FRED claim artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     created_at = utc_now_iso()
-    claim_records = build_sample_claims(created_at) if include_sample else []
+    if input_context is not None:
+        claim_records = build_claims_from_context(
+            context_path=input_context,
+            comparison_window=comparison_window,
+            created_at=created_at,
+            prompt_id=f"macro_compare_{comparison_window}",
+        )
+    elif include_sample:
+        claim_records = build_sample_claims(created_at)
+    else:
+        claim_records = []
 
     claims_df = pd.DataFrame(claim_records, columns=CLAIM_COLUMNS)
 
@@ -232,7 +334,8 @@ def write_artifacts(output_dir: Path, include_sample: bool = False) -> None:
     metadata = {
         "schema_version": SCHEMA_VERSION,
         "generation_method": GENERATION_METHOD,
-        "input_file": None,
+        "input_file": str(input_context) if input_context is not None else None,
+        "comparison_window": comparison_window if input_context is not None else None,
         "created_at": created_at,
         "n_claims": int(len(claims_df)),
         "series_included": sorted(
@@ -272,6 +375,18 @@ def parse_args() -> argparse.Namespace:
         help="Directory where FRED claim artifacts will be written.",
     )
     parser.add_argument(
+        "--input-context",
+        type=Path,
+        default=None,
+        help="Structured FRED macro context JSON produced by build_fred_prompt_context.py.",
+    )
+    parser.add_argument(
+        "--comparison-window",
+        default="12m",
+        choices=["6m", "12m", "24m"],
+        help="Comparison window to use from the FRED context.",
+    )
+    parser.add_argument(
         "--include-sample",
         action="store_true",
         help="Emit a tiny deterministic sample claim for schema validation.",
@@ -281,8 +396,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    write_artifacts(args.output_dir, include_sample=args.include_sample)
-
+    write_artifacts(
+        args.output_dir,
+        include_sample=args.include_sample,
+        input_context=args.input_context,
+        comparison_window=args.comparison_window,
+    )
+    
 
 if __name__ == "__main__":
     main()
