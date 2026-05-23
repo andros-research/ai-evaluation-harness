@@ -18,6 +18,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 
 
 NARRATIVE_SCHEMA_VERSION = "fred_narrative_v0_1"
@@ -147,6 +148,59 @@ def extract_claim_ids(selected_claims: list[dict]) -> list[str]:
     return [claim["claim_id"] for claim in selected_claims]
 
 
+def extract_cited_claim_ids(narrative_text: str) -> list[str]:
+    """Extract claim IDs cited in [CLAIMS: ...] blocks."""
+    cited: list[str] = []
+
+    matches = re.findall(r"\[CLAIMS:\s*([^\]]+)\]", narrative_text)
+
+    for match in matches:
+        parts = [part.strip() for part in match.split(",")]
+        cited.extend(part for part in parts if part)
+
+    return cited
+
+
+def validate_narrative_citations(
+    *,
+    narrative_text: str,
+    selected_claims: list[dict],
+) -> None:
+    """Validate narrative citation coverage against selected claims."""
+    selected_claim_ids = extract_claim_ids(selected_claims)
+    selected_claim_id_set = set(selected_claim_ids)
+
+    cited_claim_ids = extract_cited_claim_ids(narrative_text)
+    cited_claim_id_set = set(cited_claim_ids)
+
+    errors: list[str] = []
+
+    missing_from_narrative = [
+        claim_id for claim_id in selected_claim_ids if claim_id not in cited_claim_id_set
+    ]
+    if missing_from_narrative:
+        errors.append(
+            "Selected claim IDs missing from narrative citations: "
+            + ", ".join(missing_from_narrative)
+        )
+
+    unknown_citations = [
+        claim_id for claim_id in cited_claim_ids if claim_id not in selected_claim_id_set
+    ]
+    if unknown_citations:
+        errors.append(
+            "Narrative cites unknown claim IDs: "
+            + ", ".join(unknown_citations)
+        )
+
+    if len(cited_claim_ids) != len(set(cited_claim_ids)):
+        errors.append("Narrative contains duplicate claim citations.")
+
+    if errors:
+        joined = "\n".join(f"- {err}" for err in errors)
+        raise ValueError(f"FRED narrative citation validation failed:\n{joined}")
+
+
 def write_json(path: Path, payload: object) -> None:
     """Write JSON with stable formatting."""
     path.write_text(
@@ -171,6 +225,11 @@ def write_narrative_artifacts(
         selected_claims=selected_claims,
         generated_at=generated_at,
     )
+    
+    validate_narrative_citations(
+        narrative_text=narrative_md,
+        selected_claims=selected_claims,
+    )
 
     narrative_path = output_dir / "fred_narrative.md"
     metadata_path = output_dir / "fred_narrative_metadata.json"
@@ -184,6 +243,12 @@ def write_narrative_artifacts(
         "generated_at": generated_at,
         "n_selected_claims": int(len(selected_claims)),
         "used_claim_ids": extract_claim_ids(selected_claims),
+        "cited_claim_ids": extract_cited_claim_ids(narrative_md),
+        "citation_validation": {
+            "all_selected_claims_cited": True,
+            "all_citations_known": True,
+            "duplicate_citations": False,
+        },
         "output_files": {
             "narrative_md": str(narrative_path),
             "metadata_json": str(metadata_path),
