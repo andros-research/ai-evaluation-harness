@@ -117,25 +117,146 @@ def build_claim_lookup(selected_claims: list[dict]) -> dict[str, dict]:
     return lookup
 
 
+def normalize_number_text(value: object) -> str:
+    """Normalize numeric values for simple text matching."""
+    if value is None:
+        return ""
+
+    if isinstance(value, int):
+        return str(value)
+
+    if isinstance(value, float):
+        rounded = round(value, 3)
+        return f"{rounded:g}"
+
+    return str(value)
+
+
+def numeric_value_present(text: str, value: object) -> bool:
+    """Check whether a numeric value appears in narrative text."""
+    normalized = normalize_number_text(value)
+    if not normalized:
+        return False
+
+    return normalized in text
+
+
+def delta_value_present(text: str, value: object) -> bool:
+    """Check whether a delta magnitude appears in narrative text.
+
+    Deltas are stored as signed values, but prose usually expresses the
+    magnitude while direction words carry the sign.
+    """
+    if value is None:
+        return False
+
+    if isinstance(value, (int, float)):
+        return numeric_value_present(text, abs(value))
+
+    return numeric_value_present(text, value)
+
+
+def expected_direction_terms(direction: str | None) -> list[str]:
+    """Return acceptable direction words for a claim direction."""
+    if direction == "up":
+        return ["increased", "rose", "higher", "up"]
+    if direction == "down":
+        return ["decreased", "fell", "lower", "down"]
+    if direction == "flat":
+        return ["unchanged", "flat", "little changed"]
+    return []
+
+
+def direction_present(text: str, direction: str | None) -> bool:
+    """Check whether a narrative text includes an expected direction term."""
+    terms = expected_direction_terms(direction)
+    lowered = text.lower()
+    return any(term in lowered for term in terms)
+
+
+def audit_claim_content_against_bullet(
+    *,
+    bullet_text: str,
+    claim: dict,
+) -> dict:
+    """Audit numeric and directional consistency for one cited claim."""
+    current_value = claim.get("current_value")
+    prior_value = claim.get("prior_value")
+    delta_value = claim.get("delta_value")
+    direction = claim.get("direction")
+
+    current_value_present = numeric_value_present(bullet_text, current_value)
+    prior_value_present = numeric_value_present(bullet_text, prior_value)
+    delta_value_found = delta_value_present(bullet_text, delta_value)
+    direction_term_present = direction_present(bullet_text, direction)
+
+    issues: list[str] = []
+
+    if not current_value_present:
+        issues.append("missing_current_value")
+    if not prior_value_present:
+        issues.append("missing_prior_value")
+    if not delta_value_found:
+        issues.append("missing_delta_value")
+    if not direction_term_present:
+        issues.append("missing_or_inconsistent_direction")
+
+    return {
+        "claim_id": claim.get("claim_id"),
+        "current_value": current_value,
+        "prior_value": prior_value,
+        "delta_value": delta_value,
+        "direction": direction,
+        "current_value_present": current_value_present,
+        "prior_value_present": prior_value_present,
+        "delta_value_present": delta_value_found,
+        "direction_term_present": direction_term_present,
+        "content_audit_pass": not issues,
+        "content_issues": issues,
+    }
+
+
 def audit_bullet(
     *,
     bullet_text: str,
-    selected_claim_ids: set[str],
+    claim_lookup: dict[str, dict],
 ) -> dict:
     """Audit one markdown bullet for claim citation validity."""
+    selected_claim_ids = set(claim_lookup)
     cited_claim_ids = extract_cited_claim_ids(bullet_text)
     unknown_claim_ids = [
         claim_id for claim_id in cited_claim_ids if claim_id not in selected_claim_ids
+    ]
+
+    content_audits = [
+        audit_claim_content_against_bullet(
+            bullet_text=bullet_text,
+            claim=claim_lookup[claim_id],
+        )
+        for claim_id in cited_claim_ids
+        if claim_id in claim_lookup
+    ]
+
+    content_issues = [
+        issue
+        for item in content_audits
+        for issue in item["content_issues"]
     ]
 
     has_claim_citation = bool(cited_claim_ids)
     citation_status = "supported" if has_claim_citation and not unknown_claim_ids else "failed"
 
     if not has_claim_citation:
+        citation_status = "failed"
         issue_type = "missing_claim_citation"
     elif unknown_claim_ids:
+        citation_status = "failed"
         issue_type = "unknown_claim_id"
+    elif content_issues:
+        citation_status = "failed"
+        issue_type = "claim_content_mismatch"
     else:
+        citation_status = "supported"
         issue_type = None
 
     return {
@@ -145,6 +266,8 @@ def audit_bullet(
         "unknown_claim_ids": unknown_claim_ids,
         "citation_status": citation_status,
         "issue_type": issue_type,
+        "content_audits": content_audits,
+        "content_issues": content_issues,
     }
 
 
@@ -162,7 +285,7 @@ def audit_narrative(
     bullet_audits = [
         audit_bullet(
             bullet_text=bullet,
-            selected_claim_ids=selected_claim_ids,
+            claim_lookup=claim_lookup,
         )
         for bullet in bullets
     ]
@@ -193,6 +316,15 @@ def audit_narrative(
     bullets_with_unknown_citations = [
         item for item in bullet_audits if item["unknown_claim_ids"]
     ]
+    
+    bullets_with_content_mismatches = [
+        item for item in bullet_audits if item.get("content_issues")
+    ]
+
+    content_issue_counts: dict[str, int] = {}
+    for bullet in bullets_with_content_mismatches:
+        for issue in bullet.get("content_issues", []):
+            content_issue_counts[issue] = content_issue_counts.get(issue, 0) + 1
 
     errors: list[str] = []
 
@@ -204,6 +336,9 @@ def audit_narrative(
 
     if duplicate_citations:
         errors.append("duplicate_claim_citations")
+    
+    if bullets_with_content_mismatches:
+        errors.append("claim_content_mismatches")
 
     if strict_selected_claim_coverage and selected_claims_missing_from_narrative:
         errors.append("selected_claims_missing_from_narrative")
@@ -226,6 +361,8 @@ def audit_narrative(
         "n_bullets_missing_citations": len(bullets_missing_citations),
         "n_bullets_with_unknown_citations": len(bullets_with_unknown_citations),
         "bullet_audits": bullet_audits,
+        "n_bullets_with_content_mismatches": len(bullets_with_content_mismatches),
+        "content_issue_counts": content_issue_counts,
     }
 
 
