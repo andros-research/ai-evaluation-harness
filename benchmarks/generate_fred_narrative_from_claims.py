@@ -50,6 +50,9 @@ REQUIRED_SELECTED_FIELDS = [
     "selection_schema_version",
 ]
 
+DEFAULT_MODE = "deterministic"
+SUPPORTED_MODES = ["deterministic"]
+
 
 def utc_now_iso() -> str:
     """Return a timezone-aware UTC timestamp."""
@@ -239,6 +242,7 @@ def write_narrative_artifacts(
     metadata = {
         "narrative_schema_version": NARRATIVE_SCHEMA_VERSION,
         "generation_method": GENERATION_METHOD,
+        "generation_mode": args.mode,
         "input_file": str(input_path),
         "generated_at": generated_at,
         "n_selected_claims": int(len(selected_claims)),
@@ -277,6 +281,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
         help="Directory where FRED narrative artifacts will be written.",
+    )
+    parser.add_argument(
+        "--mode",
+        default=DEFAULT_MODE,
+        choices=SUPPORTED_MODES,
+        help="Narrative generation mode. Currently only deterministic is supported.",
     )
     return parser.parse_args()
 
