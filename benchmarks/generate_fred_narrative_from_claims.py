@@ -216,6 +216,7 @@ def write_narrative_artifacts(
     *,
     input_path: Path,
     output_dir: Path,
+    mode: str,
 ) -> None:
     """Generate and write FRED narrative artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -242,7 +243,7 @@ def write_narrative_artifacts(
     metadata = {
         "narrative_schema_version": NARRATIVE_SCHEMA_VERSION,
         "generation_method": GENERATION_METHOD,
-        "generation_mode": args.mode,
+        "generation_mode": mode,
         "input_file": str(input_path),
         "generated_at": generated_at,
         "n_selected_claims": int(len(selected_claims)),
@@ -296,6 +297,7 @@ def main() -> None:
     write_narrative_artifacts(
         input_path=args.input_claims,
         output_dir=args.output_dir,
+        mode=args.mode,
     )
 
 
