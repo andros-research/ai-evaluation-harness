@@ -16,9 +16,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-import re
+from typing import Any
 
 
 NARRATIVE_SCHEMA_VERSION = "fred_narrative_v0_1"
@@ -51,7 +55,10 @@ REQUIRED_SELECTED_FIELDS = [
 ]
 
 DEFAULT_MODE = "deterministic"
-SUPPORTED_MODES = ["deterministic"]
+SUPPORTED_MODES = ["deterministic", "llm"]
+DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434"
+DEFAULT_MODEL = "llama3"
+DEFAULT_TIMEOUT_S = 600
 
 
 def utc_now_iso() -> str:
@@ -111,6 +118,50 @@ def render_claim_bullet(claim: dict) -> str:
     return f"- {claim_text}. [CLAIMS: {claim_id}]"
 
 
+def build_llm_prompt(selected_claims: list[dict]) -> str:
+    """Build a constrained prompt for LLM narrative generation."""
+    claim_blocks: list[str] = []
+
+    for claim in selected_claims:
+        supporting_values = claim.get("supporting_values", {})
+        claim_blocks.append(
+            "\n".join(
+                [
+                    f"claim_id: {claim.get('claim_id')}",
+                    f"claim_text: {claim.get('claim_text')}",
+                    f"source_series: {claim.get('source_series')}",
+                    f"metric_name: {claim.get('metric_name')}",
+                    f"comparison_window: {claim.get('comparison_window')}",
+                    f"current_value: {claim.get('current_value')}",
+                    f"prior_value: {claim.get('prior_value')}",
+                    f"delta_value: {claim.get('delta_value')}",
+                    f"direction: {claim.get('direction')}",
+                    f"supporting_values: {json.dumps(supporting_values, sort_keys=True)}",
+                ]
+            )
+        )
+
+    claims_text = "\n\n---\n\n".join(claim_blocks)
+
+    return f"""You are generating a concise macro narrative from selected FRED claims.
+
+Rules:
+1. Write markdown only.
+2. Include the title: # FRED Macro Narrative
+3. Include a section called: ## Claim-Cited Summary
+4. Use one bullet per selected claim.
+5. Every bullet must cite exactly one claim using this exact format: [CLAIMS: claim_id]
+6. Preserve the current value, prior value, delta magnitude, and direction from the claim.
+7. Do not introduce unsupported causal interpretation.
+8. Do not add facts not present in the claims.
+9. Do not cite any claim ID that is not listed below.
+
+Selected claims:
+
+{claims_text}
+"""
+
+
 def build_narrative_markdown(
     selected_claims: list[dict],
     generated_at: str,
@@ -144,6 +195,57 @@ def build_narrative_markdown(
         "## Claim-Cited Summary\n\n"
         f"{bullets}\n"
     )
+
+
+def build_llm_narrative_markdown(
+    *,
+    selected_claims: list[dict],
+    generated_at: str,
+    model: str,
+    ollama_host: str,
+    timeout_s: int,
+) -> tuple[str, dict[str, Any]]:
+    """Build an LLM-generated claim-cited markdown narrative."""
+    if not selected_claims:
+        narrative = (
+            "# FRED Macro Narrative\n\n"
+            f"Generated at: {generated_at}\n\n"
+            "No selected FRED claims were available for narrative generation.\n"
+        )
+        return narrative, {
+            "llm_used": False,
+            "model": model,
+            "ollama_host": ollama_host,
+            "elapsed_s": 0,
+            "error": "",
+        }
+
+    prompt = build_llm_prompt(selected_claims)
+
+    result = ollama_generate(
+        host=ollama_host,
+        model=model,
+        prompt=prompt,
+        options={
+            "temperature": 0.0,
+            "top_p": 0.9,
+            "num_predict": 512,
+        },
+        timeout_s=timeout_s,
+    )
+
+    if not result["ok"]:
+        raise RuntimeError(f"LLM narrative generation failed: {result['error']}")
+
+    narrative = result["response_text"].strip()
+
+    return narrative + "\n", {
+        "llm_used": True,
+        "model": model,
+        "ollama_host": ollama_host,
+        "elapsed_s": result["elapsed_s"],
+        "error": result["error"],
+    }
 
 
 def extract_claim_ids(selected_claims: list[dict]) -> list[str]:
@@ -210,6 +312,68 @@ def write_json(path: Path, payload: object) -> None:
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    
+    
+def ollama_generate(
+    *,
+    host: str,
+    model: str,
+    prompt: str,
+    options: dict[str, Any],
+    timeout_s: int,
+) -> dict[str, Any]:
+    """Generate text using a local Ollama model."""
+    url = host.rstrip("/") + "/api/generate"
+    payload: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+    }
+
+    if options:
+        payload["options"] = options
+
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+    )
+
+    started = time.time()
+
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_s) as response:
+            body = response.read()
+            raw = json.loads(body.decode("utf-8", errors="replace"))
+            text = raw.get("response") or ""
+            return {
+                "ok": True,
+                "response_text": text,
+                "raw": raw,
+                "elapsed_s": round(time.time() - started, 3),
+                "error": "",
+            }
+    except urllib.error.HTTPError as exc:
+        try:
+            error_body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            error_body = ""
+        return {
+            "ok": False,
+            "response_text": "",
+            "raw": {},
+            "elapsed_s": round(time.time() - started, 3),
+            "error": f"HTTPError {exc.code}: {error_body}",
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "response_text": "",
+            "raw": {},
+            "elapsed_s": round(time.time() - started, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
 
 def write_narrative_artifacts(
@@ -217,6 +381,9 @@ def write_narrative_artifacts(
     input_path: Path,
     output_dir: Path,
     mode: str,
+    model: str,
+    ollama_host: str,
+    timeout_s: int,
 ) -> None:
     """Generate and write FRED narrative artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -225,10 +392,28 @@ def write_narrative_artifacts(
     selected_claims = load_selected_claims(input_path)
     validate_selected_claims(selected_claims)
 
-    narrative_md = build_narrative_markdown(
-        selected_claims=selected_claims,
-        generated_at=generated_at,
-    )
+    if mode == "deterministic":
+        narrative_md = build_narrative_markdown(
+            selected_claims=selected_claims,
+            generated_at=generated_at,
+        )
+        llm_metadata = {
+            "llm_used": False,
+            "model": None,
+            "ollama_host": None,
+            "elapsed_s": 0,
+            "error": "",
+        }
+    elif mode == "llm":
+        narrative_md, llm_metadata = build_llm_narrative_markdown(
+            selected_claims=selected_claims,
+            generated_at=generated_at,
+            model=model,
+            ollama_host=ollama_host,
+            timeout_s=timeout_s,
+        )
+    else:
+        raise ValueError(f"Unsupported generation mode: {mode}")
     
     validate_narrative_citations(
         narrative_text=narrative_md,
@@ -243,7 +428,8 @@ def write_narrative_artifacts(
     metadata = {
         "narrative_schema_version": NARRATIVE_SCHEMA_VERSION,
         "generation_method": GENERATION_METHOD,
-        "generation_mode": mode,
+        "generation_method": "llm_claim_cited_narrative" if mode == "llm" else GENERATION_METHOD,
+        "llm_metadata": llm_metadata,
         "input_file": str(input_path),
         "generated_at": generated_at,
         "n_selected_claims": int(len(selected_claims)),
@@ -289,6 +475,22 @@ def parse_args() -> argparse.Namespace:
         choices=SUPPORTED_MODES,
         help="Narrative generation mode. Currently only deterministic is supported.",
     )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help="Local Ollama model to use when --mode llm.",
+    )
+    parser.add_argument(
+        "--ollama-host",
+        default=DEFAULT_OLLAMA_HOST,
+        help="Ollama host URL when --mode llm.",
+    )
+    parser.add_argument(
+        "--timeout-s",
+        type=int,
+        default=DEFAULT_TIMEOUT_S,
+        help="Timeout in seconds for local LLM generation.",
+    )
     return parser.parse_args()
 
 
@@ -298,6 +500,9 @@ def main() -> None:
         input_path=args.input_claims,
         output_dir=args.output_dir,
         mode=args.mode,
+        model=args.model,
+        ollama_host=args.ollama_host,
+        timeout_s=args.timeout_s,
     )
 
 
