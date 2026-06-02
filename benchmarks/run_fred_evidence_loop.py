@@ -28,6 +28,12 @@ from pathlib import Path
 RUN_SCHEMA_VERSION = "fred_evidence_loop_run_v0_1"
 RUN_METHOD = "subprocess_artifact_chain"
 
+DEFAULT_NARRATIVE_MODE = "deterministic"
+DEFAULT_NARRATIVE_MODEL = "llama3"
+DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434"
+DEFAULT_NARRATIVE_TIMEOUT_S = 600
+SUPPORTED_NARRATIVE_MODES = ["deterministic", "llm"]
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_INPUT_CONTEXT = REPO_ROOT / "benchmarks" / "data" / "fred_macro_context.json"
@@ -111,6 +117,10 @@ def build_step_command(
     script: str,
     input_context: Path,
     comparison_window: str,
+    narrative_mode: str,
+    narrative_model: str,
+    ollama_host: str,
+    narrative_timeout_s: int,
 ) -> list[str]:
     """Build command for a named pipeline step."""
     command = [sys.executable, script]
@@ -124,6 +134,26 @@ def build_step_command(
                 comparison_window,
             ]
         )
+
+    if step_name == "generate_fred_narrative_from_claims":
+        command.extend(
+            [
+                "--mode",
+                narrative_mode,
+            ]
+        )
+
+        if narrative_mode == "llm":
+            command.extend(
+                [
+                    "--model",
+                    narrative_model,
+                    "--ollama-host",
+                    ollama_host,
+                    "--timeout-s",
+                    str(narrative_timeout_s),
+                ]
+            )
 
     return command
 
@@ -231,6 +261,10 @@ def run_fred_evidence_loop(
     input_context: Path,
     comparison_window: str,
     output_dir: Path,
+    narrative_mode: str,
+    narrative_model: str,
+    ollama_host: str,
+    narrative_timeout_s: int,
     stop_on_failure: bool = True,
 ) -> None:
     """Run the full FRED evidence loop and write run metadata."""
@@ -244,6 +278,10 @@ def run_fred_evidence_loop(
     print(f"Starting FRED evidence loop: {run_id}")
     print(f"input_context={input_context}")
     print(f"comparison_window={comparison_window}")
+    print(f"narrative_mode={narrative_mode}")
+    if narrative_mode == "llm":
+        print(f"narrative_model={narrative_model}")
+        print(f"ollama_host={ollama_host}")
 
     for step in PIPELINE_STEPS:
         step_name = step["step_name"]
@@ -254,6 +292,10 @@ def run_fred_evidence_loop(
             script=script,
             input_context=input_context,
             comparison_window=comparison_window,
+            narrative_mode=narrative_mode,
+            narrative_model=narrative_model,
+            ollama_host=ollama_host,
+            narrative_timeout_s=narrative_timeout_s,
         )
 
         print(f"\n=== Running step: {step_name} ===")
@@ -294,6 +336,10 @@ def run_fred_evidence_loop(
         "run_finished_at": run_finished_at,
         "input_context": str(input_context),
         "comparison_window": comparison_window,
+        "narrative_mode": narrative_mode,
+        "narrative_model": narrative_model if narrative_mode == "llm" else None,
+        "ollama_host": ollama_host if narrative_mode == "llm" else None,
+        "narrative_timeout_s": narrative_timeout_s if narrative_mode == "llm" else None,
         "overall_ok": overall_ok,
         "stop_on_failure": stop_on_failure,
         "n_steps": len(PIPELINE_STEPS),
@@ -338,6 +384,28 @@ def parse_args() -> argparse.Namespace:
         help="Comparison window to use for FRED claims.",
     )
     parser.add_argument(
+        "--narrative-mode",
+        default=DEFAULT_NARRATIVE_MODE,
+        choices=SUPPORTED_NARRATIVE_MODES,
+        help="Narrative generation mode to pass to generate_fred_narrative_from_claims.py.",
+    )
+    parser.add_argument(
+        "--narrative-model",
+        default=DEFAULT_NARRATIVE_MODEL,
+        help="Local Ollama model to use when --narrative-mode llm.",
+    )
+    parser.add_argument(
+        "--ollama-host",
+        default=DEFAULT_OLLAMA_HOST,
+        help="Ollama host URL when --narrative-mode llm.",
+    )
+    parser.add_argument(
+        "--narrative-timeout-s",
+        type=int,
+        default=DEFAULT_NARRATIVE_TIMEOUT_S,
+        help="Timeout in seconds for LLM narrative generation.",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
@@ -357,6 +425,10 @@ def main() -> None:
         input_context=args.input_context,
         comparison_window=args.comparison_window,
         output_dir=args.output_dir,
+        narrative_mode=args.narrative_mode,
+        narrative_model=args.narrative_model,
+        ollama_host=args.ollama_host,
+        narrative_timeout_s=args.narrative_timeout_s,
         stop_on_failure=not args.no_stop_on_failure,
     )
 
