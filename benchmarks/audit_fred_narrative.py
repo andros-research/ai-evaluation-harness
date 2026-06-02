@@ -81,12 +81,14 @@ def write_json(path: Path, payload: object) -> None:
 
 
 def extract_bullets(narrative_text: str) -> list[str]:
-    """Extract markdown bullet lines from narrative text."""
+    """Extract simple markdown bullet lines from narrative text."""
     bullets: list[str] = []
+
     for line in narrative_text.splitlines():
         stripped = line.strip()
-        if stripped.startswith("- "):
+        if re.match(r"^[-*]\s+", stripped):
             bullets.append(stripped)
+
     return bullets
 
 
@@ -292,6 +294,7 @@ def audit_narrative(
 
     cited_claim_ids = extract_cited_claim_ids(narrative_text)
     cited_claim_id_set = set(cited_claim_ids)
+    citation_bullet_shape_error = bool(cited_claim_ids and not bullets)
 
     unknown_citations = [
         claim_id for claim_id in cited_claim_ids if claim_id not in selected_claim_ids
@@ -333,6 +336,9 @@ def audit_narrative(
 
     if bullets_missing_citations:
         errors.append("bullets_missing_claim_citations")
+    
+    if citation_bullet_shape_error:
+        errors.append("citations_found_but_no_bullets_extracted")
 
     if duplicate_citations:
         errors.append("duplicate_claim_citations")
@@ -360,6 +366,7 @@ def audit_narrative(
         "selected_claims_missing_from_narrative": selected_claims_missing_from_narrative,
         "n_bullets_missing_citations": len(bullets_missing_citations),
         "n_bullets_with_unknown_citations": len(bullets_with_unknown_citations),
+        "citation_bullet_shape_error": citation_bullet_shape_error,
         "bullet_audits": bullet_audits,
         "n_bullets_with_content_mismatches": len(bullets_with_content_mismatches),
         "content_issue_counts": content_issue_counts,
