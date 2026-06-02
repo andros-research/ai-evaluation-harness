@@ -145,21 +145,24 @@ def build_llm_prompt(selected_claims: list[dict]) -> str:
 
     return f"""You are generating a concise macro narrative from selected FRED claims.
 
-Rules:
-1. Write markdown only.
-2. Include the title: # FRED Macro Narrative
-3. Include a section called: ## Claim-Cited Summary
-4. Use one bullet per selected claim.
-5. Every bullet must cite exactly one claim using this exact format: [CLAIMS: claim_id]
-6. Preserve the current value, prior value, delta magnitude, and direction from the claim.
-7. Do not introduce unsupported causal interpretation.
-8. Do not add facts not present in the claims.
-9. Do not cite any claim ID that is not listed below.
+    Rules:
+    1. Write markdown only.
+    2. Include the title: # FRED Macro Narrative
+    3. Include a section called: ## Claim-Cited Summary
+    4. Use one bullet per selected claim.
+    5. Every bullet must cite exactly one claim using this exact format: [CLAIMS: fred__example__ID]
+    6. Inside the brackets, write only the claim ID after "CLAIMS:".
+    7. Do not write "CLAIMS:" twice.
+    8. Do not wrap claim IDs in backticks, quotes, parentheses, or extra brackets.
+    9. Preserve the current value, prior value, delta magnitude, and direction from the claim.
+    10. Do not introduce unsupported causal interpretation.
+    11. Do not add facts not present in the claims.
+    12. Do not cite any claim ID that is not listed below.
 
-Selected claims:
+    Selected claims:
 
-{claims_text}
-"""
+    {claims_text}
+    """
 
 
 def build_narrative_markdown(
@@ -253,6 +256,21 @@ def extract_claim_ids(selected_claims: list[dict]) -> list[str]:
     return [claim["claim_id"] for claim in selected_claims]
 
 
+def normalize_extracted_claim_id(raw_claim_id: str) -> str:
+    """Normalize claim IDs extracted from [CLAIMS: ...] blocks."""
+    claim_id = raw_claim_id.strip()
+
+    # Handle LLM mistakes like:
+    # [CLAIMS: CLAIMS: fred__...]
+    while claim_id.upper().startswith("CLAIMS:"):
+        claim_id = claim_id.split(":", 1)[1].strip()
+
+    # Remove common markdown/code punctuation around IDs.
+    claim_id = claim_id.strip("`'\" ")
+
+    return claim_id
+
+
 def extract_cited_claim_ids(narrative_text: str) -> list[str]:
     """Extract claim IDs cited in [CLAIMS: ...] blocks."""
     cited: list[str] = []
@@ -260,7 +278,7 @@ def extract_cited_claim_ids(narrative_text: str) -> list[str]:
     matches = re.findall(r"\[CLAIMS:\s*([^\]]+)\]", narrative_text)
 
     for match in matches:
-        parts = [part.strip() for part in match.split(",")]
+        parts = [normalize_extracted_claim_id(part) for part in match.split(",")]
         cited.extend(part for part in parts if part)
 
     return cited
