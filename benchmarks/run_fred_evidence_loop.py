@@ -10,6 +10,7 @@ v1.6.6 scaffold:
 - plans repairs from the audit
 - builds a traceability summary
 - writes one run-level metadata artifact
+- builds a human-readable demo report
 
 This runner coordinates existing scripts. It does not replace the individual
 pipeline steps, which remain independently runnable and auditable.
@@ -64,6 +65,10 @@ PIPELINE_STEPS = [
     {
         "step_name": "build_fred_traceability_summary",
         "script": "benchmarks/build_fred_traceability_summary.py",
+    },
+    {
+        "step_name": "build_fred_demo_report",
+        "script": "benchmarks/build_fred_demo_report.py",
     },
 ]
 
@@ -205,6 +210,13 @@ def collect_output_summary() -> dict:
         / "fred_traceability"
         / "fred_traceability_summary_metadata.json"
     )
+    demo_report_meta = read_json_if_exists(
+        REPO_ROOT
+        / "benchmarks"
+        / "results"
+        / "fred_demo"
+        / "fred_demo_report_metadata.json"
+    )
 
     return {
         "claims": {
@@ -251,6 +263,20 @@ def collect_output_summary() -> dict:
             else None,
             "n_cited_claims": traceability_meta.get("n_cited_claims")
             if isinstance(traceability_meta, dict)
+            else None,
+        },
+        "demo_report": {
+            "overall_ok": demo_report_meta.get("overall_ok")
+            if isinstance(demo_report_meta, dict)
+            else None,
+            "narrative_mode": demo_report_meta.get("narrative_mode")
+            if isinstance(demo_report_meta, dict)
+            else None,
+            "audit_pass": demo_report_meta.get("audit_pass")
+            if isinstance(demo_report_meta, dict)
+            else None,
+            "repair_needed": demo_report_meta.get("repair_needed")
+            if isinstance(demo_report_meta, dict)
             else None,
         },
     }
