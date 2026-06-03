@@ -66,11 +66,11 @@ PIPELINE_STEPS = [
         "step_name": "build_fred_traceability_summary",
         "script": "benchmarks/build_fred_traceability_summary.py",
     },
-    {
-        "step_name": "build_fred_demo_report",
-        "script": "benchmarks/build_fred_demo_report.py",
-    },
 ]
+DEMO_REPORT_STEP = {
+    "step_name": "build_fred_demo_report",
+    "script": "benchmarks/build_fred_demo_report.py",
+}
 
 
 def utc_now_iso() -> str:
@@ -280,6 +280,49 @@ def collect_output_summary() -> dict:
             else None,
         },
     }
+    
+
+def build_run_metadata(
+    *,
+    run_id: str,
+    run_started_at: str,
+    run_finished_at: str,
+    input_context: Path,
+    comparison_window: str,
+    narrative_mode: str,
+    narrative_model: str,
+    ollama_host: str,
+    narrative_timeout_s: int,
+    stop_on_failure: bool,
+    step_results: list[dict],
+    output_summary: dict,
+) -> dict:
+    """Build run metadata from current step results."""
+    overall_ok = all(step["ok"] for step in step_results)
+    completed_steps = [step["step_name"] for step in step_results if step["ok"]]
+    failed_steps = [step["step_name"] for step in step_results if not step["ok"]]
+
+    return {
+        "run_schema_version": RUN_SCHEMA_VERSION,
+        "run_method": RUN_METHOD,
+        "run_id": run_id,
+        "run_started_at": run_started_at,
+        "run_finished_at": run_finished_at,
+        "input_context": str(input_context),
+        "comparison_window": comparison_window,
+        "narrative_mode": narrative_mode,
+        "narrative_model": narrative_model if narrative_mode == "llm" else None,
+        "ollama_host": ollama_host if narrative_mode == "llm" else None,
+        "narrative_timeout_s": narrative_timeout_s if narrative_mode == "llm" else None,
+        "overall_ok": overall_ok,
+        "stop_on_failure": stop_on_failure,
+        "n_steps": len(PIPELINE_STEPS) + 1,
+        "n_steps_run": len(step_results),
+        "completed_steps": completed_steps,
+        "failed_steps": failed_steps,
+        "step_results": step_results,
+        "output_summary": output_summary,
+    }    
 
 
 def run_fred_evidence_loop(
@@ -349,38 +392,81 @@ def run_fred_evidence_loop(
 
     run_finished_at = utc_now_iso()
     overall_ok = all(step["ok"] for step in step_results)
-    completed_steps = [step["step_name"] for step in step_results if step["ok"]]
-    failed_steps = [step["step_name"] for step in step_results if not step["ok"]]
-
-    output_summary = collect_output_summary() if overall_ok else {}
-
-    run_metadata = {
-        "run_schema_version": RUN_SCHEMA_VERSION,
-        "run_method": RUN_METHOD,
-        "run_id": run_id,
-        "run_started_at": run_started_at,
-        "run_finished_at": run_finished_at,
-        "input_context": str(input_context),
-        "comparison_window": comparison_window,
-        "narrative_mode": narrative_mode,
-        "narrative_model": narrative_model if narrative_mode == "llm" else None,
-        "ollama_host": ollama_host if narrative_mode == "llm" else None,
-        "narrative_timeout_s": narrative_timeout_s if narrative_mode == "llm" else None,
-        "overall_ok": overall_ok,
-        "stop_on_failure": stop_on_failure,
-        "n_steps": len(PIPELINE_STEPS),
-        "n_steps_run": len(step_results),
-        "completed_steps": completed_steps,
-        "failed_steps": failed_steps,
-        "step_results": step_results,
-        "output_summary": output_summary,
-    }
 
     run_metadata_path = output_dir / f"{run_id}.json"
     latest_metadata_path = output_dir / "latest_fred_evidence_loop_run.json"
 
+    # First write current run metadata after the core evidence-loop steps.
+    # This lets the demo report read the current run, not the previous run.
+    output_summary = collect_output_summary() if overall_ok else {}
+
+    run_metadata = build_run_metadata(
+        run_id=run_id,
+        run_started_at=run_started_at,
+        run_finished_at=run_finished_at,
+        input_context=input_context,
+        comparison_window=comparison_window,
+        narrative_mode=narrative_mode,
+        narrative_model=narrative_model,
+        ollama_host=ollama_host,
+        narrative_timeout_s=narrative_timeout_s,
+        stop_on_failure=stop_on_failure,
+        step_results=step_results,
+        output_summary=output_summary,
+    )
+
     write_json(run_metadata_path, run_metadata)
     write_json(latest_metadata_path, run_metadata)
+
+    # Then build the screen-friendly demo report from the current run metadata.
+    if overall_ok:
+        step_name = DEMO_REPORT_STEP["step_name"]
+        script = DEMO_REPORT_STEP["script"]
+        command = [sys.executable, script]
+
+        print(f"\n=== Running step: {step_name} ===")
+        print(" ".join(command))
+
+        result = run_command(command, cwd=REPO_ROOT)
+        step_results.append(
+            {
+                "step_name": step_name,
+                "script": script,
+                **result,
+            }
+        )
+
+        if result["stdout"]:
+            print(result["stdout"], end="" if result["stdout"].endswith("\n") else "\n")
+
+        if result["stderr"]:
+            print(result["stderr"], end="" if result["stderr"].endswith("\n") else "\n")
+
+    # Rebuild metadata after demo report step and include demo summary.
+    run_finished_at = utc_now_iso()
+    overall_ok = all(step["ok"] for step in step_results)
+    output_summary = collect_output_summary() if overall_ok else {}
+
+    run_metadata = build_run_metadata(
+        run_id=run_id,
+        run_started_at=run_started_at,
+        run_finished_at=run_finished_at,
+        input_context=input_context,
+        comparison_window=comparison_window,
+        narrative_mode=narrative_mode,
+        narrative_model=narrative_model,
+        ollama_host=ollama_host,
+        narrative_timeout_s=narrative_timeout_s,
+        stop_on_failure=stop_on_failure,
+        step_results=step_results,
+        output_summary=output_summary,
+    )
+
+    write_json(run_metadata_path, run_metadata)
+    write_json(latest_metadata_path, run_metadata)
+
+    completed_steps = [step["step_name"] for step in step_results if step["ok"]]
+    failed_steps = [step["step_name"] for step in step_results if not step["ok"]]
 
     print("\nWrote FRED evidence loop run metadata:")
     print(f"  {run_metadata_path}")
