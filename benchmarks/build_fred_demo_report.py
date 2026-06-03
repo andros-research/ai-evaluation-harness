@@ -278,9 +278,13 @@ def render_traceability(traceability_rows: list[dict]) -> str:
     )
 
 
-def render_interpretation_caveat(narrative_metadata: dict) -> str:
+def render_interpretation_caveat(
+    *,
+    run_metadata: dict,
+    narrative_metadata: dict,
+) -> str:
     """Render caveat about current audit boundary."""
-    mode = narrative_metadata.get("generation_mode")
+    mode = run_metadata.get("narrative_mode") or narrative_metadata.get("generation_mode")
 
     if mode == "llm":
         return (
@@ -344,7 +348,7 @@ def build_demo_report_markdown(
         "## 6. Source-to-narrative traceability\n\n"
         f"{render_traceability(traceability_rows)}\n"
         "## 7. Important caveat\n\n"
-        f"{render_interpretation_caveat(narrative_metadata)}\n"
+        f"{render_interpretation_caveat(run_metadata=run_metadata, narrative_metadata=narrative_metadata)}\n"
         "## 8. Why this matters\n\n"
         "This report demonstrates the harness pattern: the LLM is only one component "
         "inside a larger workflow. The surrounding system defines context, creates "
