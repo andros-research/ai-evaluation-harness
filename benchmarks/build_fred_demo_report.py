@@ -173,7 +173,7 @@ def render_run_summary(
 
     rows = [
         ["Overall OK", bool_text(run_metadata.get("overall_ok"))],
-        ["Completed steps", len(run_metadata.get("completed_steps", []))],
+        ["Completed core steps before report", len(run_metadata.get("completed_steps", []))],
         ["Failed steps", len(run_metadata.get("failed_steps", []))],
         ["Comparison window", run_metadata.get("comparison_window", "n/a")],
         ["Narrative mode", run_metadata.get("narrative_mode", narrative_metadata.get("generation_mode", "n/a"))],
