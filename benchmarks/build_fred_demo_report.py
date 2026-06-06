@@ -2,11 +2,12 @@
 """
 Build a human-readable FRED evidence loop demo report.
 
-v1.6.9 scaffold:
+v1.7.0 demo-focused version:
 - reads latest FRED evidence-loop artifacts
 - summarizes the run, selected claims, generated narrative, audit, repair plan,
   and traceability map
-- writes a markdown report suitable for screen review / podcast demo preparation
+- writes a markdown report suitable for a 3-5 minute screen walkthrough
+- makes the demo thesis, validation boundary, and current limitation visible
 - writes metadata for downstream dashboard/demo use
 
 This script does not generate new claims or narratives. It packages the latest
@@ -22,8 +23,8 @@ from pathlib import Path
 from typing import Any
 
 
-DEMO_REPORT_SCHEMA_VERSION = "fred_demo_report_v0_1"
-DEMO_REPORT_METHOD = "latest_artifact_markdown_summary"
+DEMO_REPORT_SCHEMA_VERSION = "fred_demo_report_v0_2"
+DEMO_REPORT_METHOD = "v1_7_demo_markdown_summary"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -278,25 +279,62 @@ def render_traceability(traceability_rows: list[dict]) -> str:
     )
 
 
-def render_interpretation_caveat(
+def render_demo_workflow() -> str:
+    """Render the evidence-loop workflow diagram."""
+    return (
+        "```text\n"
+        "FRED macro context\n"
+        "  -> deterministic source-grounded claims\n"
+        "  -> selected evidence claims\n"
+        "  -> deterministic or local LLM narrative\n"
+        "  -> citation + numeric/directional audit\n"
+        "  -> repair plan, if needed\n"
+        "  -> source-to-narrative traceability\n"
+        "  -> screen-readable demo report\n"
+        "```\n"
+    )
+
+
+def render_validation_boundary(
     *,
     run_metadata: dict,
     narrative_metadata: dict,
 ) -> str:
-    """Render caveat about current audit boundary."""
+    """Render the current validation boundary and interpretation-risk caveat."""
     mode = run_metadata.get("narrative_mode") or narrative_metadata.get("generation_mode")
 
     if mode == "llm":
         return (
-            "The current audit verifies citation coverage, numeric values, and direction. "
-            "It does not yet classify interpretive additions. LLM-generated phrases such as "
-            "`significant`, `deterioration`, `policy tightening`, or `market expectations` "
-            "may be plausible, but they are not separately validated in v1.6.9.\n"
+            "The audit currently verifies the parts of the narrative that can be "
+            "checked directly against the structured claim layer: citation coverage, "
+            "numeric values, and direction.\n\n"
+            "It does **not** yet fully validate interpretive or market-facing language. "
+            "For example, phrases such as `significant`, `deterioration`, "
+            "`policy tightening`, or `market expectations` may be plausible, but they "
+            "are not separately proven by the current audit layer.\n\n"
+            "That limitation is intentional for this MVP. v1.7.0 demonstrates factual "
+            "traceability first, while making the remaining interpretation risk visible "
+            "rather than hiding it.\n"
         )
 
     return (
-        "The current deterministic narrative is template-based, so interpretation risk is limited. "
-        "Future LLM runs may require a separate interpretation-risk audit layer.\n"
+        "The deterministic narrative is template-based, so interpretation risk is "
+        "more limited in this run. The same audit boundary still matters for future "
+        "LLM runs: citation coverage, numeric values, and direction can be checked "
+        "now, while richer interpretation-risk classification remains a later layer.\n"
+    )
+
+
+def render_five_minute_takeaway() -> str:
+    """Render the final demo takeaway section."""
+    return (
+        "A normal AI demo usually shows only the final answer. This demo shows the "
+        "workflow around the answer. The model is asked to write inside a controlled "
+        "evidence loop, and the surrounding harness records what evidence was used, "
+        "what the narrative said, what the audit checked, whether repair was needed, "
+        "and how each narrative claim traces back to source data.\n\n"
+        "The current system is small, but the pattern is the point: context engineering, "
+        "structured artifacts, validation, repair planning, and traceability around an LLM.\n"
     )
 
 
@@ -314,46 +352,55 @@ def build_demo_report_markdown(
 ) -> str:
     """Build the human-readable demo report."""
     run_id = run_metadata.get("run_id", "unknown_run")
-    narrative_mode = run_metadata.get("narrative_mode", narrative_metadata.get("generation_mode", "n/a"))
+    narrative_mode = run_metadata.get(
+        "narrative_mode",
+        narrative_metadata.get("generation_mode", "n/a"),
+    )
 
     return (
-        "# FRED Evidence Loop Demo Report\n\n"
+        "# CPI/FRED Evidence Loop Demo Report\n\n"
         f"Generated at: {generated_at}\n\n"
-        "## 1. What this system does\n\n"
-        "This demo runs a local FRED evidence loop:\n\n"
-        "```text\n"
-        "structured macro context\n"
-        "  -> deterministic source-grounded claims\n"
-        "  -> selected evidence\n"
-        "  -> deterministic or local LLM narrative\n"
-        "  -> citation and numeric/directional audit\n"
-        "  -> repair plan\n"
-        "  -> source-to-narrative traceability\n"
-        "```\n\n"
-        "The purpose is not just to generate text. The purpose is to show how a "
-        "model-generated narrative can be constrained by source claims, audited, "
-        "and traced back to the underlying data.\n\n"
-        "## 2. Run summary\n\n"
+        "## 1. Five-minute demo thesis\n\n"
+        "This demo turns structured FRED macro context into source-grounded claims, "
+        "uses those claims to generate a claim-cited narrative, audits the narrative "
+        "for citation, numeric, and directional consistency, plans repair if needed, "
+        "and records traceability back to the source evidence.\n\n"
+        "The point is not that an LLM can write a macro paragraph. The point is that "
+        "the LLM is only one component inside a controlled evidence loop.\n\n"
+        "## 2. Workflow at a glance\n\n"
+        f"{render_demo_workflow()}\n"
+        "## 3. Why this matters\n\n"
+        "Most AI demos show only the final answer. This report shows the machinery "
+        "around the answer: source construction, claim selection, citation discipline, "
+        "numeric and directional audit, repair planning, and traceability.\n\n"
+        "That harness is what makes the output inspectable.\n\n"
+        "## 4. Run summary\n\n"
         f"Run ID: `{run_id}`\n\n"
         f"Narrative mode: `{narrative_mode}`\n\n"
         f"Input claims: `{len(claims)}`\n\n"
         f"Selected claims: `{len(selected_claims)}`\n\n"
         f"{render_run_summary(run_metadata=run_metadata, narrative_metadata=narrative_metadata, audit=audit, repair_plan=repair_plan, traceability_rows=traceability_rows)}\n"
-        "## 3. Selected source claims\n\n"
+        "## 5. Selected source claims\n\n"
+        "These are the structured claims made available to the narrative step. "
+        "They are generated from the source macro context before the narrative is written.\n\n"
         f"{render_selected_claims(selected_claims)}\n"
-        "## 4. Generated narrative\n\n"
+        "## 6. Generated narrative\n\n"
+        "This is the narrative output produced from the selected claims. In LLM mode, "
+        "this is where useful language and risky interpretation can both appear.\n\n"
         f"{narrative_text.strip()}\n\n"
-        "## 5. Audit and repair result\n\n"
+        "## 7. What the audit and repair layer found\n\n"
+        "The current audit checks factual grounding against the claim layer. If the "
+        "audit fails, the repair planner records proposed fixes instead of silently "
+        "accepting the narrative.\n\n"
         f"{render_audit_summary(audit, repair_plan)}\n"
-        "## 6. Source-to-narrative traceability\n\n"
+        "## 8. Current limitation: interpretation risk\n\n"
+        f"{render_validation_boundary(run_metadata=run_metadata, narrative_metadata=narrative_metadata)}\n"
+        "## 9. Source-to-narrative traceability\n\n"
+        "Each row connects a source claim to whether it was selected, cited, audited, "
+        "and represented in the generated narrative.\n\n"
         f"{render_traceability(traceability_rows)}\n"
-        "## 7. Important caveat\n\n"
-        f"{render_interpretation_caveat(run_metadata=run_metadata, narrative_metadata=narrative_metadata)}\n"
-        "## 8. Why this matters\n\n"
-        "This report demonstrates the harness pattern: the LLM is only one component "
-        "inside a larger workflow. The surrounding system defines context, creates "
-        "structured claims, asks for a narrative, validates citations and numeric "
-        "content, plans repairs, and records traceability.\n"
+        "## 10. Five-minute takeaway\n\n"
+        f"{render_five_minute_takeaway()}"
     )
 
 
@@ -470,6 +517,9 @@ def write_demo_report_artifacts(
         "n_claims": len(claims),
         "n_selected_claims": len(selected_claims),
         "n_traceability_rows": len(traceability_rows),
+        "demo_focus": "screen_readable_cpi_fred_evidence_loop",
+        "includes_interpretation_risk_section": True,
+        "intended_demo_read_time_minutes": "3-5",
         "input_files": {
             "run_metadata_json": str(run_metadata_path),
             "claims_json": str(claims_path),
