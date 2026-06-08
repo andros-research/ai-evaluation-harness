@@ -279,6 +279,48 @@ def render_traceability(traceability_rows: list[dict]) -> str:
     )
 
 
+def render_compact_traceability(traceability_rows: list[dict]) -> str:
+    """Render a compact traceability view for screen walkthroughs."""
+    if not traceability_rows:
+        return "_No traceability rows available._\n"
+
+    lines = []
+    for row in traceability_rows:
+        series = row.get("source_series", "unknown_series")
+        rank = row.get("selection_rank", "n/a")
+        cited = "cited" if row.get("was_cited") else "not cited"
+        status = row.get("audit_citation_status") or "unknown"
+        repairs = row.get("repair_action_count", 0)
+
+        if repairs:
+            repair_text = f"{repairs} repair action(s)"
+        else:
+            repair_text = "no repair action"
+
+        lines.append(
+            f"- `{series}` → selected rank `{rank}` → {cited} → "
+            f"audit `{status}` → {repair_text}"
+        )
+
+    return "\n".join(lines) + "\n"
+
+
+def normalize_narrative_for_report(narrative_text: str) -> str:
+    """Demote embedded narrative headings so the report has one clean outline."""
+    replacements = {
+        "# FRED Macro Narrative": "**FRED Macro Narrative**",
+        "## Claim-Cited Summary": "**Claim-cited summary**",
+        "## Macro Narrative": "**Macro narrative**",
+    }
+
+    cleaned_lines = []
+    for line in narrative_text.strip().splitlines():
+        stripped = line.strip()
+        cleaned_lines.append(replacements.get(stripped, line))
+
+    return "\n".join(cleaned_lines).strip()
+
+
 def render_demo_workflow() -> str:
     """Render the evidence-loop workflow diagram."""
     return (
@@ -387,7 +429,7 @@ def build_demo_report_markdown(
         "## 6. Generated narrative\n\n"
         "This is the narrative output produced from the selected claims. In LLM mode, "
         "this is where useful language and risky interpretation can both appear.\n\n"
-        f"{narrative_text.strip()}\n\n"
+        f"{normalize_narrative_for_report(narrative_text)}\n\n"
         "## 7. What the audit and repair layer found\n\n"
         "The current audit checks factual grounding against the claim layer. If the "
         "audit fails, the repair planner records proposed fixes instead of silently "
@@ -398,6 +440,9 @@ def build_demo_report_markdown(
         "## 9. Source-to-narrative traceability\n\n"
         "Each row connects a source claim to whether it was selected, cited, audited, "
         "and represented in the generated narrative.\n\n"
+        "### Compact walkthrough view\n\n"
+        f"{render_compact_traceability(traceability_rows)}\n"
+        "### Full traceability table\n\n"
         f"{render_traceability(traceability_rows)}\n"
         "## 10. Five-minute takeaway\n\n"
         f"{render_five_minute_takeaway()}"
