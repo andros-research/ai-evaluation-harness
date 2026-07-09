@@ -284,6 +284,13 @@ def extract_cited_claim_ids(narrative_text: str) -> list[str]:
     return cited
 
 
+def format_claim_id_diagnostics(claim_ids: list[str]) -> str:
+    """Format claim IDs for validation error diagnostics."""
+    if not claim_ids:
+        return "  (none)"
+    return "\n".join(f"  - {claim_id}" for claim_id in claim_ids)
+
+
 def validate_narrative_citations(
     *,
     narrative_text: str,
@@ -320,7 +327,19 @@ def validate_narrative_citations(
         errors.append("Narrative contains duplicate claim citations.")
 
     if errors:
-        joined = "\n".join(f"- {err}" for err in errors)
+        diagnostic_lines = [
+            *[f"- {err}" for err in errors],
+            "",
+            "Expected selected claim IDs:",
+            format_claim_id_diagnostics(selected_claim_ids),
+            "",
+            "Extracted narrative claim IDs:",
+            format_claim_id_diagnostics(cited_claim_ids),
+            "",
+            f"Expected selected claim count: {len(selected_claim_ids)}",
+            f"Extracted narrative claim count: {len(cited_claim_ids)}",
+        ]
+        joined = "\n".join(diagnostic_lines)
         raise ValueError(f"FRED narrative citation validation failed:\n{joined}")
 
 
@@ -433,13 +452,48 @@ def write_narrative_artifacts(
     else:
         raise ValueError(f"Unsupported generation mode: {mode}")
     
-    validate_narrative_citations(
-        narrative_text=narrative_md,
-        selected_claims=selected_claims,
-    )
-
     narrative_path = output_dir / "fred_narrative.md"
     metadata_path = output_dir / "fred_narrative_metadata.json"
+
+    try:
+        validate_narrative_citations(
+            narrative_text=narrative_md,
+            selected_claims=selected_claims,
+        )
+    except ValueError as exc:
+        failed_narrative_path = output_dir / "fred_narrative_failed_validation.md"
+        failed_metadata_path = output_dir / "fred_narrative_failed_validation_metadata.json"
+
+        selected_claim_ids = extract_claim_ids(selected_claims)
+        cited_claim_ids = extract_cited_claim_ids(narrative_md)
+
+        failed_narrative_path.write_text(narrative_md, encoding="utf-8")
+
+        failed_metadata = {
+            "narrative_schema_version": NARRATIVE_SCHEMA_VERSION,
+            "generation_method": "llm_claim_cited_narrative" if mode == "llm" else GENERATION_METHOD,
+            "validation_error": str(exc),
+            "input_file": str(input_path),
+            "generated_at": generated_at,
+            "mode": mode,
+            "model": model if mode == "llm" else None,
+            "llm_metadata": llm_metadata,
+            "n_selected_claims": int(len(selected_claims)),
+            "expected_claim_ids": selected_claim_ids,
+            "extracted_cited_claim_ids": cited_claim_ids,
+            "output_files": {
+                "failed_narrative_md": str(failed_narrative_path),
+                "failed_metadata_json": str(failed_metadata_path),
+            },
+        }
+
+        write_json(failed_metadata_path, failed_metadata)
+
+        print("Wrote failed FRED narrative validation debug artifacts:")
+        print(f"  {failed_narrative_path}")
+        print(f"  {failed_metadata_path}")
+
+        raise
 
     narrative_path.write_text(narrative_md, encoding="utf-8")
 
