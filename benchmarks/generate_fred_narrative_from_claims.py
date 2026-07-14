@@ -142,27 +142,45 @@ def build_llm_prompt(selected_claims: list[dict]) -> str:
         )
 
     claims_text = "\n\n---\n\n".join(claim_blocks)
+    expected_bullet_count = len(selected_claims)
 
     return f"""You are generating a concise macro narrative from selected FRED claims.
 
-    Rules:
-    1. Write markdown only.
-    2. Include the title: # FRED Macro Narrative
-    3. Include a section called: ## Claim-Cited Summary
-    4. Use one bullet per selected claim.
-    5. Every bullet must cite exactly one claim using this exact format: [CLAIMS: fred__example__ID]
-    6. Inside the brackets, write only the claim ID after "CLAIMS:".
-    7. Do not write "CLAIMS:" twice.
-    8. Do not wrap claim IDs in backticks, quotes, parentheses, or extra brackets.
-    9. Preserve the current value, prior value, delta magnitude, and direction from the claim.
-    10. Do not introduce unsupported causal interpretation.
-    11. Do not add facts not present in the claims.
-    12. Do not cite any claim ID that is not listed below.
+Output requirements:
 
-    Selected claims:
+1. Write markdown only.
+2. Begin with exactly this title:
+# FRED Macro Narrative
+3. Then include exactly this section heading:
+## Claim-Cited Summary
+4. Write exactly {expected_bullet_count} bullets.
+5. Write one bullet for each selected claim.
+6. Do not combine two claims into one bullet.
+7. Each bullet must include:
+   - the direction
+   - the prior value
+   - the current value
+   - the delta magnitude
+8. Each bullet must end with exactly one citation using this exact syntax:
+   [CLAIMS: <exact claim_id>]
+9. Copy each claim_id exactly as supplied below.
+10. Do not use a bare citation such as:
+    [fred__example__ID]
+11. Do not omit the literal prefix:
+    CLAIMS:
+12. Do not wrap claim IDs in backticks, quotation marks, parentheses, or extra brackets.
+13. Do not add causal interpretation, policy interpretation, market interpretation, or qualitative conclusions.
+14. Do not add facts not present in the selected claims.
+15. Do not add any section after the claim-cited bullets.
 
-    {claims_text}
-    """
+Required bullet template:
+
+- <metric> <direction> by <delta magnitude>, from <prior value> to <current value>. [CLAIMS: <exact claim_id>]
+
+Selected claims:
+
+{claims_text}
+"""
 
 
 def build_narrative_markdown(
