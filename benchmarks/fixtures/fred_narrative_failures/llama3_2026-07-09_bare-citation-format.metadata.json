@@ -1,0 +1,28 @@
+{
+  "expected_claim_ids": [
+    "fred__cpi_yoy__CPIAUCSL__prior_comparison__2026-06-01",
+    "fred__unrate__UNRATE__prior_comparison__2026-06-01",
+    "fred__fedfunds__FEDFUNDS__prior_comparison__2026-06-01",
+    "fred__gs10__GS10__prior_comparison__2026-06-01"
+  ],
+  "extracted_cited_claim_ids": [],
+  "generated_at": "2026-07-09T02:26:25.217056+00:00",
+  "generation_method": "llm_claim_cited_narrative",
+  "input_file": "/home/joe/ai-lab/benchmarks/results/fred_claims/selected_fred_claims.json",
+  "llm_metadata": {
+    "elapsed_s": 6.574,
+    "error": "",
+    "llm_used": true,
+    "model": "llama3",
+    "ollama_host": "http://127.0.0.1:11434"
+  },
+  "mode": "llm",
+  "model": "llama3",
+  "n_selected_claims": 4,
+  "narrative_schema_version": "fred_narrative_v0_1",
+  "output_files": {
+    "failed_metadata_json": "/home/joe/ai-lab/benchmarks/results/fred_narratives/fred_narrative_failed_validation_metadata.json",
+    "failed_narrative_md": "/home/joe/ai-lab/benchmarks/results/fred_narratives/fred_narrative_failed_validation.md"
+  },
+  "validation_error": "FRED narrative citation validation failed:\n- Selected claim IDs missing from narrative citations: fred__cpi_yoy__CPIAUCSL__prior_comparison__2026-06-01, fred__unrate__UNRATE__prior_comparison__2026-06-01, fred__fedfunds__FEDFUNDS__prior_comparison__2026-06-01, fred__gs10__GS10__prior_comparison__2026-06-01\n\nExpected selected claim IDs:\n  - fred__cpi_yoy__CPIAUCSL__prior_comparison__2026-06-01\n  - fred__unrate__UNRATE__prior_comparison__2026-06-01\n  - fred__fedfunds__FEDFUNDS__prior_comparison__2026-06-01\n  - fred__gs10__GS10__prior_comparison__2026-06-01\n\nExtracted narrative claim IDs:\n  (none)\n\nExpected selected claim count: 4\nExtracted narrative claim count: 0"
+}
