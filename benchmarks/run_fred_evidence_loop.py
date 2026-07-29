@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-RUN_SCHEMA_VERSION = "fred_evidence_loop_run_v0_1"
+RUN_SCHEMA_VERSION = "fred_evidence_loop_run_v0_2"
 RUN_METHOD = "subprocess_artifact_chain"
 
 DEFAULT_NARRATIVE_MODE = "deterministic"
@@ -37,8 +37,11 @@ SUPPORTED_NARRATIVE_MODES = ["deterministic", "llm"]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-DEFAULT_INPUT_CONTEXT = REPO_ROOT / "benchmarks" / "data" / "fred_macro_context.json"
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "benchmarks" / "results" / "fred_runs"
+DEFAULT_INPUT_CONTEXT = (
+    REPO_ROOT / "benchmarks" / "data" / "fred_macro_context.json"
+)
+DEFAULT_ARTIFACT_ROOT = REPO_ROOT / "benchmarks" / "results"
+DEFAULT_OUTPUT_DIR = DEFAULT_ARTIFACT_ROOT / "fred_runs"
 
 
 PIPELINE_STEPS = [
@@ -91,6 +94,56 @@ def write_json(path: Path, payload: object) -> None:
     )
 
 
+def build_artifact_paths(artifact_root: Path) -> dict[str, Path]:
+    """Build all FRED evidence-loop artifact paths from one root directory."""
+    claims_dir = artifact_root / "fred_claims"
+    narratives_dir = artifact_root / "fred_narratives"
+    audits_dir = artifact_root / "fred_audits"
+    repairs_dir = artifact_root / "fred_repairs"
+    traceability_dir = artifact_root / "fred_traceability"
+    demo_dir = artifact_root / "fred_demo"
+    runs_dir = artifact_root / "fred_runs"
+
+    return {
+        "artifact_root": artifact_root,
+
+        "claims_dir": claims_dir,
+        "claims_json": claims_dir / "fred_claims.json",
+        "claims_metadata": claims_dir / "fred_claims_metadata.json",
+        "selected_claims_json": claims_dir / "selected_fred_claims.json",
+        "selected_claims_metadata": (
+            claims_dir / "selected_fred_claims_metadata.json"
+        ),
+
+        "narratives_dir": narratives_dir,
+        "narrative_md": narratives_dir / "fred_narrative.md",
+        "narrative_metadata": (
+            narratives_dir / "fred_narrative_metadata.json"
+        ),
+
+        "audits_dir": audits_dir,
+        "audit_json": audits_dir / "fred_narrative_audit.json",
+
+        "repairs_dir": repairs_dir,
+        "repair_plan_json": repairs_dir / "fred_repair_plan.json",
+
+        "traceability_dir": traceability_dir,
+        "traceability_json": (
+            traceability_dir / "fred_traceability_summary.json"
+        ),
+        "traceability_metadata": (
+            traceability_dir / "fred_traceability_summary_metadata.json"
+        ),
+
+        "demo_dir": demo_dir,
+        "demo_report_metadata": (
+            demo_dir / "fred_demo_report_metadata.json"
+        ),
+
+        "runs_dir": runs_dir,
+    }
+
+
 def run_command(command: list[str], cwd: Path) -> dict:
     """Run one subprocess command and capture execution metadata."""
     started_at = utc_now_iso()
@@ -126,6 +179,7 @@ def build_step_command(
     narrative_model: str,
     ollama_host: str,
     narrative_timeout_s: int,
+    artifact_paths: dict[str, Path],
 ) -> list[str]:
     """Build command for a named pipeline step."""
     command = [sys.executable, script]
@@ -137,12 +191,28 @@ def build_step_command(
                 str(input_context),
                 "--comparison-window",
                 comparison_window,
+                "--output-dir",
+                str(artifact_paths["claims_dir"]),
             ]
         )
 
-    if step_name == "generate_fred_narrative_from_claims":
+    elif step_name == "select_fred_claims":
         command.extend(
             [
+                "--input-claims",
+                str(artifact_paths["claims_json"]),
+                "--output-dir",
+                str(artifact_paths["claims_dir"]),
+            ]
+        )
+
+    elif step_name == "generate_fred_narrative_from_claims":
+        command.extend(
+            [
+                "--input-claims",
+                str(artifact_paths["selected_claims_json"]),
+                "--output-dir",
+                str(artifact_paths["narratives_dir"]),
                 "--mode",
                 narrative_mode,
             ]
@@ -160,6 +230,51 @@ def build_step_command(
                 ]
             )
 
+    elif step_name == "audit_fred_narrative":
+        command.extend(
+            [
+                "--narrative",
+                str(artifact_paths["narrative_md"]),
+                "--selected-claims",
+                str(artifact_paths["selected_claims_json"]),
+                "--output-dir",
+                str(artifact_paths["audits_dir"]),
+            ]
+        )
+
+    elif step_name == "plan_fred_narrative_repair":
+        command.extend(
+            [
+                "--audit",
+                str(artifact_paths["audit_json"]),
+                "--narrative",
+                str(artifact_paths["narrative_md"]),
+                "--selected-claims",
+                str(artifact_paths["selected_claims_json"]),
+                "--output-dir",
+                str(artifact_paths["repairs_dir"]),
+            ]
+        )
+
+    elif step_name == "build_fred_traceability_summary":
+        command.extend(
+            [
+                "--claims",
+                str(artifact_paths["claims_json"]),
+                "--selected-claims",
+                str(artifact_paths["selected_claims_json"]),
+                "--audit",
+                str(artifact_paths["audit_json"]),
+                "--repair-plan",
+                str(artifact_paths["repair_plan_json"]),
+                "--output-dir",
+                str(artifact_paths["traceability_dir"]),
+            ]
+        )
+
+    else:
+        raise ValueError(f"Unsupported pipeline step: {step_name}")
+
     return command
 
 
@@ -170,114 +285,151 @@ def read_json_if_exists(path: Path) -> object | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def collect_output_summary() -> dict:
+def collect_output_summary(
+    artifact_paths: dict[str, Path],
+    *,
+    include_demo_report: bool = True,
+) -> dict:
     """Collect summary information from downstream artifacts when available."""
     claims_meta = read_json_if_exists(
-        REPO_ROOT / "benchmarks" / "results" / "fred_claims" / "fred_claims_metadata.json"
+        artifact_paths["claims_metadata"]
     )
     selected_meta = read_json_if_exists(
-        REPO_ROOT
-        / "benchmarks"
-        / "results"
-        / "fred_claims"
-        / "selected_fred_claims_metadata.json"
+        artifact_paths["selected_claims_metadata"]
     )
     narrative_meta = read_json_if_exists(
-        REPO_ROOT
-        / "benchmarks"
-        / "results"
-        / "fred_narratives"
-        / "fred_narrative_metadata.json"
+        artifact_paths["narrative_metadata"]
     )
     audit_meta = read_json_if_exists(
-        REPO_ROOT
-        / "benchmarks"
-        / "results"
-        / "fred_audits"
-        / "fred_narrative_audit.json"
+        artifact_paths["audit_json"]
     )
     repair_meta = read_json_if_exists(
-        REPO_ROOT
-        / "benchmarks"
-        / "results"
-        / "fred_repairs"
-        / "fred_repair_plan.json"
+        artifact_paths["repair_plan_json"]
     )
     traceability_meta = read_json_if_exists(
-        REPO_ROOT
-        / "benchmarks"
-        / "results"
-        / "fred_traceability"
-        / "fred_traceability_summary_metadata.json"
+        artifact_paths["traceability_metadata"]
     )
-    demo_report_meta = read_json_if_exists(
-        REPO_ROOT
-        / "benchmarks"
-        / "results"
-        / "fred_demo"
-        / "fred_demo_report_metadata.json"
+
+    demo_report_meta = (
+        read_json_if_exists(artifact_paths["demo_report_metadata"])
+        if include_demo_report
+        else None
     )
 
     return {
         "claims": {
-            "n_claims": claims_meta.get("n_claims") if isinstance(claims_meta, dict) else None,
-            "series_included": claims_meta.get("series_included") if isinstance(claims_meta, dict) else None,
-            "comparison_window": claims_meta.get("comparison_window") if isinstance(claims_meta, dict) else None,
+            "n_claims": (
+                claims_meta.get("n_claims")
+                if isinstance(claims_meta, dict)
+                else None
+            ),
+            "series_included": (
+                claims_meta.get("series_included")
+                if isinstance(claims_meta, dict)
+                else None
+            ),
+            "comparison_window": (
+                claims_meta.get("comparison_window")
+                if isinstance(claims_meta, dict)
+                else None
+            ),
         },
         "selected_claims": {
-            "n_selected_claims": selected_meta.get("n_selected_claims")
-            if isinstance(selected_meta, dict)
-            else None,
-            "selection_method": selected_meta.get("selection_method")
-            if isinstance(selected_meta, dict)
-            else None,
+            "n_selected_claims": (
+                selected_meta.get("n_selected_claims")
+                if isinstance(selected_meta, dict)
+                else None
+            ),
+            "selection_method": (
+                selected_meta.get("selection_method")
+                if isinstance(selected_meta, dict)
+                else None
+            ),
         },
         "narrative": {
-            "n_selected_claims": narrative_meta.get("n_selected_claims")
-            if isinstance(narrative_meta, dict)
-            else None,
-            "generation_method": narrative_meta.get("generation_method")
-            if isinstance(narrative_meta, dict)
-            else None,
-            "citation_validation": narrative_meta.get("citation_validation")
-            if isinstance(narrative_meta, dict)
-            else None,
+            "n_selected_claims": (
+                narrative_meta.get("n_selected_claims")
+                if isinstance(narrative_meta, dict)
+                else None
+            ),
+            "generation_method": (
+                narrative_meta.get("generation_method")
+                if isinstance(narrative_meta, dict)
+                else None
+            ),
+            "citation_validation": (
+                narrative_meta.get("citation_validation")
+                if isinstance(narrative_meta, dict)
+                else None
+            ),
         },
         "audit": {
-            "audit_pass": audit_meta.get("audit_pass") if isinstance(audit_meta, dict) else None,
-            "n_bullets": audit_meta.get("n_bullets") if isinstance(audit_meta, dict) else None,
-            "n_citations": audit_meta.get("n_citations") if isinstance(audit_meta, dict) else None,
-            "errors": audit_meta.get("errors") if isinstance(audit_meta, dict) else None,
+            "audit_pass": (
+                audit_meta.get("audit_pass")
+                if isinstance(audit_meta, dict)
+                else None
+            ),
+            "n_bullets": (
+                audit_meta.get("n_bullets")
+                if isinstance(audit_meta, dict)
+                else None
+            ),
+            "n_citations": (
+                audit_meta.get("n_citations")
+                if isinstance(audit_meta, dict)
+                else None
+            ),
+            "errors": (
+                audit_meta.get("errors")
+                if isinstance(audit_meta, dict)
+                else None
+            ),
         },
         "repair": {
-            "repair_needed": repair_meta.get("repair_needed")
-            if isinstance(repair_meta, dict)
-            else None,
-            "n_repair_actions": repair_meta.get("n_repair_actions")
-            if isinstance(repair_meta, dict)
-            else None,
+            "repair_needed": (
+                repair_meta.get("repair_needed")
+                if isinstance(repair_meta, dict)
+                else None
+            ),
+            "n_repair_actions": (
+                repair_meta.get("n_repair_actions")
+                if isinstance(repair_meta, dict)
+                else None
+            ),
         },
         "traceability": {
-            "n_traceability_rows": traceability_meta.get("n_traceability_rows")
-            if isinstance(traceability_meta, dict)
-            else None,
-            "n_cited_claims": traceability_meta.get("n_cited_claims")
-            if isinstance(traceability_meta, dict)
-            else None,
+            "n_traceability_rows": (
+                traceability_meta.get("n_traceability_rows")
+                if isinstance(traceability_meta, dict)
+                else None
+            ),
+            "n_cited_claims": (
+                traceability_meta.get("n_cited_claims")
+                if isinstance(traceability_meta, dict)
+                else None
+            ),
         },
         "demo_report": {
-            "overall_ok": demo_report_meta.get("overall_ok")
-            if isinstance(demo_report_meta, dict)
-            else None,
-            "narrative_mode": demo_report_meta.get("narrative_mode")
-            if isinstance(demo_report_meta, dict)
-            else None,
-            "audit_pass": demo_report_meta.get("audit_pass")
-            if isinstance(demo_report_meta, dict)
-            else None,
-            "repair_needed": demo_report_meta.get("repair_needed")
-            if isinstance(demo_report_meta, dict)
-            else None,
+            "overall_ok": (
+                demo_report_meta.get("overall_ok")
+                if isinstance(demo_report_meta, dict)
+                else None
+            ),
+            "narrative_mode": (
+                demo_report_meta.get("narrative_mode")
+                if isinstance(demo_report_meta, dict)
+                else None
+            ),
+            "audit_pass": (
+                demo_report_meta.get("audit_pass")
+                if isinstance(demo_report_meta, dict)
+                else None
+            ),
+            "repair_needed": (
+                demo_report_meta.get("repair_needed")
+                if isinstance(demo_report_meta, dict)
+                else None
+            ),
         },
     }
     
@@ -288,6 +440,7 @@ def build_run_metadata(
     run_started_at: str,
     run_finished_at: str,
     input_context: Path,
+    artifact_root: Path,
     comparison_window: str,
     narrative_mode: str,
     narrative_model: str,
@@ -309,6 +462,7 @@ def build_run_metadata(
         "run_started_at": run_started_at,
         "run_finished_at": run_finished_at,
         "input_context": str(input_context),
+        "artifact_root": str(artifact_root),
         "comparison_window": comparison_window,
         "narrative_mode": narrative_mode,
         "narrative_model": narrative_model if narrative_mode == "llm" else None,
@@ -329,6 +483,7 @@ def run_fred_evidence_loop(
     *,
     input_context: Path,
     comparison_window: str,
+    artifact_root: Path,
     output_dir: Path,
     narrative_mode: str,
     narrative_model: str,
@@ -337,7 +492,10 @@ def run_fred_evidence_loop(
     stop_on_failure: bool = True,
 ) -> None:
     """Run the full FRED evidence loop and write run metadata."""
+    artifact_root.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    artifact_paths = build_artifact_paths(artifact_root)
 
     run_id = f"fred_evidence_loop_{safe_timestamp()}"
     run_started_at = utc_now_iso()
@@ -347,6 +505,7 @@ def run_fred_evidence_loop(
     print(f"Starting FRED evidence loop: {run_id}")
     print(f"input_context={input_context}")
     print(f"comparison_window={comparison_window}")
+    print(f"artifact_root={artifact_root}")
     print(f"narrative_mode={narrative_mode}")
     if narrative_mode == "llm":
         print(f"narrative_model={narrative_model}")
@@ -365,6 +524,7 @@ def run_fred_evidence_loop(
             narrative_model=narrative_model,
             ollama_host=ollama_host,
             narrative_timeout_s=narrative_timeout_s,
+            artifact_paths=artifact_paths,
         )
 
         print(f"\n=== Running step: {step_name} ===")
@@ -398,13 +558,21 @@ def run_fred_evidence_loop(
 
     # First write current run metadata after the core evidence-loop steps.
     # This lets the demo report read the current run, not the previous run.
-    output_summary = collect_output_summary() if overall_ok else {}
+    output_summary = (
+        collect_output_summary(
+            artifact_paths,
+            include_demo_report=False,
+        )
+        if overall_ok
+        else {}
+    )
 
     run_metadata = build_run_metadata(
         run_id=run_id,
         run_started_at=run_started_at,
         run_finished_at=run_finished_at,
         input_context=input_context,
+        artifact_root=artifact_root,
         comparison_window=comparison_window,
         narrative_mode=narrative_mode,
         narrative_model=narrative_model,
@@ -422,7 +590,28 @@ def run_fred_evidence_loop(
     if overall_ok:
         step_name = DEMO_REPORT_STEP["step_name"]
         script = DEMO_REPORT_STEP["script"]
-        command = [sys.executable, script]
+        command = [
+            sys.executable,
+            script,
+            "--run-metadata",
+            str(latest_metadata_path),
+            "--claims",
+            str(artifact_paths["claims_json"]),
+            "--selected-claims",
+            str(artifact_paths["selected_claims_json"]),
+            "--narrative",
+            str(artifact_paths["narrative_md"]),
+            "--narrative-metadata",
+            str(artifact_paths["narrative_metadata"]),
+            "--audit",
+            str(artifact_paths["audit_json"]),
+            "--repair-plan",
+            str(artifact_paths["repair_plan_json"]),
+            "--traceability",
+            str(artifact_paths["traceability_json"]),
+            "--output-dir",
+            str(artifact_paths["demo_dir"]),
+        ]
 
         print(f"\n=== Running step: {step_name} ===")
         print(" ".join(command))
@@ -445,13 +634,18 @@ def run_fred_evidence_loop(
     # Rebuild metadata after demo report step and include demo summary.
     run_finished_at = utc_now_iso()
     overall_ok = all(step["ok"] for step in step_results)
-    output_summary = collect_output_summary() if overall_ok else {}
+    output_summary = (
+        collect_output_summary(artifact_paths)
+        if overall_ok
+        else {}
+    )
 
     run_metadata = build_run_metadata(
         run_id=run_id,
         run_started_at=run_started_at,
         run_finished_at=run_finished_at,
         input_context=input_context,
+        artifact_root=artifact_root,
         comparison_window=comparison_window,
         narrative_mode=narrative_mode,
         narrative_model=narrative_model,
@@ -518,10 +712,22 @@ def parse_args() -> argparse.Namespace:
         help="Timeout in seconds for LLM narrative generation.",
     )
     parser.add_argument(
+        "--artifact-root",
+        type=Path,
+        default=DEFAULT_ARTIFACT_ROOT,
+        help=(
+            "Root directory for all FRED evidence-loop artifacts. "
+            "Defaults to benchmarks/results."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_OUTPUT_DIR,
-        help="Directory where run metadata artifacts will be written.",
+        default=None,
+        help=(
+            "Optional override for run metadata output. "
+            "Defaults to <artifact-root>/fred_runs."
+        ),
     )
     parser.add_argument(
         "--no-stop-on-failure",
@@ -533,10 +739,19 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+
+    artifact_root = args.artifact_root
+    output_dir = (
+        args.output_dir
+        if args.output_dir is not None
+        else artifact_root / "fred_runs"
+    )
+
     run_fred_evidence_loop(
         input_context=args.input_context,
         comparison_window=args.comparison_window,
-        output_dir=args.output_dir,
+        artifact_root=artifact_root,
+        output_dir=output_dir,
         narrative_mode=args.narrative_mode,
         narrative_model=args.narrative_model,
         ollama_host=args.ollama_host,
