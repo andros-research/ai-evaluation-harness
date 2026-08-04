@@ -568,7 +568,7 @@ def summarize_rows(
             n_accepted_output,
             n_runs,
         ),
-        
+
         "n_audit_evaluated": n_audit_evaluated,
         "n_audit_pass": n_audit_pass,
         "n_repair_evaluated": n_repair_evaluated,
