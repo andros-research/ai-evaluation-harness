@@ -1,0 +1,20 @@
+{
+  "comparison_id": "fred_negative_path_smoke_20260728",
+  "input_context": "benchmarks/data/fred_macro_context.json",
+  "comparison_window": "12m",
+  "ollama_host": "http://127.0.0.1:11434",
+  "narrative_timeout_s": 60,
+  "runs": [
+    {
+      "label": "missing_model",
+      "mode": "llm",
+      "model": "definitely-not-installed",
+      "repetitions": 1
+    },
+    {
+      "label": "deterministic_after_failure",
+      "mode": "deterministic",
+      "repetitions": 1
+    }
+  ]
+}

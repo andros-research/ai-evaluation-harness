@@ -1,0 +1,32 @@
+{
+  "comparison_id": "fred_12m_four_run_smoke_20260728",
+  "input_context": "benchmarks/data/fred_macro_context.json",
+  "comparison_window": "12m",
+  "ollama_host": "http://127.0.0.1:11434",
+  "narrative_timeout_s": 600,
+  "runs": [
+    {
+      "label": "deterministic",
+      "mode": "deterministic",
+      "repetitions": 1
+    },
+    {
+      "label": "llama3",
+      "mode": "llm",
+      "model": "llama3",
+      "repetitions": 1
+    },
+    {
+      "label": "mistral",
+      "mode": "llm",
+      "model": "mistral",
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_70b",
+      "mode": "llm",
+      "model": "llama3:70b",
+      "repetitions": 1
+    }
+  ]
+}
