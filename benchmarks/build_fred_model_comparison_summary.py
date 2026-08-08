@@ -332,11 +332,29 @@ def build_normalized_row(
         "run_label": run_label,
         "mode": run_result.get("mode"),
         "model": model,
-        "prompt_variant": configured_run.get(
-            "prompt_variant"
+        "prompt_variant": (
+            inner_run.get(
+                "narrative_prompt_variant"
+            )
+            if isinstance(inner_run, dict)
+            and inner_run.get(
+                "narrative_prompt_variant"
+            ) is not None
+            else configured_run.get(
+                "prompt_variant"
+            )
         ),
-        "temperature": configured_run.get(
-            "temperature"
+        "temperature": (
+            inner_run.get(
+                "narrative_temperature"
+            )
+            if isinstance(inner_run, dict)
+            and inner_run.get(
+                "narrative_temperature"
+            ) is not None
+            else configured_run.get(
+                "temperature"
+            )
         ),
         "repetition": run_result.get(
             "repetition"

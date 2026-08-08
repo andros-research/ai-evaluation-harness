@@ -57,6 +57,14 @@ DEFAULT_RESULTS_ROOT = (
     / "model_comparisons"
 )
 
+DEFAULT_PROMPT_VARIANT = "hardened"
+SUPPORTED_PROMPT_VARIANTS = {
+    "weak",
+    "intermediate",
+    "hardened",
+}
+DEFAULT_TEMPERATURE = 0.0
+
 
 def utc_now_iso() -> str:
     """Return a timezone-aware UTC timestamp."""
@@ -205,6 +213,40 @@ def load_config(path: Path) -> dict:
                 "for llm mode."
             )
 
+        prompt_variant = run.get(
+            "prompt_variant",
+            DEFAULT_PROMPT_VARIANT,
+        )
+
+        temperature = run.get(
+            "temperature",
+            DEFAULT_TEMPERATURE,
+        )
+
+        if mode == "llm":
+            if (
+                prompt_variant
+                not in SUPPORTED_PROMPT_VARIANTS
+            ):
+                raise ValueError(
+                    f"runs[{index}].prompt_variant "
+                    "must be one of "
+                    f"{sorted(SUPPORTED_PROMPT_VARIANTS)}"
+                )
+
+            if (
+                isinstance(temperature, bool)
+                or not isinstance(
+                    temperature,
+                    (int, float),
+                )
+                or temperature < 0
+            ):
+                raise ValueError(
+                    f"runs[{index}].temperature "
+                    "must be a non-negative number."
+                )
+
         repetitions = run.get("repetitions", 1)
         if (
             not isinstance(repetitions, int)
@@ -245,6 +287,24 @@ def expand_run_specs(config: dict) -> list[dict]:
                     "label": run["label"],
                     "mode": run["mode"],
                     "model": run.get("model"),
+                    "prompt_variant": (
+                        run.get(
+                            "prompt_variant",
+                            DEFAULT_PROMPT_VARIANT,
+                        )
+                        if run["mode"] == "llm"
+                        else None
+                    ),
+                    "temperature": (
+                        float(
+                            run.get(
+                                "temperature",
+                                DEFAULT_TEMPERATURE,
+                            )
+                        )
+                        if run["mode"] == "llm"
+                        else None
+                    ),
                     "repetition": repetition,
                 }
             )
@@ -278,6 +338,18 @@ def build_evidence_command(
             [
                 "--narrative-model",
                 str(run_spec["model"]),
+                "--narrative-prompt-variant",
+                str(
+                    run_spec[
+                        "prompt_variant"
+                    ]
+                ),
+                "--narrative-temperature",
+                str(
+                    run_spec[
+                        "temperature"
+                    ]
+                ),
                 "--ollama-host",
                 str(
                     config.get(
@@ -468,6 +540,12 @@ def build_run_result(
         "run_label": run_spec["label"],
         "mode": run_spec["mode"],
         "model": run_spec["model"],
+        "prompt_variant": (
+            run_spec["prompt_variant"]
+        ),
+        "temperature": (
+            run_spec["temperature"]
+        ),
         "repetition": run_spec["repetition"],
         "artifact_root": str(artifact_root),
         "run_metadata_path": (
@@ -693,6 +771,16 @@ def main() -> None:
             or "deterministic"
         )
 
+        controls_display = ""
+
+        if run_spec["mode"] == "llm":
+            controls_display = (
+                f" | prompt="
+                f"{run_spec['prompt_variant']}"
+                f" | temp="
+                f"{run_spec['temperature']}"
+            )
+
         print()
         print("=" * 78)
         print(
@@ -701,6 +789,7 @@ def main() -> None:
             f"{run_spec['label']} | "
             f"{model_display} | "
             f"{repetition_dir}"
+            f"{controls_display}"
         )
         print(
             f"artifact_root={artifact_root}"
@@ -734,6 +823,12 @@ def main() -> None:
                 "run_label": run_spec["label"],
                 "mode": run_spec["mode"],
                 "model": run_spec["model"],
+                "prompt_variant": (
+                    run_spec["prompt_variant"]
+                ),
+                "temperature": (
+                    run_spec["temperature"]
+                ),
                 "repetition": (
                     run_spec["repetition"]
                 ),

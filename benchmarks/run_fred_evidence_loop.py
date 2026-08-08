@@ -34,6 +34,8 @@ DEFAULT_NARRATIVE_MODEL = "llama3"
 DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434"
 DEFAULT_NARRATIVE_TIMEOUT_S = 600
 SUPPORTED_NARRATIVE_MODES = ["deterministic", "llm"]
+DEFAULT_PROMPT_VARIANT = "hardened"
+DEFAULT_TEMPERATURE = 0.0
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -177,6 +179,8 @@ def build_step_command(
     comparison_window: str,
     narrative_mode: str,
     narrative_model: str,
+    narrative_prompt_variant: str,
+    narrative_temperature: float,
     ollama_host: str,
     narrative_timeout_s: int,
     artifact_paths: dict[str, Path],
@@ -227,6 +231,10 @@ def build_step_command(
                     ollama_host,
                     "--timeout-s",
                     str(narrative_timeout_s),
+                    "--prompt-variant",
+                    narrative_prompt_variant,
+                    "--temperature",
+                    str(narrative_temperature),
                 ]
             )
 
@@ -444,6 +452,8 @@ def build_run_metadata(
     comparison_window: str,
     narrative_mode: str,
     narrative_model: str,
+    narrative_prompt_variant: str,
+    narrative_temperature: float,
     ollama_host: str,
     narrative_timeout_s: int,
     stop_on_failure: bool,
@@ -466,6 +476,16 @@ def build_run_metadata(
         "comparison_window": comparison_window,
         "narrative_mode": narrative_mode,
         "narrative_model": narrative_model if narrative_mode == "llm" else None,
+        "narrative_prompt_variant": (
+            narrative_prompt_variant
+            if narrative_mode == "llm"
+            else None
+        ),
+        "narrative_temperature": (
+            narrative_temperature
+            if narrative_mode == "llm"
+            else None
+        ),
         "ollama_host": ollama_host if narrative_mode == "llm" else None,
         "narrative_timeout_s": narrative_timeout_s if narrative_mode == "llm" else None,
         "overall_ok": overall_ok,
@@ -487,6 +507,8 @@ def run_fred_evidence_loop(
     output_dir: Path,
     narrative_mode: str,
     narrative_model: str,
+    narrative_prompt_variant: str,
+    narrative_temperature: float,
     ollama_host: str,
     narrative_timeout_s: int,
     stop_on_failure: bool = True,
@@ -510,6 +532,14 @@ def run_fred_evidence_loop(
     if narrative_mode == "llm":
         print(f"narrative_model={narrative_model}")
         print(f"ollama_host={ollama_host}")
+        print(
+            "narrative_prompt_variant="
+            f"{narrative_prompt_variant}"
+        )
+        print(
+            "narrative_temperature="
+            f"{narrative_temperature}"
+        )
 
     for step in PIPELINE_STEPS:
         step_name = step["step_name"]
@@ -522,6 +552,8 @@ def run_fred_evidence_loop(
             comparison_window=comparison_window,
             narrative_mode=narrative_mode,
             narrative_model=narrative_model,
+            narrative_prompt_variant=narrative_prompt_variant,
+            narrative_temperature=narrative_temperature,
             ollama_host=ollama_host,
             narrative_timeout_s=narrative_timeout_s,
             artifact_paths=artifact_paths,
@@ -576,6 +608,8 @@ def run_fred_evidence_loop(
         comparison_window=comparison_window,
         narrative_mode=narrative_mode,
         narrative_model=narrative_model,
+        narrative_prompt_variant=narrative_prompt_variant,
+        narrative_temperature=narrative_temperature,
         ollama_host=ollama_host,
         narrative_timeout_s=narrative_timeout_s,
         stop_on_failure=stop_on_failure,
@@ -649,6 +683,8 @@ def run_fred_evidence_loop(
         comparison_window=comparison_window,
         narrative_mode=narrative_mode,
         narrative_model=narrative_model,
+        narrative_prompt_variant=narrative_prompt_variant,
+        narrative_temperature=narrative_temperature,
         ollama_host=ollama_host,
         narrative_timeout_s=narrative_timeout_s,
         stop_on_failure=stop_on_failure,
@@ -701,6 +737,29 @@ def parse_args() -> argparse.Namespace:
         help="Local Ollama model to use when --narrative-mode llm.",
     )
     parser.add_argument(
+        "--narrative-prompt-variant",
+        default=DEFAULT_PROMPT_VARIANT,
+        choices=[
+            "weak",
+            "intermediate",
+            "hardened",
+        ],
+        help=(
+            "Prompt contract variant for "
+            "LLM narrative generation."
+        ),
+    )
+
+    parser.add_argument(
+        "--narrative-temperature",
+        type=float,
+        default=DEFAULT_TEMPERATURE,
+        help=(
+            "Sampling temperature for "
+            "LLM narrative generation."
+        ),
+    )
+    parser.add_argument(
         "--ollama-host",
         default=DEFAULT_OLLAMA_HOST,
         help="Ollama host URL when --narrative-mode llm.",
@@ -739,6 +798,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.narrative_temperature < 0:
+        raise ValueError(
+            "--narrative-temperature must be >= 0."
+        )
 
     artifact_root = args.artifact_root
     output_dir = (
@@ -754,6 +817,12 @@ def main() -> None:
         output_dir=output_dir,
         narrative_mode=args.narrative_mode,
         narrative_model=args.narrative_model,
+        narrative_prompt_variant=(
+            args.narrative_prompt_variant
+        ),
+        narrative_temperature=(
+            args.narrative_temperature
+        ),
         ollama_host=args.ollama_host,
         narrative_timeout_s=args.narrative_timeout_s,
         stop_on_failure=not args.no_stop_on_failure,
