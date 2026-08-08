@@ -962,6 +962,89 @@ def fmt_pct(x: Any) -> str:
     except Exception:
         return "—"
 
+
+def find_model_comparison_dirs(
+    root: Path,
+) -> list[Path]:
+    """Return model-comparison experiment directories, newest first."""
+    if not root.exists():
+        return []
+
+    return sorted(
+        [
+            path
+            for path in root.iterdir()
+            if path.is_dir()
+            and (
+                path
+                / "comparison_manifest.json"
+            ).exists()
+        ],
+        key=lambda path: path.name,
+        reverse=True,
+    )
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison_manifest(
+    comparison_dir: str,
+) -> dict[str, Any]:
+    path = (
+        Path(comparison_dir)
+        / "comparison_manifest.json"
+    )
+
+    return load_json_file(path)
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison_rows(
+    comparison_dir: str,
+) -> pd.DataFrame:
+    path = (
+        Path(comparison_dir)
+        / "summary"
+        / "comparison_rows.jsonl"
+    )
+
+    if not path.exists():
+        return pd.DataFrame()
+
+    rows = []
+
+    try:
+        with path.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+            for line in file:
+                line = line.strip()
+
+                if not line:
+                    continue
+
+                rows.append(
+                    json.loads(line)
+                )
+    except Exception:
+        return pd.DataFrame()
+
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison_summary(
+    comparison_dir: str,
+) -> dict[str, Any]:
+    path = (
+        Path(comparison_dir)
+        / "summary"
+        / "comparison_summary.json"
+    )
+
+    return load_json_file(path)
+
+
 @st.cache_data(show_spinner=False)
 def load_agg() -> pd.DataFrame:
     if AGG_PARQUET.exists():
@@ -1037,14 +1120,98 @@ def load_semantic_patterns():
 
 with tab_experiments:
     st.subheader("Model Experiments")
+
     st.caption(
         "Cross-model FRED experiments from "
         "`benchmarks/results/model_comparisons`."
     )
 
-    st.write(
-        f"Experiment root: `{MODEL_COMPARISONS_ROOT}`"
+    comparison_dirs = (
+        find_model_comparison_dirs(
+            MODEL_COMPARISONS_ROOT
+        )
     )
+
+    if not comparison_dirs:
+        st.info(
+            "No model-comparison experiments found yet."
+        )
+    else:
+        selected_comparison = st.selectbox(
+            "Experiment",
+            options=[
+                str(path)
+                for path in comparison_dirs
+            ],
+            format_func=lambda value: (
+                Path(value).name
+            ),
+            key="model_experiment_select",
+        )
+
+        comparison_dir = Path(
+            selected_comparison
+        )
+
+        manifest = (
+            load_model_comparison_manifest(
+                selected_comparison
+            )
+        )
+
+        rows = load_model_comparison_rows(
+            selected_comparison
+        )
+
+        summary = (
+            load_model_comparison_summary(
+                selected_comparison
+            )
+        )
+
+        st.caption(
+            f"Experiment directory: "
+            f"`{comparison_dir}`"
+        )
+
+        st.write(
+            "**Status:**",
+            manifest.get(
+                "status",
+                "unknown",
+            ),
+        )
+
+        st.write(
+            "**Comparison window:**",
+            manifest.get(
+                "comparison_window",
+                "—",
+            ),
+        )
+
+        st.write(
+            "**Git commit:**",
+            manifest.get(
+                "git_commit",
+                "—",
+            ),
+        )
+
+        if rows.empty:
+            st.info(
+                "No normalized comparison rows "
+                "found for this experiment yet."
+            )
+        else:
+            st.subheader(
+                "Normalized Runs"
+            )
+
+            st.dataframe(
+                rows,
+                use_container_width=True,
+            )
 
 with tab_run:
     runs_all = find_result_folders(RAW_RUNS_ROOT)
