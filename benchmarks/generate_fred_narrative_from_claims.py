@@ -60,6 +60,14 @@ DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "llama3"
 DEFAULT_TIMEOUT_S = 600
 
+DEFAULT_PROMPT_VARIANT = "hardened"
+SUPPORTED_PROMPT_VARIANTS = [
+    "weak",
+    "intermediate",
+    "hardened",
+]
+DEFAULT_TEMPERATURE = 0.0
+
 
 def utc_now_iso() -> str:
     """Return a timezone-aware UTC timestamp."""
@@ -118,12 +126,18 @@ def render_claim_bullet(claim: dict) -> str:
     return f"- {claim_text}. [CLAIMS: {claim_id}]"
 
 
-def build_llm_prompt(selected_claims: list[dict]) -> str:
-    """Build a constrained prompt for LLM narrative generation."""
+def build_llm_prompt(
+    selected_claims: list[dict],
+    prompt_variant: str,
+) -> str:
+    """Build an LLM prompt using the requested contract-strength variant."""
     claim_blocks: list[str] = []
 
     for claim in selected_claims:
-        supporting_values = claim.get("supporting_values", {})
+        supporting_values = claim.get(
+            "supporting_values",
+            {},
+        )
         claim_blocks.append(
             "\n".join(
                 [
@@ -136,15 +150,63 @@ def build_llm_prompt(selected_claims: list[dict]) -> str:
                     f"prior_value: {claim.get('prior_value')}",
                     f"delta_value: {claim.get('delta_value')}",
                     f"direction: {claim.get('direction')}",
-                    f"supporting_values: {json.dumps(supporting_values, sort_keys=True)}",
+                    (
+                        "supporting_values: "
+                        f"{json.dumps(supporting_values, sort_keys=True)}"
+                    ),
                 ]
             )
         )
 
-    claims_text = "\n\n---\n\n".join(claim_blocks)
-    expected_bullet_count = len(selected_claims)
+    claims_text = "\n\n---\n\n".join(
+        claim_blocks
+    )
+    expected_bullet_count = len(
+        selected_claims
+    )
 
-    return f"""You are generating a concise macro narrative from selected FRED claims.
+    if prompt_variant == "weak":
+        return f"""You are generating a concise macro narrative from selected FRED claims.
+
+Write a short markdown summary describing the supplied macro claims.
+
+Include the relevant source claim ID with each statement so the output can be traced back to the evidence.
+
+Do not invent facts that are not present in the selected claims.
+
+Selected claims:
+
+{claims_text}
+"""
+
+    if prompt_variant == "intermediate":
+        return f"""You are generating a concise macro narrative from selected FRED claims.
+
+Output requirements:
+
+1. Write markdown only.
+2. Begin with:
+# FRED Macro Narrative
+3. Then include:
+## Claim-Cited Summary
+4. Write exactly {expected_bullet_count} bullets.
+5. Write one bullet for each selected claim.
+6. Each bullet must include:
+   - the direction
+   - the prior value
+   - the current value
+   - the delta magnitude
+7. End each bullet with a citation using:
+   [CLAIMS: <exact claim_id>]
+8. Do not add facts that are not present in the selected claims.
+
+Selected claims:
+
+{claims_text}
+"""
+
+    if prompt_variant == "hardened":
+        return f"""You are generating a concise macro narrative from selected FRED claims.
 
 Output requirements:
 
@@ -181,6 +243,11 @@ Selected claims:
 
 {claims_text}
 """
+
+    raise ValueError(
+        "Unsupported prompt variant: "
+        f"{prompt_variant}"
+    )
 
 
 def build_narrative_markdown(
@@ -225,6 +292,8 @@ def build_llm_narrative_markdown(
     model: str,
     ollama_host: str,
     timeout_s: int,
+    prompt_variant: str,
+    temperature: float,
 ) -> tuple[str, dict[str, Any]]:
     """Build an LLM-generated claim-cited markdown narrative."""
     if not selected_claims:
@@ -237,18 +306,23 @@ def build_llm_narrative_markdown(
             "llm_used": False,
             "model": model,
             "ollama_host": ollama_host,
+            "prompt_variant": prompt_variant,
+            "temperature": temperature,
             "elapsed_s": 0,
             "error": "",
         }
 
-    prompt = build_llm_prompt(selected_claims)
+    prompt = build_llm_prompt(
+        selected_claims,
+        prompt_variant,
+    )
 
     result = ollama_generate(
         host=ollama_host,
         model=model,
         prompt=prompt,
         options={
-            "temperature": 0.0,
+            "temperature": temperature,
             "top_p": 0.9,
             "num_predict": 512,
         },
@@ -264,6 +338,8 @@ def build_llm_narrative_markdown(
         "llm_used": True,
         "model": model,
         "ollama_host": ollama_host,
+        "prompt_variant": prompt_variant,
+        "temperature": temperature,
         "elapsed_s": result["elapsed_s"],
         "error": result["error"],
     }
@@ -439,6 +515,8 @@ def write_narrative_artifacts(
     model: str,
     ollama_host: str,
     timeout_s: int,
+    prompt_variant: str,
+    temperature: float,
 ) -> None:
     """Generate and write FRED narrative artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -456,16 +534,22 @@ def write_narrative_artifacts(
             "llm_used": False,
             "model": None,
             "ollama_host": None,
+            "prompt_variant": None,
+            "temperature": None,
             "elapsed_s": 0,
             "error": "",
         }
     elif mode == "llm":
-        narrative_md, llm_metadata = build_llm_narrative_markdown(
-            selected_claims=selected_claims,
-            generated_at=generated_at,
-            model=model,
-            ollama_host=ollama_host,
-            timeout_s=timeout_s,
+        narrative_md, llm_metadata = (
+            build_llm_narrative_markdown(
+                selected_claims=selected_claims,
+                generated_at=generated_at,
+                model=model,
+                ollama_host=ollama_host,
+                timeout_s=timeout_s,
+                prompt_variant=prompt_variant,
+                temperature=temperature,
+            )
         )
     else:
         raise ValueError(f"Unsupported generation mode: {mode}")
@@ -495,6 +579,16 @@ def write_narrative_artifacts(
             "generated_at": generated_at,
             "mode": mode,
             "model": model if mode == "llm" else None,
+            "prompt_variant": (
+                prompt_variant
+                if mode == "llm"
+                else None
+            ),
+            "temperature": (
+                temperature
+                if mode == "llm"
+                else None
+            ),
             "llm_metadata": llm_metadata,
             "n_selected_claims": int(len(selected_claims)),
             "expected_claim_ids": selected_claim_ids,
@@ -517,11 +611,26 @@ def write_narrative_artifacts(
 
     metadata = {
         "narrative_schema_version": NARRATIVE_SCHEMA_VERSION,
-        "generation_method": GENERATION_METHOD,
         "generation_method": "llm_claim_cited_narrative" if mode == "llm" else GENERATION_METHOD,
         "llm_metadata": llm_metadata,
         "input_file": str(input_path),
         "generated_at": generated_at,
+        "mode": mode,
+        "model": (
+            model
+            if mode == "llm"
+            else None
+        ),
+        "prompt_variant": (
+            prompt_variant
+            if mode == "llm"
+            else None
+        ),
+        "temperature": (
+            temperature
+            if mode == "llm"
+            else None
+        ),
         "n_selected_claims": int(len(selected_claims)),
         "used_claim_ids": extract_claim_ids(selected_claims),
         "cited_claim_ids": extract_cited_claim_ids(narrative_md),
@@ -563,12 +672,30 @@ def parse_args() -> argparse.Namespace:
         "--mode",
         default=DEFAULT_MODE,
         choices=SUPPORTED_MODES,
-        help="Narrative generation mode. Currently only deterministic is supported.",
+        help="Narrative generation mode.",
     )
     parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
         help="Local Ollama model to use when --mode llm.",
+    )
+    parser.add_argument(
+        "--prompt-variant",
+        default=DEFAULT_PROMPT_VARIANT,
+        choices=SUPPORTED_PROMPT_VARIANTS,
+        help=(
+            "LLM prompt contract variant. "
+            "Defaults to hardened."
+        ),
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=DEFAULT_TEMPERATURE,
+        help=(
+            "LLM sampling temperature. "
+            "Defaults to 0.0."
+        ),
     )
     parser.add_argument(
         "--ollama-host",
@@ -586,6 +713,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.temperature < 0:
+        raise ValueError(
+            "--temperature must be >= 0."
+        )
     write_narrative_artifacts(
         input_path=args.input_claims,
         output_dir=args.output_dir,
@@ -593,6 +724,8 @@ def main() -> None:
         model=args.model,
         ollama_host=args.ollama_host,
         timeout_s=args.timeout_s,
+        prompt_variant=args.prompt_variant,
+        temperature=args.temperature,
     )
 
 
