@@ -27,6 +27,12 @@ ARCHIVE_ROOT = REPO_ROOT / "benchmarks" / "results" / "archive"
 LEGACY_NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
 LEGACY_AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 SEMANTIC_PATTERN_CSV = AGG_ROOT / "semantic_pattern_summary.csv"
+MODEL_COMPARISONS_ROOT = (
+    REPO_ROOT
+    / "benchmarks"
+    / "results"
+    / "model_comparisons"
+)
 
 VERSION_COLS = [
     "harness_version",
@@ -1013,9 +1019,32 @@ def load_semantic_patterns():
 # -------------------------
 # Tabs
 # -------------------------
-tab_run, tab_agg, tab_audit, tab_trace = st.tabs(
-    ["Single Run", "All Runs (runs_master)", "Audit Analytics", "Narrative Traceability"]
+(
+    tab_experiments,
+    tab_run,
+    tab_agg,
+    tab_audit,
+    tab_trace,
+) = st.tabs(
+    [
+        "Model Experiments",
+        "Single Run",
+        "All Runs (runs_master)",
+        "Audit Analytics",
+        "Narrative Traceability",
+    ]
 )
+
+with tab_experiments:
+    st.subheader("Model Experiments")
+    st.caption(
+        "Cross-model FRED experiments from "
+        "`benchmarks/results/model_comparisons`."
+    )
+
+    st.write(
+        f"Experiment root: `{MODEL_COMPARISONS_ROOT}`"
+    )
 
 with tab_run:
     runs_all = find_result_folders(RAW_RUNS_ROOT)
