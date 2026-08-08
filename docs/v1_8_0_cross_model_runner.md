@@ -367,3 +367,84 @@ Interpretation taxonomy and interpretation-aware audit
 v2.0
 Token and probability telemetry
 ```
+
+## v1.8.0 Completion
+
+v1.8.0 established the first durable cross-model experimental layer for the
+FRED evidence loop.
+
+### Completed capabilities
+
+- isolated artifact roots for individual evidence-loop runs
+- frozen FRED input context per comparison experiment
+- cross-model orchestration with failure isolation
+- incremental comparison manifests
+- normalized comparison summary artifacts
+- prompt-variant controls:
+  - weak
+  - intermediate
+  - hardened
+- configurable LLM temperature
+- prompt and temperature provenance through:
+  - comparison configuration
+  - comparison manifest
+  - evidence-loop run metadata
+  - narrative metadata
+- explicit distinction between:
+  - process failure
+  - audit failure
+  - not evaluated
+  - accepted output
+
+### Final control-matrix smoke test
+
+Experiment:
+
+`fred_control_matrix_smoke_20260808`
+
+Matrix:
+
+- models: llama3, mistral
+- prompt variants: weak, hardened
+- temperatures: 0.0, 0.7
+- repetitions: 1
+- total runs: 8
+
+Results:
+
+- expected runs: 8
+- attempted runs: 8
+- process OK: 4
+- process failed: 4
+- completed runs: 4
+- audit pass: 4 / 4 evaluated
+- accepted outputs: 4
+- repair needed: 0 / 4 evaluated
+
+Observed pattern:
+
+- both models failed citation-contract validation under the weak prompt
+  at both temperatures
+- both models passed the full evidence loop under the hardened prompt
+  at both temperatures
+- weak-prompt failures were preserved as generation-stage failures with
+  audit_pass=None rather than being misclassified as audit failures
+
+The smoke test therefore validated the experiment infrastructure and showed
+behavioral separation between prompt-contract strengths.
+
+### v1.8.0 exit criteria
+
+v1.8.0 is complete.
+
+The next release, v1.8.1, will focus on:
+
+1. a Streamlit Model Experiments dashboard
+2. intermediate-prompt and llama3:70b sanity checks
+3. a repeated-run pilot:
+   - 3 models
+   - 3 prompt variants
+   - 2 temperatures
+   - 5 repetitions
+   - 90 LLM runs
+4. model profiles and repeated-run analysis
