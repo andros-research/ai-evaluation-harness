@@ -980,9 +980,155 @@ def find_model_comparison_dirs(
                 / "comparison_manifest.json"
             ).exists()
         ],
-        key=lambda path: path.name,
+        key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
+
+
+def true_evaluated_counts(
+    df: pd.DataFrame,
+    col: str,
+) -> tuple[int, int]:
+    if df.empty or col not in df.columns:
+        return 0, 0
+
+    values = df[col].dropna()
+
+    if values.empty:
+        return 0, 0
+
+    n_true = int(values.eq(True).sum())
+    n_evaluated = int(len(values))
+
+    return n_true, n_evaluated
+
+
+def format_count_rate(
+    numerator: int,
+    denominator: int,
+) -> str:
+    if denominator == 0:
+        return "—"
+
+    return (
+        f"{numerator}/{denominator} "
+        f"({numerator / denominator:.0%})"
+    )
+
+
+def make_fred_experiment_group_summary(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
+
+    d = df.copy()
+
+    for col in [
+        "model",
+        "prompt_variant",
+        "temperature",
+        "process_ok",
+        "audit_pass",
+        "repair_needed",
+        "accepted_output",
+        "elapsed_seconds",
+    ]:
+        if col not in d.columns:
+            d[col] = pd.NA
+
+    output_rows = []
+
+    grouped = d.groupby(
+        [
+            "model",
+            "prompt_variant",
+            "temperature",
+        ],
+        dropna=False,
+    )
+
+    for (
+        model,
+        prompt_variant,
+        temperature,
+    ), group in grouped:
+        process_true, process_eval = (
+            true_evaluated_counts(
+                group,
+                "process_ok",
+            )
+        )
+
+        audit_true, audit_eval = (
+            true_evaluated_counts(
+                group,
+                "audit_pass",
+            )
+        )
+
+        repair_true, repair_eval = (
+            true_evaluated_counts(
+                group,
+                "repair_needed",
+            )
+        )
+
+        accepted_true, accepted_eval = (
+            true_evaluated_counts(
+                group,
+                "accepted_output",
+            )
+        )
+
+        elapsed = pd.to_numeric(
+            group["elapsed_seconds"],
+            errors="coerce",
+        )
+
+        output_rows.append(
+            {
+                "model": (
+                    model
+                    if pd.notna(model)
+                    else "—"
+                ),
+                "prompt_variant": (
+                    prompt_variant
+                    if pd.notna(prompt_variant)
+                    else "—"
+                ),
+                "temperature": (
+                    temperature
+                    if pd.notna(temperature)
+                    else "—"
+                ),
+                "runs": len(group),
+                "process_ok": format_count_rate(
+                    process_true,
+                    process_eval,
+                ),
+                "audit_pass": format_count_rate(
+                    audit_true,
+                    audit_eval,
+                ),
+                "repair_needed": format_count_rate(
+                    repair_true,
+                    repair_eval,
+                ),
+                "accepted_output": format_count_rate(
+                    accepted_true,
+                    accepted_eval,
+                ),
+                "avg_elapsed_s": (
+                    round(elapsed.mean(), 2)
+                    if elapsed.notna().any()
+                    else pd.NA
+                ),
+            }
+        )
+
+    return pd.DataFrame(output_rows)
 
 
 @st.cache_data(show_spinner=False)
@@ -1148,6 +1294,13 @@ with tab_experiments:
             ),
             key="model_experiment_select",
         )
+        
+        if st.button(
+            "Refresh experiment",
+            key="refresh_model_experiment",
+        ):
+            st.cache_data.clear()
+            st.rerun()
 
         comparison_dir = Path(
             selected_comparison
@@ -1161,6 +1314,98 @@ with tab_experiments:
 
         rows = load_model_comparison_rows(
             selected_comparison
+        )
+        
+        run_results = manifest.get(
+            "run_results",
+            [],
+        )
+
+        manifest_rows = pd.DataFrame(
+            run_results
+        )
+
+        if (
+            not manifest_rows.empty
+            and len(manifest_rows) > len(rows)
+        ):
+            experiment_rows = manifest_rows
+            experiment_row_source = (
+                "incremental comparison manifest"
+            )
+        else:
+            experiment_rows = rows
+            experiment_row_source = (
+                "normalized comparison summary"
+            )
+
+        manifest_summary = manifest.get(
+            "summary",
+            {},
+        )
+
+        n_expected = int(
+            manifest_summary.get(
+                "n_expected_runs",
+                len(run_results),
+            )
+            or 0
+        )
+
+        n_attempted = int(
+            manifest_summary.get(
+                "n_attempted_runs",
+                len(run_results),
+            )
+            or 0
+        )
+
+        n_process_ok = int(
+            manifest_summary.get(
+                "n_process_ok",
+                0,
+            )
+            or 0
+        )
+
+        n_accepted = int(
+            manifest_summary.get(
+                "n_accepted_output",
+                0,
+            )
+            or 0
+        )
+
+        n_audit_pass = int(
+            manifest_summary.get(
+                "n_audit_pass",
+                0,
+            )
+            or 0
+        )
+
+        n_repair_needed = int(
+            manifest_summary.get(
+                "n_repair_needed",
+                0,
+            )
+            or 0
+        )
+
+        audit_evaluated = sum(
+            isinstance(
+                result.get("audit_pass"),
+                bool,
+            )
+            for result in run_results
+        )
+
+        repair_evaluated = sum(
+            isinstance(
+                result.get("repair_needed"),
+                bool,
+            )
+            for result in run_results
         )
 
         summary = (
@@ -1197,21 +1442,129 @@ with tab_experiments:
                 "—",
             ),
         )
+        
+        st.subheader("Experiment Progress")
 
-        if rows.empty:
+        if n_expected > 0:
+            st.progress(
+                min(
+                    n_attempted / n_expected,
+                    1.0,
+                )
+            )
+
+        st.caption(
+            f"{n_attempted} / "
+            f"{n_expected} runs attempted"
+        )
+
+        k1, k2, k3, k4, k5 = st.columns(5)
+
+        k1.metric(
+            "Attempted",
+            f"{n_attempted}/{n_expected}",
+        )
+
+        k2.metric(
+            "Process OK",
+            format_count_rate(
+                n_process_ok,
+                n_attempted,
+            ),
+        )
+
+        k3.metric(
+            "Accepted",
+            format_count_rate(
+                n_accepted,
+                n_attempted,
+            ),
+        )
+
+        k4.metric(
+            "Audit Pass",
+            format_count_rate(
+                n_audit_pass,
+                audit_evaluated,
+            ),
+        )
+
+        k5.metric(
+            "Repair Needed",
+            format_count_rate(
+                n_repair_needed,
+                repair_evaluated,
+            ),
+        )
+
+        st.caption(
+            "Audit and repair rates use only "
+            "runs that reached those stages."
+        )
+        
+        st.subheader(
+            "Model × Prompt × Temperature"
+        )
+
+        group_summary = (
+            make_fred_experiment_group_summary(
+                experiment_rows
+            )
+        )
+
+        if group_summary.empty:
             st.info(
-                "No normalized comparison rows "
-                "found for this experiment yet."
+                "No experiment rows available yet."
             )
         else:
-            st.subheader(
-                "Normalized Runs"
-            )
-
             st.dataframe(
-                rows,
+                group_summary,
                 use_container_width=True,
+                hide_index=True,
             )
+        
+        st.subheader("Individual Runs")
+
+        compact_cols = [
+            "run_label",
+            "model",
+            "prompt_variant",
+            "temperature",
+            "repetition",
+            "process_ok",
+            "audit_pass",
+            "repair_needed",
+            "accepted_output",
+            "failure_stage",
+            "elapsed_seconds",
+        ]
+
+        available_compact_cols = [
+            col
+            for col in compact_cols
+            if col in experiment_rows.columns
+        ]
+
+        st.caption(
+            f"Source: {experiment_row_source}"
+        )
+
+        st.dataframe(
+            experiment_rows[
+                available_compact_cols
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        if not rows.empty:
+            with st.expander(
+                "Full normalized row payload"
+            ):
+                st.dataframe(
+                    rows,
+                    use_container_width=True,
+                )
 
 with tab_run:
     runs_all = find_result_folders(RAW_RUNS_ROOT)
