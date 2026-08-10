@@ -1,0 +1,155 @@
+{
+    "comparison_id": "fred_90_run_pilot_20260808",
+    "input_context": "benchmarks/data/fred_macro_context.json",
+    "comparison_window": "12m",
+    "ollama_host": "http://127.0.0.1:11434",
+    "narrative_timeout_s": 600,
+    "runs": [
+      {
+        "label": "llama3_weak_t0",
+        "mode": "llm",
+        "model": "llama3",
+        "prompt_variant": "weak",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_weak_t07",
+        "mode": "llm",
+        "model": "llama3",
+        "prompt_variant": "weak",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_intermediate_t0",
+        "mode": "llm",
+        "model": "llama3",
+        "prompt_variant": "intermediate",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_intermediate_t07",
+        "mode": "llm",
+        "model": "llama3",
+        "prompt_variant": "intermediate",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_hardened_t0",
+        "mode": "llm",
+        "model": "llama3",
+        "prompt_variant": "hardened",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_hardened_t07",
+        "mode": "llm",
+        "model": "llama3",
+        "prompt_variant": "hardened",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+  
+      {
+        "label": "mistral_weak_t0",
+        "mode": "llm",
+        "model": "mistral",
+        "prompt_variant": "weak",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "mistral_weak_t07",
+        "mode": "llm",
+        "model": "mistral",
+        "prompt_variant": "weak",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+      {
+        "label": "mistral_intermediate_t0",
+        "mode": "llm",
+        "model": "mistral",
+        "prompt_variant": "intermediate",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "mistral_intermediate_t07",
+        "mode": "llm",
+        "model": "mistral",
+        "prompt_variant": "intermediate",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+      {
+        "label": "mistral_hardened_t0",
+        "mode": "llm",
+        "model": "mistral",
+        "prompt_variant": "hardened",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "mistral_hardened_t07",
+        "mode": "llm",
+        "model": "mistral",
+        "prompt_variant": "hardened",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+  
+      {
+        "label": "llama3_70b_weak_t0",
+        "mode": "llm",
+        "model": "llama3:70b",
+        "prompt_variant": "weak",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_70b_weak_t07",
+        "mode": "llm",
+        "model": "llama3:70b",
+        "prompt_variant": "weak",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_70b_intermediate_t0",
+        "mode": "llm",
+        "model": "llama3:70b",
+        "prompt_variant": "intermediate",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_70b_intermediate_t07",
+        "mode": "llm",
+        "model": "llama3:70b",
+        "prompt_variant": "intermediate",
+        "temperature": 0.7,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_70b_hardened_t0",
+        "mode": "llm",
+        "model": "llama3:70b",
+        "prompt_variant": "hardened",
+        "temperature": 0.0,
+        "repetitions": 5
+      },
+      {
+        "label": "llama3_70b_hardened_t07",
+        "mode": "llm",
+        "model": "llama3:70b",
+        "prompt_variant": "hardened",
+        "temperature": 0.7,
+        "repetitions": 5
+      }
+    ]
+  }

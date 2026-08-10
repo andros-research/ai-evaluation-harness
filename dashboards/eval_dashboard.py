@@ -1131,6 +1131,125 @@ def make_fred_experiment_group_summary(
     return pd.DataFrame(output_rows)
 
 
+PROMPT_VARIANT_ORDER = [
+    "weak",
+    "intermediate",
+    "hardened",
+]
+
+
+def format_temperature_value(value: Any) -> str:
+    try:
+        return f"{float(value):g}"
+    except Exception:
+        return str(value)
+
+
+def make_fred_rate_heatmap(
+    df: pd.DataFrame,
+    metric: str,
+    *,
+    evaluated_only: bool,
+) -> pd.DataFrame:
+    if df.empty or metric not in df.columns:
+        return pd.DataFrame()
+
+    rows = []
+
+    grouped = df.groupby(
+        [
+            "model",
+            "prompt_variant",
+            "temperature",
+        ],
+        dropna=False,
+        sort=False,
+    )
+
+    for (
+        model,
+        prompt_variant,
+        temperature,
+    ), group in grouped:
+        values = group[metric]
+
+        if evaluated_only:
+            values = values[
+                values.notna()
+            ]
+
+        denominator = (
+            len(values)
+            if evaluated_only
+            else len(group)
+        )
+
+        if denominator == 0:
+            rate = float("nan")
+        else:
+            numerator = int(
+                values.eq(True).sum()
+            )
+
+            rate = (
+                numerator
+                / denominator
+            )
+
+        temp_label = (
+            format_temperature_value(
+                temperature
+            )
+        )
+
+        rows.append(
+            {
+                "model_temp": (
+                    f"{model} | t={temp_label}"
+                ),
+                "prompt_variant": (
+                    prompt_variant
+                ),
+                "rate": rate,
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame()
+
+    heat = pd.DataFrame(rows).pivot(
+        index="model_temp",
+        columns="prompt_variant",
+        values="rate",
+    )
+
+    # Seaborn expects ordinary numeric data.
+    # Convert nullable/object values and missing cells
+    # into a float64 matrix with NaN.
+    heat = heat.apply(
+        pd.to_numeric,
+        errors="coerce",
+    ).astype(float)
+
+    available_prompts = [
+        prompt
+        for prompt in PROMPT_VARIANT_ORDER
+        if prompt in heat.columns
+    ]
+
+    extra_prompts = [
+        prompt
+        for prompt in heat.columns
+        if prompt
+        not in available_prompts
+    ]
+
+    return heat[
+        available_prompts
+        + extra_prompts
+    ]
+
+
 @st.cache_data(show_spinner=False)
 def load_model_comparison_manifest(
     comparison_dir: str,
@@ -1522,6 +1641,135 @@ with tab_experiments:
                 use_container_width=True,
                 hide_index=True,
             )
+
+        st.subheader("Experiment Heatmaps")
+
+        process_heat = make_fred_rate_heatmap(
+            experiment_rows,
+            "process_ok",
+            evaluated_only=False,
+        )
+
+        audit_heat = make_fred_rate_heatmap(
+            experiment_rows,
+            "audit_pass",
+            evaluated_only=True,
+        )
+
+        accepted_heat = make_fred_rate_heatmap(
+            experiment_rows,
+            "accepted_output",
+            evaluated_only=False,
+        )
+
+        heat_col1, heat_col2, heat_col3 = (
+            st.columns(3)
+        )
+
+
+        def render_experiment_heatmap(
+            container,
+            heat: pd.DataFrame,
+            title: str,
+        ) -> None:
+            with container:
+                st.markdown(f"#### {title}")
+
+                if heat.empty:
+                    st.info(
+                        "No data available."
+                    )
+                    return
+
+                fig, ax = plt.subplots(
+                    figsize=(
+                        6,
+                        max(
+                            3,
+                            0.55 * len(heat),
+                        ),
+                    )
+                )
+
+                annot = format_heatmap_labels(
+                    heat
+                )
+
+                hm = sns.heatmap(
+                    heat,
+                    annot=annot,
+                    fmt="",
+                    cmap="YlGn",
+                    vmin=0.0,
+                    vmax=1.0,
+                    linewidths=0.5,
+                    linecolor="white",
+                    ax=ax,
+                )
+
+                colorbar = (
+                    hm.collections[0]
+                    .colorbar
+                )
+
+                colorbar.set_ticks(
+                    [
+                        0.0,
+                        0.25,
+                        0.5,
+                        0.75,
+                        1.0,
+                    ]
+                )
+
+                colorbar.set_ticklabels(
+                    [
+                        "0%",
+                        "25%",
+                        "50%",
+                        "75%",
+                        "100%",
+                    ]
+                )
+
+                ax.set_xlabel("Prompt")
+                ax.set_ylabel(
+                    "Model × temperature"
+                )
+
+                fig.tight_layout()
+
+                st.pyplot(
+                    fig,
+                    use_container_width=True,
+                )
+
+                plt.close(fig)
+
+
+        render_experiment_heatmap(
+            heat_col1,
+            process_heat,
+            "Process Completion",
+        )
+
+        render_experiment_heatmap(
+            heat_col2,
+            audit_heat,
+            "Audit Pass",
+        )
+
+        render_experiment_heatmap(
+            heat_col3,
+            accepted_heat,
+            "Accepted Output",
+        )
+
+        st.caption(
+            "Process and acceptance rates use all runs. "
+            "Audit rates use only runs that reached audit; "
+            "blank cells were not evaluated."
+        )
         
         st.subheader("Individual Runs")
 
@@ -1557,6 +1805,25 @@ with tab_experiments:
             hide_index=True,
         )
 
+        if (
+            manifest.get("status") == "completed"
+            and rows.empty
+        ):
+            st.warning(
+                "Experiment is complete, but normalized summary "
+                "artifacts have not been built yet."
+            )
+
+        if not manifest_rows.empty:
+            with st.expander(
+                "Full live manifest row payload"
+            ):
+                st.dataframe(
+                    manifest_rows,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
         if not rows.empty:
             with st.expander(
                 "Full normalized row payload"
@@ -1564,6 +1831,7 @@ with tab_experiments:
                 st.dataframe(
                     rows,
                     use_container_width=True,
+                    hide_index=True,
                 )
 
 with tab_run:

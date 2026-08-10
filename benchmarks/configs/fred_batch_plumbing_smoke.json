@@ -1,0 +1,12 @@
+{
+  "comparison_id": "fred_batch_plumbing_smoke_20260809",
+  "input_context": "benchmarks/data/fred_macro_context.json",
+  "comparison_window": "12m",
+  "runs": [
+    {
+      "label": "deterministic",
+      "mode": "deterministic",
+      "repetitions": 1
+    }
+  ]
+}
