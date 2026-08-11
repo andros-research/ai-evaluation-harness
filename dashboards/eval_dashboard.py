@@ -1364,6 +1364,455 @@ def load_semantic_patterns():
         return pd.read_csv(SEMANTIC_PATTERN_CSV)
     return pd.DataFrame()
 
+@st.cache_data(show_spinner=False)
+def load_model_comparison_config(
+    comparison_dir: str,
+) -> dict[str, Any]:
+    path = (
+        Path(comparison_dir)
+        / "comparison_config.json"
+    )
+
+    return load_json_file(path)
+
+
+def infer_comparison_family_id(
+    *,
+    manifest: dict[str, Any],
+    comparison_dir: Path,
+) -> str:
+    family_id = manifest.get(
+        "comparison_family_id"
+    )
+
+    if family_id:
+        return str(family_id)
+
+    comparison_id = str(
+        manifest.get(
+            "comparison_id",
+            comparison_dir.name,
+        )
+    )
+
+    if "__batch_" in comparison_id:
+        return comparison_id.split(
+            "__batch_",
+            1,
+        )[0]
+
+    return comparison_id
+
+
+def infer_batch_number(
+    *,
+    manifest: dict[str, Any],
+    comparison_dir: Path,
+) -> int:
+    value = manifest.get("batch_number")
+
+    if value is not None:
+        try:
+            return int(value)
+        except Exception:
+            pass
+
+    name = comparison_dir.name
+
+    if "__batch_" in name:
+        try:
+            return int(
+                name.rsplit(
+                    "__batch_",
+                    1,
+                )[1]
+            )
+        except Exception:
+            pass
+
+    return 1
+
+
+def expected_runs_from_config(
+    config: dict[str, Any],
+) -> int:
+    total = 0
+
+    for run in config.get(
+        "runs",
+        [],
+    ):
+        try:
+            total += int(
+                run.get(
+                    "repetitions",
+                    1,
+                )
+            )
+        except Exception:
+            continue
+
+    return total
+
+
+def comparison_design_signature(
+    config: dict[str, Any],
+) -> tuple:
+    """
+    Return the experimental design components that
+    must match before batches can be pooled.
+    """
+    design_rows = []
+
+    for run in config.get(
+        "runs",
+        [],
+    ):
+        mode = run.get("mode")
+
+        temperature = (
+            run.get("temperature")
+            if mode == "llm"
+            else None
+        )
+
+        if temperature is not None:
+            try:
+                temperature = float(
+                    temperature
+                )
+            except Exception:
+                temperature = str(
+                    temperature
+                )
+
+        design_rows.append(
+            (
+                str(
+                    run.get(
+                        "label",
+                        "",
+                    )
+                ),
+                str(
+                    mode
+                    or ""
+                ),
+                run.get("model"),
+                run.get(
+                    "prompt_variant"
+                ),
+                temperature,
+                int(
+                    run.get(
+                        "repetitions",
+                        1,
+                    )
+                ),
+            )
+        )
+
+    return tuple(
+        sorted(
+            design_rows,
+            key=lambda row: row[0],
+        )
+    )
+
+
+def collect_compatible_comparison_rows(
+    *,
+    selected_comparison: str,
+    comparison_dirs: list[Path],
+) -> tuple[
+    pd.DataFrame,
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    selected_dir = Path(
+        selected_comparison
+    )
+
+    selected_manifest = (
+        load_model_comparison_manifest(
+            selected_comparison
+        )
+    )
+
+    selected_config = (
+        load_model_comparison_config(
+            selected_comparison
+        )
+    )
+
+    selected_family = (
+        infer_comparison_family_id(
+            manifest=selected_manifest,
+            comparison_dir=selected_dir,
+        )
+    )
+
+    selected_context = (
+        selected_manifest.get(
+            "context_sha256"
+        )
+    )
+
+    selected_window = (
+        selected_manifest.get(
+            "comparison_window"
+        )
+    )
+
+    selected_design = (
+        comparison_design_signature(
+            selected_config
+        )
+    )
+
+    frames = []
+    included = []
+    excluded = []
+
+    for comparison_dir in comparison_dirs:
+        comparison_dir_str = str(
+            comparison_dir
+        )
+
+        manifest = (
+            load_model_comparison_manifest(
+                comparison_dir_str
+            )
+        )
+
+        config = (
+            load_model_comparison_config(
+                comparison_dir_str
+            )
+        )
+
+        family_id = (
+            infer_comparison_family_id(
+                manifest=manifest,
+                comparison_dir=(
+                    comparison_dir
+                ),
+            )
+        )
+
+        if family_id != selected_family:
+            continue
+
+        reasons = []
+
+        if (
+            manifest.get(
+                "context_sha256"
+            )
+            != selected_context
+        ):
+            reasons.append(
+                "context_sha256"
+            )
+
+        if (
+            manifest.get(
+                "comparison_window"
+            )
+            != selected_window
+        ):
+            reasons.append(
+                "comparison_window"
+            )
+
+        if (
+            comparison_design_signature(
+                config
+            )
+            != selected_design
+        ):
+            reasons.append(
+                "experimental_design"
+            )
+
+        if reasons:
+            excluded.append(
+                {
+                    "comparison_id": (
+                        comparison_dir.name
+                    ),
+                    "reasons": reasons,
+                }
+            )
+            continue
+
+        normalized_rows = (
+            load_model_comparison_rows(
+                comparison_dir_str
+            )
+        )
+
+        manifest_rows = pd.DataFrame(
+            manifest.get(
+                "run_results",
+                [],
+            )
+        )
+
+        # Completed batches should normally use the
+        # normalized dataset. Running batches use
+        # incremental manifest rows.
+        if (
+            not normalized_rows.empty
+            and (
+                manifest_rows.empty
+                or len(normalized_rows)
+                >= len(manifest_rows)
+            )
+        ):
+            batch_rows = (
+                normalized_rows.copy()
+            )
+            row_source = "normalized"
+        else:
+            batch_rows = (
+                manifest_rows.copy()
+            )
+            row_source = "manifest"
+
+        if batch_rows.empty:
+            continue
+
+        comparison_id = str(
+            manifest.get(
+                "comparison_id",
+                comparison_dir.name,
+            )
+        )
+
+        batch_number = (
+            infer_batch_number(
+                manifest=manifest,
+                comparison_dir=(
+                    comparison_dir
+                ),
+            )
+        )
+
+        # Backfill provenance for batch 1,
+        # which predates family/batch fields.
+        batch_rows[
+            "comparison_id"
+        ] = comparison_id
+
+        batch_rows[
+            "comparison_family_id"
+        ] = family_id
+
+        batch_rows[
+            "batch_number"
+        ] = batch_number
+
+        frames.append(batch_rows)
+
+        expected_runs = (
+            manifest.get(
+                "summary",
+                {},
+            ).get(
+                "n_expected_runs"
+            )
+        )
+
+        if expected_runs is None:
+            expected_runs = (
+                expected_runs_from_config(
+                    config
+                )
+            )
+
+        included.append(
+            {
+                "comparison_id": (
+                    comparison_id
+                ),
+                "batch_number": (
+                    batch_number
+                ),
+                "status": (
+                    manifest.get(
+                        "status"
+                    )
+                ),
+                "git_commit": (
+                    manifest.get(
+                        "git_commit"
+                    )
+                ),
+                "expected_runs": int(
+                    expected_runs
+                    or 0
+                ),
+                "attempted_runs": (
+                    len(batch_rows)
+                ),
+                "row_source": (
+                    row_source
+                ),
+            }
+        )
+
+    if not frames:
+        return (
+            pd.DataFrame(),
+            included,
+            excluded,
+        )
+
+    combined = pd.concat(
+        frames,
+        ignore_index=True,
+        sort=False,
+    )
+
+    sort_cols = [
+        col
+        for col in [
+            "batch_number",
+            "model",
+            "prompt_variant",
+            "temperature",
+            "repetition",
+        ]
+        if col in combined.columns
+    ]
+
+    if sort_cols:
+        combined = (
+            combined
+            .sort_values(
+                sort_cols,
+                kind="stable",
+            )
+            .reset_index(
+                drop=True
+            )
+        )
+
+    included = sorted(
+        included,
+        key=lambda item: (
+            item["batch_number"]
+        ),
+    )
+
+    return (
+        combined,
+        included,
+        excluded,
+    )
+    
+
 # -------------------------
 # Tabs
 # -------------------------
@@ -1420,6 +1869,16 @@ with tab_experiments:
         ):
             st.cache_data.clear()
             st.rerun()
+        
+        view_mode = st.radio(
+            "View",
+            options=[
+                "Single Batch",
+                "All Compatible Batches",
+            ],
+            horizontal=True,
+            key="model_experiment_view_mode",
+        )
 
         comparison_dir = Path(
             selected_comparison
@@ -1444,18 +1903,91 @@ with tab_experiments:
             run_results
         )
 
-        if (
-            not manifest_rows.empty
-            and len(manifest_rows) > len(rows)
-        ):
-            experiment_rows = manifest_rows
-            experiment_row_source = (
-                "incremental comparison manifest"
-            )
+        if view_mode == "Single Batch":
+            if (
+                not manifest_rows.empty
+                and len(manifest_rows) > len(rows)
+            ):
+                experiment_rows = (
+                    manifest_rows
+                )
+
+                experiment_row_source = (
+                    "incremental comparison manifest"
+                )
+            else:
+                experiment_rows = rows
+
+                experiment_row_source = (
+                    "normalized comparison summary"
+                )
+
+            included_batches = [
+                {
+                    "comparison_id": (
+                        manifest.get(
+                            "comparison_id",
+                            comparison_dir.name,
+                        )
+                    ),
+                    "batch_number": (
+                        infer_batch_number(
+                            manifest=manifest,
+                            comparison_dir=(
+                                comparison_dir
+                            ),
+                        )
+                    ),
+                    "status": (
+                        manifest.get(
+                            "status"
+                        )
+                    ),
+                    "git_commit": (
+                        manifest.get(
+                            "git_commit"
+                        )
+                    ),
+                    "expected_runs": (
+                        manifest.get(
+                            "summary",
+                            {},
+                        ).get(
+                            "n_expected_runs",
+                            len(
+                                experiment_rows
+                            ),
+                        )
+                    ),
+                    "attempted_runs": (
+                        len(
+                            experiment_rows
+                        )
+                    ),
+                    "row_source": (
+                        experiment_row_source
+                    ),
+                }
+            ]
+
+            excluded_batches = []
+
         else:
-            experiment_rows = rows
+            (
+                experiment_rows,
+                included_batches,
+                excluded_batches,
+            ) = collect_compatible_comparison_rows(
+                selected_comparison=(
+                    selected_comparison
+                ),
+                comparison_dirs=(
+                    comparison_dirs
+                ),
+            )
+
             experiment_row_source = (
-                "normalized comparison summary"
+                "all compatible comparison batches"
             )
 
         manifest_summary = manifest.get(
@@ -1463,52 +1995,48 @@ with tab_experiments:
             {},
         )
 
-        n_expected = int(
-            manifest_summary.get(
-                "n_expected_runs",
-                len(run_results),
+        n_expected = sum(
+            int(
+                batch.get(
+                    "expected_runs",
+                    0,
+                )
+                or 0
             )
-            or 0
+            for batch in included_batches
         )
 
-        n_attempted = int(
-            manifest_summary.get(
-                "n_attempted_runs",
-                len(run_results),
-            )
-            or 0
+        n_attempted = len(
+            experiment_rows
         )
 
-        n_process_ok = int(
-            manifest_summary.get(
-                "n_process_ok",
-                0,
+        n_process_ok, _ = (
+            true_evaluated_counts(
+                experiment_rows,
+                "process_ok",
             )
-            or 0
         )
 
-        n_accepted = int(
-            manifest_summary.get(
-                "n_accepted_output",
-                0,
+        n_accepted, _ = (
+            true_evaluated_counts(
+                experiment_rows,
+                "accepted_output",
             )
-            or 0
         )
 
-        n_audit_pass = int(
-            manifest_summary.get(
-                "n_audit_pass",
-                0,
+        n_audit_pass, audit_evaluated = (
+            true_evaluated_counts(
+                experiment_rows,
+                "audit_pass",
             )
-            or 0
         )
 
-        n_repair_needed = int(
-            manifest_summary.get(
-                "n_repair_needed",
-                0,
-            )
-            or 0
+        (
+            n_repair_needed,
+            repair_evaluated,
+        ) = true_evaluated_counts(
+            experiment_rows,
+            "repair_needed",
         )
 
         audit_evaluated = sum(
@@ -1561,6 +2089,64 @@ with tab_experiments:
                 "—",
             ),
         )
+        
+        if (
+            view_mode
+            == "All Compatible Batches"
+        ):
+            st.write(
+                "**Compatible batches:**",
+                len(included_batches),
+            )
+
+            st.write(
+                "**Rows in current view:**",
+                len(experiment_rows),
+            )
+
+            git_commits = sorted(
+                {
+                    str(
+                        batch.get(
+                            "git_commit"
+                        )
+                    )
+                    for batch
+                    in included_batches
+                    if batch.get(
+                        "git_commit"
+                    )
+                }
+            )
+
+            if len(git_commits) > 1:
+                st.warning(
+                    "Compatible batches span multiple "
+                    "Git commits. Experimental design "
+                    "and source context match, so rows "
+                    "are included; Git differences are "
+                    "retained as provenance."
+                )
+
+            if excluded_batches:
+                st.caption(
+                    f"{len(excluded_batches)} "
+                    "same-family batch(es) were excluded "
+                    "because their context, comparison "
+                    "window, or experimental design "
+                    "did not match."
+                )
+
+            with st.expander(
+                "Compatible batch details"
+            ):
+                st.dataframe(
+                    pd.DataFrame(
+                        included_batches
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
         
         st.subheader("Experiment Progress")
 
@@ -1774,6 +2360,8 @@ with tab_experiments:
         st.subheader("Individual Runs")
 
         compact_cols = [
+            "comparison_id",
+            "batch_number",
             "run_label",
             "model",
             "prompt_variant",
@@ -1814,25 +2402,51 @@ with tab_experiments:
                 "artifacts have not been built yet."
             )
 
-        if not manifest_rows.empty:
-            with st.expander(
-                "Full live manifest row payload"
+        if (
+            view_mode
+            == "All Compatible Batches"
+        ):
+            if not experiment_rows.empty:
+                with st.expander(
+                    "Full compatible-batch row payload"
+                ):
+                    st.dataframe(
+                        experiment_rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+        else:
+            if (
+                manifest.get("status")
+                == "completed"
+                and rows.empty
             ):
-                st.dataframe(
-                    manifest_rows,
-                    use_container_width=True,
-                    hide_index=True,
+                st.warning(
+                    "Experiment is complete, but "
+                    "normalized summary artifacts "
+                    "have not been built yet."
                 )
 
-        if not rows.empty:
-            with st.expander(
-                "Full normalized row payload"
-            ):
-                st.dataframe(
-                    rows,
-                    use_container_width=True,
-                    hide_index=True,
-                )
+            if not manifest_rows.empty:
+                with st.expander(
+                    "Full live manifest row payload"
+                ):
+                    st.dataframe(
+                        manifest_rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+            if not rows.empty:
+                with st.expander(
+                    "Full normalized row payload"
+                ):
+                    st.dataframe(
+                        rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
 with tab_run:
     runs_all = find_result_folders(RAW_RUNS_ROOT)
