@@ -2,16 +2,15 @@
 """
 Run one frozen FRED evidence context across multiple narrative modes/models.
 
-v1.8.0 responsibilities:
+Responsibilities:
 - load a JSON comparison configuration
+- allocate an isolated experiment/batch directory
 - snapshot the input context once
 - run the existing FRED evidence loop in isolated artifact roots
-- continue after an individual run fails
+- continue after individual run failures
 - preserve orchestration logs
 - write one incremental comparison manifest
-
-Comparison summary CSV/JSONL/Markdown artifacts are intentionally deferred to
-the next milestone.
+- build normalized comparison summary artifacts after execution
 """
 
 from __future__ import annotations
@@ -28,7 +27,9 @@ from pathlib import Path
 from time import monotonic
 
 
-COMPARISON_SCHEMA_VERSION = "fred_model_comparison_v0_1"
+COMPARISON_SCHEMA_VERSION = (
+    "fred_model_comparison_v0_2"
+)
 
 SUPPORTED_MODES = {"deterministic", "llm"}
 SUPPORTED_COMPARISON_WINDOWS = {"6m", "12m", "24m"}
@@ -41,6 +42,12 @@ EVIDENCE_RUNNER = (
     REPO_ROOT
     / "benchmarks"
     / "run_fred_evidence_loop.py"
+)
+
+SUMMARY_BUILDER = (
+    REPO_ROOT
+    / "benchmarks"
+    / "build_fred_model_comparison_summary.py"
 )
 
 DEFAULT_CONFIG = (
@@ -93,6 +100,56 @@ def resolve_repo_path(path_value: str | Path) -> Path:
     """Resolve a path relative to the repository root."""
     path = Path(path_value)
     return path if path.is_absolute() else REPO_ROOT / path
+
+
+def allocate_comparison_directory(
+    *,
+    results_root: Path,
+    comparison_family_id: str,
+) -> tuple[str, Path, int]:
+    """
+    Allocate a unique comparison directory.
+
+    The first batch uses the unsuffixed family ID.
+    Later batches use __batch_NNN suffixes.
+    """
+    results_root.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    batch_number = 1
+
+    while True:
+        if batch_number == 1:
+            comparison_id = (
+                comparison_family_id
+            )
+        else:
+            comparison_id = (
+                f"{comparison_family_id}"
+                f"__batch_{batch_number:03d}"
+            )
+
+        comparison_dir = (
+            results_root
+            / comparison_id
+        )
+
+        try:
+            comparison_dir.mkdir(
+                parents=False,
+                exist_ok=False,
+            )
+
+            return (
+                comparison_id,
+                comparison_dir,
+                batch_number,
+            )
+
+        except FileExistsError:
+            batch_number += 1
 
 
 def sha256_file(path: Path) -> str:
@@ -633,29 +690,41 @@ def main() -> None:
         config_path
     )
 
-    comparison_id = validate_label(
+    comparison_family_id = validate_label(
         args.comparison_id
         or str(config["comparison_id"]),
         field_name="comparison_id",
     )
 
-    comparison_dir = (
-        results_root
-        / comparison_id
+    (
+        comparison_id,
+        comparison_dir,
+        batch_number,
+    ) = allocate_comparison_directory(
+        results_root=results_root,
+        comparison_family_id=(
+            comparison_family_id
+        ),
     )
 
-    if (
-        comparison_dir.exists()
-        and any(comparison_dir.iterdir())
-    ):
-        raise SystemExit(
-            "Comparison directory already exists "
-            f"and is not empty: {comparison_dir}"
-        )
-
-    comparison_dir.mkdir(
-        parents=True,
-        exist_ok=True,
+    print(
+        "Allocated comparison experiment:"
+    )
+    print(
+        f"  family_id="
+        f"{comparison_family_id}"
+    )
+    print(
+        f"  comparison_id="
+        f"{comparison_id}"
+    )
+    print(
+        f"  batch_number="
+        f"{batch_number}"
+    )
+    print(
+        f"  comparison_dir="
+        f"{comparison_dir}"
     )
 
     source_context = resolve_repo_path(
@@ -689,7 +758,11 @@ def main() -> None:
 
     normalized_config = {
         **config,
+        "comparison_family_id": (
+            comparison_family_id
+        ),
         "comparison_id": comparison_id,
+        "batch_number": batch_number,
         "source_config": str(config_path),
         "source_input_context": str(
             source_context
@@ -718,7 +791,11 @@ def main() -> None:
         "comparison_schema_version": (
             COMPARISON_SCHEMA_VERSION
         ),
+        "comparison_family_id": (
+            comparison_family_id
+        ),
         "comparison_id": comparison_id,
+        "batch_number": batch_number,
         "status": "running",
         "comparison_started_at": utc_now_iso(),
         "comparison_finished_at": None,
@@ -892,6 +969,56 @@ def main() -> None:
         manifest,
     )
 
+    summary_log_path = (
+        comparison_dir
+        / "summary"
+        / "summary_build.log"
+    )
+
+    summary_command = [
+        sys.executable,
+        str(SUMMARY_BUILDER),
+        "--comparison-dir",
+        str(comparison_dir),
+    ]
+
+    print()
+    print("=" * 78)
+    print(
+        "Building normalized comparison "
+        "summary artifacts"
+    )
+    print("=" * 78)
+
+    summary_result = run_streaming_command(
+        summary_command,
+        cwd=REPO_ROOT,
+        log_path=summary_log_path,
+    )
+
+    manifest["summary_artifacts"] = {
+        "status": (
+            "completed"
+            if summary_result["process_ok"]
+            else "failed"
+        ),
+        "returncode": summary_result["returncode"],
+        "started_at": summary_result["started_at"],
+        "finished_at": summary_result["finished_at"],
+        "elapsed_seconds": summary_result[
+            "elapsed_seconds"
+        ],
+        "summary_dir": str(
+            comparison_dir / "summary"
+        ),
+        "log_path": summary_result["log_path"],
+    }
+
+    write_json(
+        manifest_path,
+        manifest,
+    )
+
     print()
     print(
         "Wrote FRED model comparison manifest:"
@@ -903,9 +1030,48 @@ def main() -> None:
     ):
         print(f"{key}={value}")
 
-    if (
-        manifest["summary"]["n_process_failed"]
+    print()
+    print(
+        "Comparison experiment complete:"
+    )
+    print(
+        f"  comparison_id="
+        f"{comparison_id}"
+    )
+    print(
+        f"  family_id="
+        f"{comparison_family_id}"
+    )
+    print(
+        f"  batch_number="
+        f"{batch_number}"
+    )
+    print(
+        f"  summary_status="
+        f"{manifest['summary_artifacts']['status']}"
+    )
+    print(
+        f"  comparison_dir="
+        f"{comparison_dir}"
+    )
+
+    has_run_failures = (
+        manifest["summary"][
+            "n_process_failed"
+        ]
         > 0
+    )
+
+    summary_failed = (
+        manifest[
+            "summary_artifacts"
+        ]["status"]
+        != "completed"
+    )
+
+    if (
+        has_run_failures
+        or summary_failed
     ):
         raise SystemExit(1)
 

@@ -38,6 +38,8 @@ DEFAULT_RESULTS_ROOT = (
 
 CSV_FIELDS = [
     "comparison_id",
+    "comparison_family_id",
+    "batch_number",
     "comparison_window",
     "context_sha256",
     "run_label",
@@ -318,6 +320,20 @@ def build_normalized_row(
     return {
         "comparison_id": manifest.get(
             "comparison_id"
+        ),
+        "comparison_family_id": (
+            manifest.get(
+                "comparison_family_id",
+                manifest.get(
+                    "comparison_id"
+                ),
+            )
+        ),
+        "batch_number": (
+            manifest.get(
+                "batch_number",
+                1,
+            )
         ),
         "comparison_window": manifest.get(
             "comparison_window"
@@ -682,6 +698,14 @@ def build_markdown_report(
         "# FRED Model Comparison Report",
         "",
         f"- Comparison ID: `{summary['comparison_id']}`",
+        (
+            f"- Comparison family: "
+            f"`{summary.get('comparison_family_id')}`"
+        ),
+        (
+            f"- Batch number: "
+            f"`{summary.get('batch_number')}`"
+        ),
         f"- Generated at: `{summary['generated_at']}`",
         f"- Comparison window: `{summary.get('comparison_window')}`",
         f"- Context SHA-256: `{summary.get('context_sha256')}`",
@@ -979,6 +1003,20 @@ def main() -> None:
         ),
         "comparison_id": manifest.get(
             "comparison_id"
+        ),
+        "comparison_family_id": (
+            manifest.get(
+                "comparison_family_id",
+                manifest.get(
+                    "comparison_id"
+                ),
+            )
+        ),
+        "batch_number": (
+            manifest.get(
+                "batch_number",
+                1,
+            )
         ),
         "generated_at": utc_now_iso(),
         "source_manifest": str(

@@ -27,6 +27,12 @@ ARCHIVE_ROOT = REPO_ROOT / "benchmarks" / "results" / "archive"
 LEGACY_NARRATIVES_ROOT = REPO_ROOT / "benchmarks" / "results" / "narratives"
 LEGACY_AGG_ROOT = REPO_ROOT / "benchmarks" / "results" / "aggregated"
 SEMANTIC_PATTERN_CSV = AGG_ROOT / "semantic_pattern_summary.csv"
+MODEL_COMPARISONS_ROOT = (
+    REPO_ROOT
+    / "benchmarks"
+    / "results"
+    / "model_comparisons"
+)
 
 VERSION_COLS = [
     "harness_version",
@@ -956,6 +962,386 @@ def fmt_pct(x: Any) -> str:
     except Exception:
         return "—"
 
+
+def find_model_comparison_dirs(
+    root: Path,
+) -> list[Path]:
+    """Return model-comparison experiment directories, newest first."""
+    if not root.exists():
+        return []
+
+    return sorted(
+        [
+            path
+            for path in root.iterdir()
+            if path.is_dir()
+            and (
+                path
+                / "comparison_manifest.json"
+            ).exists()
+        ],
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+
+
+def true_evaluated_counts(
+    df: pd.DataFrame,
+    column: str,
+) -> tuple[int, int]:
+    """
+    Return:
+        n_true,
+        n_evaluated
+
+    Nullable boolean semantics:
+    - True  -> evaluated + passed/needed
+    - False -> evaluated + did not pass/need
+    - null  -> stage was not evaluated
+
+    Using pandas' nullable BooleanDtype avoids distinctions
+    between Python bool and numpy.bool_ values.
+    """
+    if df.empty or column not in df.columns:
+        return 0, 0
+
+    try:
+        values = df[column].astype("boolean")
+    except (TypeError, ValueError):
+        values = df[column].map(
+            lambda value: (
+                True
+                if str(value).strip().lower()
+                in {"true", "1", "yes"}
+                else False
+                if str(value).strip().lower()
+                in {"false", "0", "no"}
+                else pd.NA
+            )
+        ).astype("boolean")
+
+    evaluated = values.notna()
+
+    n_evaluated = int(
+        evaluated.sum()
+    )
+
+    n_true = int(
+        values[evaluated]
+        .fillna(False)
+        .sum()
+    )
+
+    return n_true, n_evaluated
+
+
+def format_count_rate(
+    numerator: int,
+    denominator: int,
+) -> str:
+    if denominator == 0:
+        return "—"
+
+    return (
+        f"{numerator}/{denominator} "
+        f"({numerator / denominator:.0%})"
+    )
+
+
+def make_fred_experiment_group_summary(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
+
+    d = df.copy()
+
+    for col in [
+        "model",
+        "prompt_variant",
+        "temperature",
+        "process_ok",
+        "audit_pass",
+        "repair_needed",
+        "accepted_output",
+        "elapsed_seconds",
+    ]:
+        if col not in d.columns:
+            d[col] = pd.NA
+
+    output_rows = []
+
+    grouped = d.groupby(
+        [
+            "model",
+            "prompt_variant",
+            "temperature",
+        ],
+        dropna=False,
+    )
+
+    for (
+        model,
+        prompt_variant,
+        temperature,
+    ), group in grouped:
+        process_true, process_eval = (
+            true_evaluated_counts(
+                group,
+                "process_ok",
+            )
+        )
+
+        audit_true, audit_eval = (
+            true_evaluated_counts(
+                group,
+                "audit_pass",
+            )
+        )
+
+        repair_true, repair_eval = (
+            true_evaluated_counts(
+                group,
+                "repair_needed",
+            )
+        )
+
+        accepted_true, accepted_eval = (
+            true_evaluated_counts(
+                group,
+                "accepted_output",
+            )
+        )
+
+        elapsed = pd.to_numeric(
+            group["elapsed_seconds"],
+            errors="coerce",
+        )
+
+        output_rows.append(
+            {
+                "model": (
+                    model
+                    if pd.notna(model)
+                    else "—"
+                ),
+                "prompt_variant": (
+                    prompt_variant
+                    if pd.notna(prompt_variant)
+                    else "—"
+                ),
+                "temperature": (
+                    temperature
+                    if pd.notna(temperature)
+                    else "—"
+                ),
+                "runs": len(group),
+                "process_ok": format_count_rate(
+                    process_true,
+                    process_eval,
+                ),
+                "audit_pass": format_count_rate(
+                    audit_true,
+                    audit_eval,
+                ),
+                "repair_needed": format_count_rate(
+                    repair_true,
+                    repair_eval,
+                ),
+                "accepted_output": format_count_rate(
+                    accepted_true,
+                    accepted_eval,
+                ),
+                "avg_elapsed_s": (
+                    round(elapsed.mean(), 2)
+                    if elapsed.notna().any()
+                    else pd.NA
+                ),
+            }
+        )
+
+    return pd.DataFrame(output_rows)
+
+
+PROMPT_VARIANT_ORDER = [
+    "weak",
+    "intermediate",
+    "hardened",
+]
+
+
+def format_temperature_value(value: Any) -> str:
+    try:
+        return f"{float(value):g}"
+    except Exception:
+        return str(value)
+
+
+def make_fred_rate_heatmap(
+    df: pd.DataFrame,
+    metric: str,
+    *,
+    evaluated_only: bool,
+) -> pd.DataFrame:
+    if df.empty or metric not in df.columns:
+        return pd.DataFrame()
+
+    rows = []
+
+    grouped = df.groupby(
+        [
+            "model",
+            "prompt_variant",
+            "temperature",
+        ],
+        dropna=False,
+        sort=False,
+    )
+
+    for (
+        model,
+        prompt_variant,
+        temperature,
+    ), group in grouped:
+        values = group[metric]
+
+        if evaluated_only:
+            values = values[
+                values.notna()
+            ]
+
+        denominator = (
+            len(values)
+            if evaluated_only
+            else len(group)
+        )
+
+        if denominator == 0:
+            rate = float("nan")
+        else:
+            numerator = int(
+                values.eq(True).sum()
+            )
+
+            rate = (
+                numerator
+                / denominator
+            )
+
+        temp_label = (
+            format_temperature_value(
+                temperature
+            )
+        )
+
+        rows.append(
+            {
+                "model_temp": (
+                    f"{model} | t={temp_label}"
+                ),
+                "prompt_variant": (
+                    prompt_variant
+                ),
+                "rate": rate,
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame()
+
+    heat = pd.DataFrame(rows).pivot(
+        index="model_temp",
+        columns="prompt_variant",
+        values="rate",
+    )
+
+    # Seaborn expects ordinary numeric data.
+    # Convert nullable/object values and missing cells
+    # into a float64 matrix with NaN.
+    heat = heat.apply(
+        pd.to_numeric,
+        errors="coerce",
+    ).astype(float)
+
+    available_prompts = [
+        prompt
+        for prompt in PROMPT_VARIANT_ORDER
+        if prompt in heat.columns
+    ]
+
+    extra_prompts = [
+        prompt
+        for prompt in heat.columns
+        if prompt
+        not in available_prompts
+    ]
+
+    return heat[
+        available_prompts
+        + extra_prompts
+    ]
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison_manifest(
+    comparison_dir: str,
+) -> dict[str, Any]:
+    path = (
+        Path(comparison_dir)
+        / "comparison_manifest.json"
+    )
+
+    return load_json_file(path)
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison_rows(
+    comparison_dir: str,
+) -> pd.DataFrame:
+    path = (
+        Path(comparison_dir)
+        / "summary"
+        / "comparison_rows.jsonl"
+    )
+
+    if not path.exists():
+        return pd.DataFrame()
+
+    rows = []
+
+    try:
+        with path.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+            for line in file:
+                line = line.strip()
+
+                if not line:
+                    continue
+
+                rows.append(
+                    json.loads(line)
+                )
+    except Exception:
+        return pd.DataFrame()
+
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison_summary(
+    comparison_dir: str,
+) -> dict[str, Any]:
+    path = (
+        Path(comparison_dir)
+        / "summary"
+        / "comparison_summary.json"
+    )
+
+    return load_json_file(path)
+
+
 @st.cache_data(show_spinner=False)
 def load_agg() -> pd.DataFrame:
     if AGG_PARQUET.exists():
@@ -1010,12 +1396,1073 @@ def load_semantic_patterns():
         return pd.read_csv(SEMANTIC_PATTERN_CSV)
     return pd.DataFrame()
 
+@st.cache_data(show_spinner=False)
+def load_model_comparison_config(
+    comparison_dir: str,
+) -> dict[str, Any]:
+    path = (
+        Path(comparison_dir)
+        / "comparison_config.json"
+    )
+
+    return load_json_file(path)
+
+
+def infer_comparison_family_id(
+    *,
+    manifest: dict[str, Any],
+    comparison_dir: Path,
+) -> str:
+    family_id = manifest.get(
+        "comparison_family_id"
+    )
+
+    if family_id:
+        return str(family_id)
+
+    comparison_id = str(
+        manifest.get(
+            "comparison_id",
+            comparison_dir.name,
+        )
+    )
+
+    if "__batch_" in comparison_id:
+        return comparison_id.split(
+            "__batch_",
+            1,
+        )[0]
+
+    return comparison_id
+
+
+def infer_batch_number(
+    *,
+    manifest: dict[str, Any],
+    comparison_dir: Path,
+) -> int:
+    value = manifest.get("batch_number")
+
+    if value is not None:
+        try:
+            return int(value)
+        except Exception:
+            pass
+
+    name = comparison_dir.name
+
+    if "__batch_" in name:
+        try:
+            return int(
+                name.rsplit(
+                    "__batch_",
+                    1,
+                )[1]
+            )
+        except Exception:
+            pass
+
+    return 1
+
+
+def expected_runs_from_config(
+    config: dict[str, Any],
+) -> int:
+    total = 0
+
+    for run in config.get(
+        "runs",
+        [],
+    ):
+        try:
+            total += int(
+                run.get(
+                    "repetitions",
+                    1,
+                )
+            )
+        except Exception:
+            continue
+
+    return total
+
+
+def comparison_design_signature(
+    config: dict[str, Any],
+) -> tuple:
+    """
+    Return the experimental design components that
+    must match before batches can be pooled.
+    """
+    design_rows = []
+
+    for run in config.get(
+        "runs",
+        [],
+    ):
+        mode = run.get("mode")
+
+        temperature = (
+            run.get("temperature")
+            if mode == "llm"
+            else None
+        )
+
+        if temperature is not None:
+            try:
+                temperature = float(
+                    temperature
+                )
+            except Exception:
+                temperature = str(
+                    temperature
+                )
+
+        design_rows.append(
+            (
+                str(
+                    run.get(
+                        "label",
+                        "",
+                    )
+                ),
+                str(
+                    mode
+                    or ""
+                ),
+                run.get("model"),
+                run.get(
+                    "prompt_variant"
+                ),
+                temperature,
+                int(
+                    run.get(
+                        "repetitions",
+                        1,
+                    )
+                ),
+            )
+        )
+
+    return tuple(
+        sorted(
+            design_rows,
+            key=lambda row: row[0],
+        )
+    )
+
+
+def collect_compatible_comparison_rows(
+    *,
+    selected_comparison: str,
+    comparison_dirs: list[Path],
+) -> tuple[
+    pd.DataFrame,
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    selected_dir = Path(
+        selected_comparison
+    )
+
+    selected_manifest = (
+        load_model_comparison_manifest(
+            selected_comparison
+        )
+    )
+
+    selected_config = (
+        load_model_comparison_config(
+            selected_comparison
+        )
+    )
+
+    selected_family = (
+        infer_comparison_family_id(
+            manifest=selected_manifest,
+            comparison_dir=selected_dir,
+        )
+    )
+
+    selected_context = (
+        selected_manifest.get(
+            "context_sha256"
+        )
+    )
+
+    selected_window = (
+        selected_manifest.get(
+            "comparison_window"
+        )
+    )
+
+    selected_design = (
+        comparison_design_signature(
+            selected_config
+        )
+    )
+
+    frames = []
+    included = []
+    excluded = []
+
+    for comparison_dir in comparison_dirs:
+        comparison_dir_str = str(
+            comparison_dir
+        )
+
+        manifest = (
+            load_model_comparison_manifest(
+                comparison_dir_str
+            )
+        )
+
+        config = (
+            load_model_comparison_config(
+                comparison_dir_str
+            )
+        )
+
+        family_id = (
+            infer_comparison_family_id(
+                manifest=manifest,
+                comparison_dir=(
+                    comparison_dir
+                ),
+            )
+        )
+
+        if family_id != selected_family:
+            continue
+
+        reasons = []
+
+        if (
+            manifest.get(
+                "context_sha256"
+            )
+            != selected_context
+        ):
+            reasons.append(
+                "context_sha256"
+            )
+
+        if (
+            manifest.get(
+                "comparison_window"
+            )
+            != selected_window
+        ):
+            reasons.append(
+                "comparison_window"
+            )
+
+        if (
+            comparison_design_signature(
+                config
+            )
+            != selected_design
+        ):
+            reasons.append(
+                "experimental_design"
+            )
+
+        if reasons:
+            excluded.append(
+                {
+                    "comparison_id": (
+                        comparison_dir.name
+                    ),
+                    "reasons": reasons,
+                }
+            )
+            continue
+
+        normalized_rows = (
+            load_model_comparison_rows(
+                comparison_dir_str
+            )
+        )
+
+        manifest_rows = pd.DataFrame(
+            manifest.get(
+                "run_results",
+                [],
+            )
+        )
+
+        # Completed batches should normally use the
+        # normalized dataset. Running batches use
+        # incremental manifest rows.
+        if (
+            not normalized_rows.empty
+            and (
+                manifest_rows.empty
+                or len(normalized_rows)
+                >= len(manifest_rows)
+            )
+        ):
+            batch_rows = (
+                normalized_rows.copy()
+            )
+            row_source = "normalized"
+        else:
+            batch_rows = (
+                manifest_rows.copy()
+            )
+            row_source = "manifest"
+
+        if batch_rows.empty:
+            continue
+
+        comparison_id = str(
+            manifest.get(
+                "comparison_id",
+                comparison_dir.name,
+            )
+        )
+
+        batch_number = (
+            infer_batch_number(
+                manifest=manifest,
+                comparison_dir=(
+                    comparison_dir
+                ),
+            )
+        )
+
+        # Backfill provenance for batch 1,
+        # which predates family/batch fields.
+        batch_rows[
+            "comparison_id"
+        ] = comparison_id
+
+        batch_rows[
+            "comparison_family_id"
+        ] = family_id
+
+        batch_rows[
+            "batch_number"
+        ] = batch_number
+
+        frames.append(batch_rows)
+
+        expected_runs = (
+            manifest.get(
+                "summary",
+                {},
+            ).get(
+                "n_expected_runs"
+            )
+        )
+
+        if expected_runs is None:
+            expected_runs = (
+                expected_runs_from_config(
+                    config
+                )
+            )
+
+        included.append(
+            {
+                "comparison_id": (
+                    comparison_id
+                ),
+                "batch_number": (
+                    batch_number
+                ),
+                "status": (
+                    manifest.get(
+                        "status"
+                    )
+                ),
+                "git_commit": (
+                    manifest.get(
+                        "git_commit"
+                    )
+                ),
+                "expected_runs": int(
+                    expected_runs
+                    or 0
+                ),
+                "attempted_runs": (
+                    len(batch_rows)
+                ),
+                "row_source": (
+                    row_source
+                ),
+            }
+        )
+
+    if not frames:
+        return (
+            pd.DataFrame(),
+            included,
+            excluded,
+        )
+
+    combined = pd.concat(
+        frames,
+        ignore_index=True,
+        sort=False,
+    )
+
+    sort_cols = [
+        col
+        for col in [
+            "batch_number",
+            "model",
+            "prompt_variant",
+            "temperature",
+            "repetition",
+        ]
+        if col in combined.columns
+    ]
+
+    if sort_cols:
+        combined = (
+            combined
+            .sort_values(
+                sort_cols,
+                kind="stable",
+            )
+            .reset_index(
+                drop=True
+            )
+        )
+
+    included = sorted(
+        included,
+        key=lambda item: (
+            item["batch_number"]
+        ),
+    )
+
+    return (
+        combined,
+        included,
+        excluded,
+    )
+    
+
 # -------------------------
 # Tabs
 # -------------------------
-tab_run, tab_agg, tab_audit, tab_trace = st.tabs(
-    ["Single Run", "All Runs (runs_master)", "Audit Analytics", "Narrative Traceability"]
+(
+    tab_experiments,
+    tab_run,
+    tab_agg,
+    tab_audit,
+    tab_trace,
+) = st.tabs(
+    [
+        "Model Experiments",
+        "Single Run",
+        "All Runs (runs_master)",
+        "Audit Analytics",
+        "Narrative Traceability",
+    ]
 )
+
+with tab_experiments:
+    st.subheader("Model Experiments")
+
+    st.caption(
+        "Cross-model FRED experiments from "
+        "`benchmarks/results/model_comparisons`."
+    )
+
+    comparison_dirs = (
+        find_model_comparison_dirs(
+            MODEL_COMPARISONS_ROOT
+        )
+    )
+
+    if not comparison_dirs:
+        st.info(
+            "No model-comparison experiments found yet."
+        )
+    else:
+        selected_comparison = st.selectbox(
+            "Experiment",
+            options=[
+                str(path)
+                for path in comparison_dirs
+            ],
+            format_func=lambda value: (
+                Path(value).name
+            ),
+            key="model_experiment_select",
+        )
+        
+        if st.button(
+            "Refresh experiment",
+            key="refresh_model_experiment",
+        ):
+            st.cache_data.clear()
+            st.rerun()
+        
+        view_mode = st.radio(
+            "View",
+            options=[
+                "Single Batch",
+                "All Compatible Batches",
+            ],
+            horizontal=True,
+            key="model_experiment_view_mode",
+        )
+
+        comparison_dir = Path(
+            selected_comparison
+        )
+
+        manifest = (
+            load_model_comparison_manifest(
+                selected_comparison
+            )
+        )
+
+        rows = load_model_comparison_rows(
+            selected_comparison
+        )
+        
+        run_results = manifest.get(
+            "run_results",
+            [],
+        )
+
+        manifest_rows = pd.DataFrame(
+            run_results
+        )
+
+        if view_mode == "Single Batch":
+            if (
+                not manifest_rows.empty
+                and len(manifest_rows) > len(rows)
+            ):
+                experiment_rows = (
+                    manifest_rows
+                )
+
+                experiment_row_source = (
+                    "incremental comparison manifest"
+                )
+            else:
+                experiment_rows = rows
+
+                experiment_row_source = (
+                    "normalized comparison summary"
+                )
+
+            included_batches = [
+                {
+                    "comparison_id": (
+                        manifest.get(
+                            "comparison_id",
+                            comparison_dir.name,
+                        )
+                    ),
+                    "batch_number": (
+                        infer_batch_number(
+                            manifest=manifest,
+                            comparison_dir=(
+                                comparison_dir
+                            ),
+                        )
+                    ),
+                    "status": (
+                        manifest.get(
+                            "status"
+                        )
+                    ),
+                    "git_commit": (
+                        manifest.get(
+                            "git_commit"
+                        )
+                    ),
+                    "expected_runs": (
+                        manifest.get(
+                            "summary",
+                            {},
+                        ).get(
+                            "n_expected_runs",
+                            len(
+                                experiment_rows
+                            ),
+                        )
+                    ),
+                    "attempted_runs": (
+                        len(
+                            experiment_rows
+                        )
+                    ),
+                    "row_source": (
+                        experiment_row_source
+                    ),
+                }
+            ]
+
+            excluded_batches = []
+
+        else:
+            (
+                experiment_rows,
+                included_batches,
+                excluded_batches,
+            ) = collect_compatible_comparison_rows(
+                selected_comparison=(
+                    selected_comparison
+                ),
+                comparison_dirs=(
+                    comparison_dirs
+                ),
+            )
+
+            experiment_row_source = (
+                "all compatible comparison batches"
+            )
+
+        manifest_summary = manifest.get(
+            "summary",
+            {},
+        )
+
+        n_expected = sum(
+            int(
+                batch.get(
+                    "expected_runs",
+                    0,
+                )
+                or 0
+            )
+            for batch in included_batches
+        )
+
+        n_attempted = len(
+            experiment_rows
+        )
+
+        n_process_ok, _ = (
+            true_evaluated_counts(
+                experiment_rows,
+                "process_ok",
+            )
+        )
+
+        n_accepted, _ = (
+            true_evaluated_counts(
+                experiment_rows,
+                "accepted_output",
+            )
+        )
+
+        n_audit_pass, audit_evaluated = (
+            true_evaluated_counts(
+                experiment_rows,
+                "audit_pass",
+            )
+        )
+
+        (
+            n_repair_needed,
+            repair_evaluated,
+        ) = true_evaluated_counts(
+            experiment_rows,
+            "repair_needed",
+        )
+
+        summary = (
+            load_model_comparison_summary(
+                selected_comparison
+            )
+        )
+
+        st.caption(
+            f"Experiment directory: "
+            f"`{comparison_dir}`"
+        )
+
+        st.write(
+            "**Status:**",
+            manifest.get(
+                "status",
+                "unknown",
+            ),
+        )
+
+        st.write(
+            "**Comparison window:**",
+            manifest.get(
+                "comparison_window",
+                "—",
+            ),
+        )
+
+        st.write(
+            "**Git commit:**",
+            manifest.get(
+                "git_commit",
+                "—",
+            ),
+        )
+        
+        if (
+            view_mode
+            == "All Compatible Batches"
+        ):
+            st.write(
+                "**Compatible batches:**",
+                len(included_batches),
+            )
+
+            st.write(
+                "**Rows in current view:**",
+                len(experiment_rows),
+            )
+
+            git_commits = sorted(
+                {
+                    str(
+                        batch.get(
+                            "git_commit"
+                        )
+                    )
+                    for batch
+                    in included_batches
+                    if batch.get(
+                        "git_commit"
+                    )
+                }
+            )
+
+            if len(git_commits) > 1:
+                st.warning(
+                    "Compatible batches span multiple "
+                    "Git commits. Experimental design "
+                    "and source context match, so rows "
+                    "are included; Git differences are "
+                    "retained as provenance."
+                )
+
+            if excluded_batches:
+                st.caption(
+                    f"{len(excluded_batches)} "
+                    "same-family batch(es) were excluded "
+                    "because their context, comparison "
+                    "window, or experimental design "
+                    "did not match."
+                )
+
+            with st.expander(
+                "Compatible batch details"
+            ):
+                st.dataframe(
+                    pd.DataFrame(
+                        included_batches
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+        
+        st.subheader("Experiment Progress")
+
+        if n_expected > 0:
+            st.progress(
+                min(
+                    n_attempted / n_expected,
+                    1.0,
+                )
+            )
+
+        st.caption(
+            f"{n_attempted} / "
+            f"{n_expected} runs attempted"
+        )
+
+        k1, k2, k3, k4, k5 = st.columns(5)
+
+        k1.metric(
+            "Attempted",
+            f"{n_attempted}/{n_expected}",
+        )
+
+        k2.metric(
+            "Process OK",
+            format_count_rate(
+                n_process_ok,
+                n_attempted,
+            ),
+        )
+
+        k3.metric(
+            "Accepted",
+            format_count_rate(
+                n_accepted,
+                n_attempted,
+            ),
+        )
+
+        k4.metric(
+            "Audit Pass",
+            format_count_rate(
+                n_audit_pass,
+                audit_evaluated,
+            ),
+        )
+
+        k5.metric(
+            "Repair Needed",
+            format_count_rate(
+                n_repair_needed,
+                repair_evaluated,
+            ),
+        )
+
+        st.caption(
+            "Audit and repair rates use only "
+            "runs that reached those stages."
+        )
+        
+        st.subheader(
+            "Model × Prompt × Temperature"
+        )
+
+        group_summary = (
+            make_fred_experiment_group_summary(
+                experiment_rows
+            )
+        )
+
+        if group_summary.empty:
+            st.info(
+                "No experiment rows available yet."
+            )
+        else:
+            st.dataframe(
+                group_summary,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        st.subheader("Experiment Heatmaps")
+
+        process_heat = make_fred_rate_heatmap(
+            experiment_rows,
+            "process_ok",
+            evaluated_only=False,
+        )
+
+        audit_heat = make_fred_rate_heatmap(
+            experiment_rows,
+            "audit_pass",
+            evaluated_only=True,
+        )
+
+        accepted_heat = make_fred_rate_heatmap(
+            experiment_rows,
+            "accepted_output",
+            evaluated_only=False,
+        )
+
+        heat_col1, heat_col2, heat_col3 = (
+            st.columns(3)
+        )
+
+
+        def render_experiment_heatmap(
+            container,
+            heat: pd.DataFrame,
+            title: str,
+        ) -> None:
+            with container:
+                st.markdown(f"#### {title}")
+
+                if heat.empty:
+                    st.info(
+                        "No data available."
+                    )
+                    return
+
+                fig, ax = plt.subplots(
+                    figsize=(
+                        6,
+                        max(
+                            3,
+                            0.55 * len(heat),
+                        ),
+                    )
+                )
+
+                annot = format_heatmap_labels(
+                    heat
+                )
+
+                hm = sns.heatmap(
+                    heat,
+                    annot=annot,
+                    fmt="",
+                    cmap="YlGn",
+                    vmin=0.0,
+                    vmax=1.0,
+                    linewidths=0.5,
+                    linecolor="white",
+                    ax=ax,
+                )
+
+                colorbar = (
+                    hm.collections[0]
+                    .colorbar
+                )
+
+                colorbar.set_ticks(
+                    [
+                        0.0,
+                        0.25,
+                        0.5,
+                        0.75,
+                        1.0,
+                    ]
+                )
+
+                colorbar.set_ticklabels(
+                    [
+                        "0%",
+                        "25%",
+                        "50%",
+                        "75%",
+                        "100%",
+                    ]
+                )
+
+                ax.set_xlabel("Prompt")
+                ax.set_ylabel(
+                    "Model × temperature"
+                )
+
+                fig.tight_layout()
+
+                st.pyplot(
+                    fig,
+                    use_container_width=True,
+                )
+
+                plt.close(fig)
+
+
+        render_experiment_heatmap(
+            heat_col1,
+            process_heat,
+            "Process Completion",
+        )
+
+        render_experiment_heatmap(
+            heat_col2,
+            audit_heat,
+            "Audit Pass",
+        )
+
+        render_experiment_heatmap(
+            heat_col3,
+            accepted_heat,
+            "Accepted Output",
+        )
+
+        st.caption(
+            "Process and acceptance rates use all runs. "
+            "Audit rates use only runs that reached audit; "
+            "blank cells were not evaluated."
+        )
+        
+        st.subheader("Individual Runs")
+
+        compact_cols = [
+            "comparison_id",
+            "batch_number",
+            "run_label",
+            "model",
+            "prompt_variant",
+            "temperature",
+            "repetition",
+            "process_ok",
+            "audit_pass",
+            "repair_needed",
+            "accepted_output",
+            "failure_stage",
+            "elapsed_seconds",
+        ]
+
+        available_compact_cols = [
+            col
+            for col in compact_cols
+            if col in experiment_rows.columns
+        ]
+
+        st.caption(
+            f"Source: {experiment_row_source}"
+        )
+
+        st.dataframe(
+            experiment_rows[
+                available_compact_cols
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        if (
+            manifest.get("status") == "completed"
+            and rows.empty
+        ):
+            st.warning(
+                "Experiment is complete, but normalized summary "
+                "artifacts have not been built yet."
+            )
+
+        if (
+            view_mode
+            == "All Compatible Batches"
+        ):
+            if not experiment_rows.empty:
+                with st.expander(
+                    "Full compatible-batch row payload"
+                ):
+                    st.dataframe(
+                        experiment_rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+        else:
+            if (
+                manifest.get("status")
+                == "completed"
+                and rows.empty
+            ):
+                st.warning(
+                    "Experiment is complete, but "
+                    "normalized summary artifacts "
+                    "have not been built yet."
+                )
+
+            if not manifest_rows.empty:
+                with st.expander(
+                    "Full live manifest row payload"
+                ):
+                    st.dataframe(
+                        manifest_rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+            if not rows.empty:
+                with st.expander(
+                    "Full normalized row payload"
+                ):
+                    st.dataframe(
+                        rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
 with tab_run:
     runs_all = find_result_folders(RAW_RUNS_ROOT)
