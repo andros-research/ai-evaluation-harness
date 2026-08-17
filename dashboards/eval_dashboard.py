@@ -987,18 +987,50 @@ def find_model_comparison_dirs(
 
 def true_evaluated_counts(
     df: pd.DataFrame,
-    col: str,
+    column: str,
 ) -> tuple[int, int]:
-    if df.empty or col not in df.columns:
+    """
+    Return:
+        n_true,
+        n_evaluated
+
+    Nullable boolean semantics:
+    - True  -> evaluated + passed/needed
+    - False -> evaluated + did not pass/need
+    - null  -> stage was not evaluated
+
+    Using pandas' nullable BooleanDtype avoids distinctions
+    between Python bool and numpy.bool_ values.
+    """
+    if df.empty or column not in df.columns:
         return 0, 0
 
-    values = df[col].dropna()
+    try:
+        values = df[column].astype("boolean")
+    except (TypeError, ValueError):
+        values = df[column].map(
+            lambda value: (
+                True
+                if str(value).strip().lower()
+                in {"true", "1", "yes"}
+                else False
+                if str(value).strip().lower()
+                in {"false", "0", "no"}
+                else pd.NA
+            )
+        ).astype("boolean")
 
-    if values.empty:
-        return 0, 0
+    evaluated = values.notna()
 
-    n_true = int(values.eq(True).sum())
-    n_evaluated = int(len(values))
+    n_evaluated = int(
+        evaluated.sum()
+    )
+
+    n_true = int(
+        values[evaluated]
+        .fillna(False)
+        .sum()
+    )
 
     return n_true, n_evaluated
 
@@ -2037,22 +2069,6 @@ with tab_experiments:
         ) = true_evaluated_counts(
             experiment_rows,
             "repair_needed",
-        )
-
-        audit_evaluated = sum(
-            isinstance(
-                result.get("audit_pass"),
-                bool,
-            )
-            for result in run_results
-        )
-
-        repair_evaluated = sum(
-            isinstance(
-                result.get("repair_needed"),
-                bool,
-            )
-            for result in run_results
         )
 
         summary = (
