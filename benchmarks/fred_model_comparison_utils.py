@@ -160,3 +160,25 @@ def comparison_design_signature(
             key=lambda row: row[0],
         )
     )
+
+
+def find_model_comparison_dirs(
+    root: Path,
+) -> list[Path]:
+    """Return model-comparison experiment directories, newest first."""
+    if not root.exists():
+        return []
+
+    return sorted(
+        [
+            path
+            for path in root.iterdir()
+            if path.is_dir()
+            and (
+                path
+                / "comparison_manifest.json"
+            ).exists()
+        ],
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )

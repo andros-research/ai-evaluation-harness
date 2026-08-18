@@ -19,6 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 from benchmarks.fred_model_comparison_utils import (
     comparison_design_signature,
     expected_runs_from_config,
+    find_model_comparison_dirs,
     infer_batch_number,
     infer_comparison_family_id,
 )
@@ -974,28 +975,6 @@ def fmt_pct(x: Any) -> str:
         return f"{float(x):.2%}"
     except Exception:
         return "—"
-
-
-def find_model_comparison_dirs(
-    root: Path,
-) -> list[Path]:
-    """Return model-comparison experiment directories, newest first."""
-    if not root.exists():
-        return []
-
-    return sorted(
-        [
-            path
-            for path in root.iterdir()
-            if path.is_dir()
-            and (
-                path
-                / "comparison_manifest.json"
-            ).exists()
-        ],
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
 
 
 def true_evaluated_counts(
