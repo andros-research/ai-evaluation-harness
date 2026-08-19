@@ -60,6 +60,9 @@ PROMPT_ORDER = {
     "hardened": 2,
 }
 
+TEMPERATURE_BASELINE = 0.0
+TEMPERATURE_COMPARISON = 0.7
+
 
 def true_count(
     rows: list[dict[str, Any]],
@@ -372,6 +375,125 @@ def summarize_rows(
     }
 
 
+def rate_delta_pp(
+    *,
+    baseline: float | None,
+    comparison: float | None,
+) -> float | None:
+    """
+    Return comparison minus baseline in percentage points.
+
+    Undefined rates remain undefined rather than being coerced to zero.
+    """
+    if (
+        baseline is None
+        or comparison is None
+    ):
+        return None
+
+    return (
+        comparison - baseline
+    ) * 100.0
+
+
+def summarize_temperature_effects(
+    conditions: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Compare t=0.7 against t=0.0 within each prompt regime.
+
+    Positive deltas mean the measured rate is higher at t=0.7.
+    Negative deltas mean the measured rate is lower at t=0.7.
+    """
+    baseline_key = str(
+        TEMPERATURE_BASELINE
+    )
+
+    comparison_key = str(
+        TEMPERATURE_COMPARISON
+    )
+
+    effects = {}
+
+    for prompt_variant, temp_map in conditions.items():
+        baseline = temp_map.get(
+            baseline_key
+        )
+
+        comparison = temp_map.get(
+            comparison_key
+        )
+
+        if (
+            baseline is None
+            or comparison is None
+        ):
+            continue
+
+        baseline_rates = baseline[
+            "rates"
+        ]
+
+        comparison_rates = comparison[
+            "rates"
+        ]
+
+        effects[
+            prompt_variant
+        ] = {
+            "baseline_temperature": (
+                TEMPERATURE_BASELINE
+            ),
+            "comparison_temperature": (
+                TEMPERATURE_COMPARISON
+            ),
+            "deltas_pp": {
+                "process_completion_delta_pp": (
+                    rate_delta_pp(
+                        baseline=baseline_rates[
+                            "process_completion_rate"
+                        ],
+                        comparison=comparison_rates[
+                            "process_completion_rate"
+                        ],
+                    )
+                ),
+                "audit_pass_delta_pp": (
+                    rate_delta_pp(
+                        baseline=baseline_rates[
+                            "audit_pass_rate"
+                        ],
+                        comparison=comparison_rates[
+                            "audit_pass_rate"
+                        ],
+                    )
+                ),
+                "acceptance_delta_pp": (
+                    rate_delta_pp(
+                        baseline=baseline_rates[
+                            "acceptance_rate"
+                        ],
+                        comparison=comparison_rates[
+                            "acceptance_rate"
+                        ],
+                    )
+                ),
+                "repair_delta_pp": (
+                    rate_delta_pp(
+                        baseline=baseline_rates[
+                            "repair_rate"
+                        ],
+                        comparison=comparison_rates[
+                            "repair_rate"
+                        ],
+                    )
+                ),
+            },
+        }
+
+    return effects
+
+
 def build_model_profile(
     *,
     model: str,
@@ -466,6 +588,12 @@ def build_model_profile(
     overall = summarize_rows(
         model_rows
     )
+    
+    temperature_effects = (
+        summarize_temperature_effects(
+            conditions
+        )
+    )
 
     return {
         "population": overall[
@@ -478,6 +606,9 @@ def build_model_profile(
             "elapsed_seconds"
         ],
         "conditions": conditions,
+        "temperature_effects": (
+            temperature_effects
+        ),
     }
 
 
