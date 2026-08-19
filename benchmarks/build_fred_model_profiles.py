@@ -63,6 +63,17 @@ PROMPT_ORDER = {
 TEMPERATURE_BASELINE = 0.0
 TEMPERATURE_COMPARISON = 0.7
 
+PROMPT_TRANSITIONS = (
+    (
+        "weak",
+        "intermediate",
+    ),
+    (
+        "intermediate",
+        "hardened",
+    ),
+)
+
 
 def true_count(
     rows: list[dict[str, Any]],
@@ -494,6 +505,137 @@ def summarize_temperature_effects(
     return effects
 
 
+def summarize_prompt_effects(
+    conditions: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Compare adjacent prompt-specificity regimes at fixed temperature.
+
+    Transitions:
+    - weak -> intermediate
+    - intermediate -> hardened
+
+    Positive deltas mean the measured rate is higher under the
+    more specific prompt. Negative deltas mean it is lower.
+
+    Undefined rates remain undefined rather than being coerced to zero.
+    """
+    temperatures = sorted(
+        {
+            temperature
+            for temp_map in conditions.values()
+            for temperature in temp_map
+        },
+        key=float,
+    )
+
+    effects = {}
+
+    for temperature in temperatures:
+        temperature_effects = {}
+
+        for (
+            baseline_prompt,
+            comparison_prompt,
+        ) in PROMPT_TRANSITIONS:
+            baseline = (
+                conditions.get(
+                    baseline_prompt,
+                    {},
+                ).get(
+                    temperature
+                )
+            )
+
+            comparison = (
+                conditions.get(
+                    comparison_prompt,
+                    {},
+                ).get(
+                    temperature
+                )
+            )
+
+            if (
+                baseline is None
+                or comparison is None
+            ):
+                continue
+
+            baseline_rates = baseline[
+                "rates"
+            ]
+
+            comparison_rates = comparison[
+                "rates"
+            ]
+
+            transition_key = (
+                f"{baseline_prompt}"
+                f"_to_"
+                f"{comparison_prompt}"
+            )
+
+            temperature_effects[
+                transition_key
+            ] = {
+                "baseline_prompt": (
+                    baseline_prompt
+                ),
+                "comparison_prompt": (
+                    comparison_prompt
+                ),
+                "deltas_pp": {
+                    "process_completion_delta_pp": (
+                        rate_delta_pp(
+                            baseline=baseline_rates[
+                                "process_completion_rate"
+                            ],
+                            comparison=comparison_rates[
+                                "process_completion_rate"
+                            ],
+                        )
+                    ),
+                    "audit_pass_delta_pp": (
+                        rate_delta_pp(
+                            baseline=baseline_rates[
+                                "audit_pass_rate"
+                            ],
+                            comparison=comparison_rates[
+                                "audit_pass_rate"
+                            ],
+                        )
+                    ),
+                    "acceptance_delta_pp": (
+                        rate_delta_pp(
+                            baseline=baseline_rates[
+                                "acceptance_rate"
+                            ],
+                            comparison=comparison_rates[
+                                "acceptance_rate"
+                            ],
+                        )
+                    ),
+                    "repair_delta_pp": (
+                        rate_delta_pp(
+                            baseline=baseline_rates[
+                                "repair_rate"
+                            ],
+                            comparison=comparison_rates[
+                                "repair_rate"
+                            ],
+                        )
+                    ),
+                },
+            }
+
+        effects[
+            temperature
+        ] = temperature_effects
+
+    return effects
+
+
 def build_model_profile(
     *,
     model: str,
@@ -588,9 +730,15 @@ def build_model_profile(
     overall = summarize_rows(
         model_rows
     )
-    
+
     temperature_effects = (
         summarize_temperature_effects(
+            conditions
+        )
+    )
+
+    prompt_effects = (
+        summarize_prompt_effects(
             conditions
         )
     )
@@ -608,6 +756,9 @@ def build_model_profile(
         "conditions": conditions,
         "temperature_effects": (
             temperature_effects
+        ),
+        "prompt_effects": (
+            prompt_effects
         ),
     }
 
