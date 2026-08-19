@@ -122,6 +122,124 @@ def elapsed_values(
     return values
 
 
+OUTCOME_STAGES = (
+    "accepted",
+    "generation_contract_failure",
+    "other_process_failure",
+    "audit_failure",
+    "completed_unaccepted_other",
+)
+
+
+def classify_outcome_stage(
+    row: dict[str, Any],
+) -> str:
+    """Classify one run into a mutually exclusive observed outcome stage."""
+    if row.get("accepted_output") is True:
+        return "accepted"
+
+    if row.get("process_ok") is False:
+        if (
+            row.get("failure_stage")
+            == "generate_fred_narrative_from_claims"
+        ):
+            return "generation_contract_failure"
+
+        return "other_process_failure"
+
+    if row.get("audit_pass") is False:
+        return "audit_failure"
+
+    return "completed_unaccepted_other"
+
+
+def summarize_outcome_stages(
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Summarize mutually exclusive run outcome stages."""
+    counts = {
+        stage: 0
+        for stage in OUTCOME_STAGES
+    }
+
+    for row in rows:
+        stage = classify_outcome_stage(
+            row
+        )
+
+        counts[stage] += 1
+
+    n_attempted = len(rows)
+
+    return {
+        "counts": counts,
+        "rates": {
+            stage: safe_rate(
+                count,
+                n_attempted,
+            )
+            for stage, count in counts.items()
+        },
+    }
+
+
+def summarize_audit_errors(
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Summarize multi-label audit-error incidence.
+
+    Rates use audit-failed rows as the denominator.
+    Because errors are multi-label, incidence rates may sum above 1.0.
+    """
+    failed_rows = [
+        row
+        for row in rows
+        if row.get("audit_pass") is False
+    ]
+
+    counts: dict[str, int] = {}
+
+    for row in failed_rows:
+        for error in (
+            row.get("audit_errors")
+            or []
+        ):
+            error = str(error)
+
+            counts[error] = (
+                counts.get(
+                    error,
+                    0,
+                )
+                + 1
+            )
+
+    n_audit_failures = len(
+        failed_rows
+    )
+
+    return {
+        "n_audit_failures": (
+            n_audit_failures
+        ),
+        "errors": {
+            error: {
+                "count": count,
+                "incidence_rate": (
+                    safe_rate(
+                        count,
+                        n_audit_failures,
+                    )
+                ),
+            }
+            for error, count in sorted(
+                counts.items()
+            )
+        },
+    }
+
+
 def summarize_rows(
     rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -241,6 +359,16 @@ def summarize_rows(
                 else None
             ),
         },
+        "outcome_stages": (
+            summarize_outcome_stages(
+                rows
+            )
+        ),
+        "audit_error_incidence": (
+            summarize_audit_errors(
+                rows
+            )
+        ),
     }
 
 
