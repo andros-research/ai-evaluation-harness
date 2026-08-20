@@ -636,6 +636,226 @@ def summarize_prompt_effects(
     return effects
 
 
+def summarize_rate_distribution(
+    values: list[float],
+) -> dict[str, Any]:
+    """Summarize a collection of batch-level rates."""
+    if not values:
+        return {
+            "n_batches": 0,
+            "mean": None,
+            "median": None,
+            "population_sd": None,
+            "min": None,
+            "max": None,
+        }
+
+    return {
+        "n_batches": len(values),
+        "mean": statistics.mean(values),
+        "median": statistics.median(values),
+        "population_sd": statistics.pstdev(values),
+        "min": min(values),
+        "max": max(values),
+    }
+
+
+def summarize_batch_stability(
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Summarize repeated-run behavior across experimental batches.
+
+    Process and acceptance use fixed attempted-run denominators.
+
+    Audit retains evaluated/pass counts jointly because the number
+    reaching audit may vary by batch.
+    """
+    batches: dict[int, list[dict[str, Any]]] = {}
+
+    for row in rows:
+        batch_number = int(
+            row.get("batch_number")
+        )
+
+        batches.setdefault(
+            batch_number,
+            [],
+        ).append(row)
+
+    batch_summaries = []
+
+    for batch_number in sorted(batches):
+        batch_rows = batches[
+            batch_number
+        ]
+
+        n_attempted = len(
+            batch_rows
+        )
+
+        n_process_ok = true_count(
+            batch_rows,
+            "process_ok",
+        )
+
+        audit_rows = [
+            row
+            for row in batch_rows
+            if row.get("audit_pass")
+            is not None
+        ]
+
+        n_audit_evaluated = len(
+            audit_rows
+        )
+
+        n_audit_pass = true_count(
+            audit_rows,
+            "audit_pass",
+        )
+
+        n_accepted = true_count(
+            batch_rows,
+            "accepted_output",
+        )
+
+        batch_summaries.append(
+            {
+                "batch_number": batch_number,
+                "n_attempted": n_attempted,
+                "n_process_ok": n_process_ok,
+                "n_audit_evaluated": (
+                    n_audit_evaluated
+                ),
+                "n_audit_pass": (
+                    n_audit_pass
+                ),
+                "n_accepted": (
+                    n_accepted
+                ),
+            }
+        )
+
+    attempted_counts = {
+        item["n_attempted"]
+        for item in batch_summaries
+    }
+
+    repetitions_per_batch = (
+        next(iter(attempted_counts))
+        if len(attempted_counts) == 1
+        else None
+    )
+
+    process_rates = [
+        item["n_process_ok"]
+        / item["n_attempted"]
+        for item in batch_summaries
+        if item["n_attempted"] > 0
+    ]
+
+    acceptance_rates = [
+        item["n_accepted"]
+        / item["n_attempted"]
+        for item in batch_summaries
+        if item["n_attempted"] > 0
+    ]
+
+    process_count_distribution: dict[
+        str,
+        int,
+    ] = {}
+
+    acceptance_count_distribution: dict[
+        str,
+        int,
+    ] = {}
+
+    audit_pair_distribution: dict[
+        str,
+        int,
+    ] = {}
+
+    for item in batch_summaries:
+        process_key = str(
+            item["n_process_ok"]
+        )
+
+        acceptance_key = str(
+            item["n_accepted"]
+        )
+
+        audit_key = (
+            f"{item['n_audit_evaluated']}"
+            f"/{item['n_audit_pass']}"
+        )
+
+        process_count_distribution[
+            process_key
+        ] = (
+            process_count_distribution.get(
+                process_key,
+                0,
+            )
+            + 1
+        )
+
+        acceptance_count_distribution[
+            acceptance_key
+        ] = (
+            acceptance_count_distribution.get(
+                acceptance_key,
+                0,
+            )
+            + 1
+        )
+
+        audit_pair_distribution[
+            audit_key
+        ] = (
+            audit_pair_distribution.get(
+                audit_key,
+                0,
+            )
+            + 1
+        )
+
+    return {
+        "n_batches": len(
+            batch_summaries
+        ),
+        "repetitions_per_batch": (
+            repetitions_per_batch
+        ),
+        "process": {
+            "rate_distribution": (
+                summarize_rate_distribution(
+                    process_rates
+                )
+            ),
+            "success_count_distribution": (
+                process_count_distribution
+            ),
+        },
+        "acceptance": {
+            "rate_distribution": (
+                summarize_rate_distribution(
+                    acceptance_rates
+                )
+            ),
+            "success_count_distribution": (
+                acceptance_count_distribution
+            ),
+        },
+        "audit": {
+            "evaluated_pass_distribution": (
+                audit_pair_distribution
+            ),
+        },
+    }
+
+
 def build_model_profile(
     *,
     model: str,
@@ -717,11 +937,19 @@ def build_model_profile(
                 )
             ]
 
-            prompt_conditions[
-                str(temperature)
-            ] = summarize_rows(
+            condition_summary = summarize_rows(
                 condition_rows
             )
+
+            condition_summary[
+                "batch_stability"
+            ] = summarize_batch_stability(
+                condition_rows
+            )
+
+            prompt_conditions[
+                str(temperature)
+            ] = condition_summary
 
         conditions[
             prompt_variant
