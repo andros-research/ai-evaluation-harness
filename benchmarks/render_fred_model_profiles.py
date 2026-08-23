@@ -350,6 +350,177 @@ def render_model_snapshot(
     return lines
 
 
+def render_observed_behavior(
+    profile: dict[str, Any],
+) -> list[str]:
+    """
+    Render concise evidence-backed observations from measured profile data.
+
+    This section summarizes the artifact without assigning personality,
+    role, or general model-behavior labels.
+    """
+    conditions = profile[
+        "conditions"
+    ]
+
+    weak_t0 = conditions[
+        "weak"
+    ][
+        "0.0"
+    ]
+
+    weak_t07 = conditions[
+        "weak"
+    ][
+        "0.7"
+    ]
+
+    intermediate_t0 = conditions[
+        "intermediate"
+    ][
+        "0.0"
+    ]
+
+    intermediate_t07 = conditions[
+        "intermediate"
+    ][
+        "0.7"
+    ]
+
+    hardened_t0 = conditions[
+        "hardened"
+    ][
+        "0.0"
+    ]
+
+    hardened_t07 = conditions[
+        "hardened"
+    ][
+        "0.7"
+    ]
+
+    weak_attempted = (
+        weak_t0["population"]["n_attempted"]
+        + weak_t07["population"]["n_attempted"]
+    )
+
+    weak_generation_failures = (
+        weak_t0["outcome_stages"]["counts"][
+            "generation_contract_failure"
+        ]
+        + weak_t07["outcome_stages"]["counts"][
+            "generation_contract_failure"
+        ]
+    )
+
+    hardened_attempted = (
+        hardened_t0["population"]["n_attempted"]
+        + hardened_t07["population"]["n_attempted"]
+    )
+
+    hardened_accepted = (
+        hardened_t0["population"]["n_accepted"]
+        + hardened_t07["population"]["n_accepted"]
+    )
+
+    intermediate_effect = profile[
+        "temperature_effects"
+    ][
+        "intermediate"
+    ][
+        "deltas_pp"
+    ]
+
+    intermediate_stability = (
+        intermediate_t07[
+            "batch_stability"
+        ]
+    )
+
+    acceptance_distribution = (
+        intermediate_stability[
+            "acceptance"
+        ][
+            "success_count_distribution"
+        ]
+    )
+
+    batches_with_acceptance = sum(
+        n_batches
+        for successes, n_batches
+        in acceptance_distribution.items()
+        if int(successes) > 0
+    )
+
+    perfect_acceptance_batches = int(
+        acceptance_distribution.get(
+            str(
+                intermediate_stability[
+                    "repetitions_per_batch"
+                ]
+            ),
+            0,
+        )
+    )
+
+    intermediate_t07_outcomes = (
+        intermediate_t07[
+            "outcome_stages"
+        ][
+            "counts"
+        ]
+    )
+
+    return [
+        "### Observed behavior",
+        "",
+        (
+            "- **Weak prompt:** "
+            f"{weak_generation_failures}/{weak_attempted} runs "
+            "ended in generation-contract failure across the two "
+            "temperature conditions."
+        ),
+        (
+            "- **Intermediate prompt:** at t=0.0, "
+            f"{intermediate_t0['population']['n_accepted']}/"
+            f"{intermediate_t0['population']['n_attempted']} runs "
+            "were accepted; at t=0.7, "
+            f"{intermediate_t07['population']['n_accepted']}/"
+            f"{intermediate_t07['population']['n_attempted']} "
+            "were accepted. At t=0.7 there were "
+            f"{intermediate_t07_outcomes['generation_contract_failure']} "
+            "generation-contract failures and "
+            f"{intermediate_t07_outcomes['audit_failure']} audit failures."
+        ),
+        (
+            "- **Intermediate temperature response:** "
+            "moving from t=0.0 to t=0.7 changed process completion by "
+            f"{fmt_pp(intermediate_effect['process_completion_delta_pp'])}, "
+            "audit pass by "
+            f"{fmt_pp(intermediate_effect['audit_pass_delta_pp'])}, "
+            "acceptance by "
+            f"{fmt_pp(intermediate_effect['acceptance_delta_pp'])}, "
+            "and repair by "
+            f"{fmt_pp(intermediate_effect['repair_delta_pp'])}."
+        ),
+        (
+            "- **Intermediate t=0.7 repeatability:** "
+            f"{batches_with_acceptance}/"
+            f"{intermediate_stability['n_batches']} batches produced "
+            "at least one accepted run; "
+            f"{perfect_acceptance_batches}/"
+            f"{intermediate_stability['n_batches']} batches were "
+            "fully accepted."
+        ),
+        (
+            "- **Hardened prompt:** "
+            f"{hardened_accepted}/{hardened_attempted} runs "
+            "were accepted across both temperature conditions."
+        ),
+        "",
+    ]
+
+
 def render_condition_matrix(
     profile: dict[str, Any],
 ) -> list[str]:
@@ -826,6 +997,25 @@ def render_model_profile(
         render_model_snapshot(
             model,
             profile,
+        )
+    )
+
+    lines.extend(
+        render_model_snapshot(
+            model,
+            profile,
+        )
+    )
+
+    lines.extend(
+        render_observed_behavior(
+            profile
+        )
+    )
+
+    lines.extend(
+        render_condition_matrix(
+            profile
         )
     )
 
