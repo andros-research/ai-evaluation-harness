@@ -1001,20 +1001,7 @@ def render_model_profile(
     )
 
     lines.extend(
-        render_model_snapshot(
-            model,
-            profile,
-        )
-    )
-
-    lines.extend(
         render_observed_behavior(
-            profile
-        )
-    )
-
-    lines.extend(
-        render_condition_matrix(
             profile
         )
     )
