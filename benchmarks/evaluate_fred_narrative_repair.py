@@ -32,11 +32,11 @@ from typing import Any
 
 
 REPAIR_RESULT_SCHEMA_VERSION = (
-    "fred_repair_result_v0_1"
+    "fred_repair_result_v0_2"
 )
 
 REPAIR_EVALUATION_METHOD = (
-    "deterministic_audit_before_after"
+    "deterministic_audit_before_after_with_unmasking"
 )
 
 
@@ -166,6 +166,334 @@ def audit_snapshot(
     }
 
 
+def classify_unmasked_errors(
+    *,
+    before_audit: dict[str, Any],
+    repair_execution: dict[str, Any],
+    after_audit: dict[str, Any],
+    newly_observed_errors: set[str],
+) -> tuple[
+    set[str],
+    list[dict[str, Any]],
+]:
+    """
+    Conservatively classify newly observed audit errors
+    that were exposed, rather than caused, by repair.
+
+    Current supported proof:
+
+    - citation-relocation strategy
+    - bullet was previously blocked by a missing citation
+    - that exact bullet was repaired
+    - substantive bullet text is unchanged
+    - exactly the relocated claim citation was appended
+    - the repaired bullet becomes a content mismatch
+
+    Anything not positively established remains an
+    introduced error.
+    """
+    if (
+        "claim_content_mismatches"
+        not in newly_observed_errors
+    ):
+        return set(), []
+
+    if (
+        repair_execution.get(
+            "repair_strategy"
+        )
+        != "relocate_existing_claim_citations"
+    ):
+        return set(), []
+
+    before_bullets = (
+        before_audit.get(
+            "bullet_audits",
+            [],
+        )
+    )
+
+    after_bullets = (
+        after_audit.get(
+            "bullet_audits",
+            [],
+        )
+    )
+
+    if (
+        not isinstance(
+            before_bullets,
+            list,
+        )
+        or not isinstance(
+            after_bullets,
+            list,
+        )
+        or len(before_bullets)
+        != len(after_bullets)
+    ):
+        return set(), []
+
+    applied_actions = (
+        repair_execution.get(
+            "applied_actions",
+            [],
+        )
+    )
+
+    if not isinstance(
+        applied_actions,
+        list,
+    ):
+        return set(), []
+
+    actions_by_bullet: dict[
+        int,
+        dict[str, Any],
+    ] = {}
+
+    for action in applied_actions:
+        if not isinstance(
+            action,
+            dict,
+        ):
+            continue
+
+        bullet_index = action.get(
+            "bullet_index"
+        )
+
+        if not isinstance(
+            bullet_index,
+            int,
+        ):
+            continue
+
+        if bullet_index in (
+            actions_by_bullet
+        ):
+            return set(), []
+
+        actions_by_bullet[
+            bullet_index
+        ] = action
+
+    mismatch_indexes = [
+        index
+        for index, item
+        in enumerate(
+            after_bullets,
+            start=1,
+        )
+        if (
+            isinstance(
+                item,
+                dict,
+            )
+            and item.get(
+                "issue_type"
+            )
+            == "claim_content_mismatch"
+        )
+    ]
+
+    if not mismatch_indexes:
+        return set(), []
+
+    details: list[
+        dict[str, Any]
+    ] = []
+
+    for bullet_index in (
+        mismatch_indexes
+    ):
+        before_item = (
+            before_bullets[
+                bullet_index - 1
+            ]
+        )
+
+        after_item = (
+            after_bullets[
+                bullet_index - 1
+            ]
+        )
+
+        action = actions_by_bullet.get(
+            bullet_index
+        )
+
+        if (
+            not isinstance(
+                before_item,
+                dict,
+            )
+            or not isinstance(
+                after_item,
+                dict,
+            )
+            or action is None
+        ):
+            return set(), []
+
+        if (
+            before_item.get(
+                "issue_type"
+            )
+            != "missing_claim_citation"
+        ):
+            return set(), []
+
+        if action.get(
+            "status"
+        ) != "applied":
+            return set(), []
+
+        if action.get(
+            "executed_strategy"
+        ) != (
+            "relocate_existing_claim_citations"
+        ):
+            return set(), []
+
+        claim_id = action.get(
+            "claim_id"
+        )
+
+        if not isinstance(
+            claim_id,
+            str,
+        ) or not claim_id:
+            return set(), []
+
+        before_text = (
+            before_item.get(
+                "bullet_text"
+            )
+        )
+
+        after_text = (
+            after_item.get(
+                "bullet_text"
+            )
+        )
+
+        destination_before = (
+            action.get(
+                "destination_before"
+            )
+        )
+
+        destination_after = (
+            action.get(
+                "destination_after"
+            )
+        )
+
+        if not all(
+            isinstance(
+                value,
+                str,
+            )
+            for value in (
+                before_text,
+                after_text,
+                destination_before,
+                destination_after,
+            )
+        ):
+            return set(), []
+
+        if (
+            before_text.strip()
+            != destination_before.strip()
+        ):
+            return set(), []
+
+        if (
+            after_text.strip()
+            != destination_after.strip()
+        ):
+            return set(), []
+
+        expected_after = (
+            destination_before.rstrip()
+            + " "
+            + f"[CLAIMS: {claim_id}]"
+        )
+
+        if (
+            destination_after.strip()
+            != expected_after.strip()
+        ):
+            return set(), []
+
+        if before_item.get(
+            "cited_claim_ids"
+        ) not in (
+            [],
+            None,
+        ):
+            return set(), []
+
+        if after_item.get(
+            "cited_claim_ids"
+        ) != [
+            claim_id
+        ]:
+            return set(), []
+
+        content_issues = (
+            after_item.get(
+                "content_issues",
+                [],
+            )
+        )
+
+        if (
+            not isinstance(
+                content_issues,
+                list,
+            )
+            or not content_issues
+        ):
+            return set(), []
+
+        details.append(
+            {
+                "error":
+                    "claim_content_mismatches",
+                "bullet_index":
+                    bullet_index,
+                "claim_id":
+                    claim_id,
+                "before_issue_type":
+                    before_item.get(
+                        "issue_type"
+                    ),
+                "after_issue_type":
+                    after_item.get(
+                        "issue_type"
+                    ),
+                "content_issues":
+                    content_issues,
+                "reason":
+                    (
+                        "citation_relocation_exposed_"
+                        "content_audit_without_"
+                        "substantive_text_change"
+                    ),
+            }
+        )
+
+    return (
+        {
+            "claim_content_mismatches"
+        },
+        details,
+    )
+
+
 def evaluate_repair(
     *,
     before_audit: dict[str, Any],
@@ -193,8 +521,23 @@ def evaluate_repair(
         after_errors
     )
 
-    introduced_errors = sorted(
+    newly_observed_errors = (
         after_errors - before_errors
+    )
+
+    (
+        unmasked_errors,
+        unmasked_error_details,
+    ) = classify_unmasked_errors(
+        before_audit=before_audit,
+        repair_execution=repair_execution,
+        after_audit=after_audit,
+        newly_observed_errors=newly_observed_errors,
+    )
+
+    introduced_errors = sorted(
+        newly_observed_errors
+        - unmasked_errors
     )
 
     target_error_present_before = (
@@ -303,6 +646,19 @@ def evaluate_repair(
 
         "residual_errors":
             residual_errors,
+
+        "newly_observed_errors":
+            sorted(
+                newly_observed_errors
+            ),
+
+        "unmasked_errors":
+            sorted(
+                unmasked_errors
+            ),
+
+        "unmasked_error_details":
+            unmasked_error_details,
 
         "introduced_errors":
             introduced_errors,
