@@ -165,6 +165,142 @@ def candidate_repair_actions(
     ]
 
 
+
+def evaluate_repair_eligibility(
+    *,
+    audit_payload: dict[str, Any],
+    repair_plan: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Evaluate whether structural normalization can safely resolve
+    the complete target error.
+
+    Eligibility requires:
+
+    1. every audited missing-claim-citation bullet is covered by a
+       supported normalization action;
+
+    2. at least one citation-bearing audited bullet representation
+       remains after the proposed detail bullets leave audit scope.
+
+    These guards prevent partial target repair and global destruction
+    of the auditor's bullet-level evidence representation.
+    """
+    bullet_audits = (
+        audit_payload.get(
+            "bullet_audits",
+            [],
+        )
+    )
+
+    actions = (
+        candidate_repair_actions(
+            repair_plan
+        )
+    )
+
+    target_bullet_indexes = {
+        index
+        for index, item
+        in enumerate(
+            bullet_audits,
+            start=1,
+        )
+        if (
+            item.get(
+                "issue_type"
+            )
+            == TARGET_ISSUE_TYPE
+        )
+    }
+
+    action_bullet_indexes = {
+        action.get(
+            "bullet_index"
+        )
+        for action in actions
+    }
+
+    complete_target_coverage = (
+        bool(
+            target_bullet_indexes
+        )
+        and action_bullet_indexes
+        == target_bullet_indexes
+    )
+
+    remaining_cited_bullet_indexes = {
+        index
+        for index, item
+        in enumerate(
+            bullet_audits,
+            start=1,
+        )
+        if (
+            index
+            not in action_bullet_indexes
+            and bool(
+                item.get(
+                    "cited_claim_ids"
+                )
+            )
+        )
+    }
+
+    representation_preserved = bool(
+        remaining_cited_bullet_indexes
+    )
+
+    rejection_reasons: list[str] = []
+
+    if not complete_target_coverage:
+        rejection_reasons.append(
+            "incomplete_target_coverage"
+        )
+
+    if not representation_preserved:
+        rejection_reasons.append(
+            "no_cited_audited_representation_remaining"
+        )
+
+    eligible = (
+        bool(
+            actions
+        )
+        and complete_target_coverage
+        and representation_preserved
+    )
+
+    return {
+        "eligible":
+            eligible,
+
+        "n_target_bullets":
+            len(
+                target_bullet_indexes
+            ),
+
+        "n_candidate_actions":
+            len(
+                actions
+            ),
+
+        "complete_target_coverage":
+            complete_target_coverage,
+
+        "n_remaining_cited_audited_bullets":
+            len(
+                remaining_cited_bullet_indexes
+            ),
+
+        "representation_preserved":
+            representation_preserved,
+
+        "rejection_reasons":
+            rejection_reasons,
+    }
+
+
 def normalize_bullet_line(
     line: str,
 ) -> str:
@@ -232,6 +368,21 @@ def apply_repairs(
     actions = candidate_repair_actions(
         repair_plan
     )
+
+    eligibility = (
+        evaluate_repair_eligibility(
+            audit_payload=audit_payload,
+            repair_plan=repair_plan,
+        )
+    )
+
+    if not eligibility[
+        "eligible"
+    ]:
+        return (
+            narrative_text,
+            [],
+        )
 
     applied_actions: list[
         dict[str, Any]
@@ -480,6 +631,13 @@ def write_repair_execution(
         )
     )
 
+    eligibility = (
+        evaluate_repair_eligibility(
+            audit_payload=audit_payload,
+            repair_plan=repair_plan,
+        )
+    )
+
     execution = {
         "repair_execution_schema_version":
             REPAIR_EXECUTION_SCHEMA_VERSION,
@@ -501,6 +659,9 @@ def write_repair_execution(
 
         "repair_applied":
             bool(applied_actions),
+
+        "eligibility":
+            eligibility,
 
         "n_planned_repair_actions":
             len(planned_actions),
