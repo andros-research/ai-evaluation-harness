@@ -172,6 +172,30 @@ def safe_rate(
     )
 
 
+def normalize_counter(
+    value: Counter[Any],
+) -> dict[str, int]:
+    """
+    Match the validator's JSON-safe category-key convention.
+
+    A missing category becomes the summary key "None".
+    Per-observation values remain unchanged.
+
+    Reject collisions rather than silently merging distinct categories.
+    """
+    normalized = {
+        str(key): count
+        for key, count in value.items()
+    }
+
+    if len(normalized) != len(value):
+        raise ValueError(
+            "Category keys collide after string normalization."
+        )
+
+    return dict(sorted(normalized.items()))
+
+
 def json_cell(
     value: Any,
 ) -> Any:
@@ -760,14 +784,10 @@ def summarize_rows(
             ),
 
         "workflow_outcome_counts":
-            dict(
-                sorted(
-                    Counter(
-                        row[
-                            "workflow_outcome"
-                        ]
-                        for row in rows
-                    ).items()
+            normalize_counter(
+                Counter(
+                    row["workflow_outcome"]
+                    for row in rows
                 )
             ),
 
