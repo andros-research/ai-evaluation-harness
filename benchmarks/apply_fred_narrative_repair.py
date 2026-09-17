@@ -103,11 +103,18 @@ def write_json(
 def markdown_bullet_line_indexes(
     lines: list[str],
 ) -> list[int]:
-    """Return line indexes for Markdown '- ' bullets."""
+    """
+    Map audited bullet positions to original narrative line indexes.
+
+    Use the auditor's recognition rules for indexing only. Supported
+    normalization actions remain governed by is_supported_detail_bullet().
+    """
+    from audit_fred_narrative import extract_bullets
+
     return [
-        idx
-        for idx, line in enumerate(lines)
-        if line.lstrip().startswith("- ")
+        index
+        for index, line in enumerate(lines)
+        if extract_bullets(line)
     ]
 
 
