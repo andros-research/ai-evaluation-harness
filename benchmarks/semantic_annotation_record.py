@@ -13,10 +13,12 @@ SUPPORT_STATUSES = {
 
 ASSERTION_STRENGTHS = {
     "asserted",
+    "qualified_inference",
     "qualified_possibility",
 }
 
 REVIEW_STATUSES = {
+    "open",
     "proposed",
     "reviewed",
 }
@@ -144,6 +146,145 @@ def validate_evidence_item(
         )
 
 
+def validate_annotation_payload(
+    value: object,
+    *,
+    field_name: str,
+) -> None:
+    if not isinstance(value, dict):
+        raise ValueError(
+            f"{field_name} must be an object."
+        )
+
+    # Intentionally open vocabulary:
+    # concrete examples should drive claim-kind expansion.
+    require_nonempty_string(
+        value.get("claim_kind"),
+        field_name=f"{field_name}.claim_kind",
+    )
+
+    support_status = value.get("support_status")
+
+    if support_status not in SUPPORT_STATUSES:
+        raise ValueError(
+            f"Unsupported {field_name}.support_status: "
+            f"{support_status!r}"
+        )
+
+    assertion_strength = value.get(
+        "assertion_strength"
+    )
+
+    if assertion_strength not in ASSERTION_STRENGTHS:
+        raise ValueError(
+            f"Unsupported {field_name}.assertion_strength: "
+            f"{assertion_strength!r}"
+        )
+
+    require_nonempty_string(
+        value.get("rationale"),
+        field_name=f"{field_name}.rationale",
+    )
+
+
+def validate_semantic_units(
+    value: object,
+    *,
+    statement_text: str,
+    evidence_ids: set[str],
+) -> None:
+    if value is None:
+        return
+
+    if not isinstance(value, list):
+        raise ValueError(
+            "semantic_units must be an array when present."
+        )
+
+    seen_unit_ids: set[str] = set()
+
+    for index, unit in enumerate(value):
+        prefix = f"semantic_units[{index}]"
+
+        if not isinstance(unit, dict):
+            raise ValueError(
+                f"{prefix} must be an object."
+            )
+
+        unit_id = require_nonempty_string(
+            unit.get("unit_id"),
+            field_name=f"{prefix}.unit_id",
+        )
+
+        if unit_id in seen_unit_ids:
+            raise ValueError(
+                f"Duplicate semantic unit ID: {unit_id}"
+            )
+
+        seen_unit_ids.add(unit_id)
+
+        unit_text = require_nonempty_string(
+            unit.get("text"),
+            field_name=f"{prefix}.text",
+        )
+
+        span = unit.get("statement_span")
+
+        if not isinstance(span, dict):
+            raise ValueError(
+                f"{prefix}.statement_span must be an object."
+            )
+
+        start = span.get("start")
+        end = span.get("end")
+
+        if not isinstance(start, int) or not isinstance(end, int):
+            raise ValueError(
+                f"{prefix} offsets must be integers."
+            )
+
+        if (
+            start < 0
+            or end <= start
+            or end > len(statement_text)
+        ):
+            raise ValueError(
+                f"{prefix} has invalid statement offsets."
+            )
+
+        if statement_text[start:end] != unit_text:
+            raise ValueError(
+                f"{prefix} text does not match its statement span."
+            )
+
+        unit_evidence_ids = unit.get("evidence_ids")
+
+        if (
+            not isinstance(unit_evidence_ids, list)
+            or not unit_evidence_ids
+        ):
+            raise ValueError(
+                f"{prefix}.evidence_ids must be a non-empty array."
+            )
+
+        for evidence_id in unit_evidence_ids:
+            require_nonempty_string(
+                evidence_id,
+                field_name=f"{prefix}.evidence_ids[]",
+            )
+
+            if evidence_id not in evidence_ids:
+                raise ValueError(
+                    f"{prefix} references unknown evidence: "
+                    f"{evidence_id}"
+                )
+
+        validate_annotation_payload(
+            unit.get("annotation"),
+            field_name=f"{prefix}.annotation",
+        )
+
+
 def validate_annotation_record(
     record: object,
 ) -> None:
@@ -174,7 +315,7 @@ def validate_annotation_record(
             "statement must be an object."
         )
 
-    require_nonempty_string(
+    statement_text = require_nonempty_string(
         statement.get("text"),
         field_name="statement.text",
     )
@@ -187,45 +328,6 @@ def validate_annotation_record(
         record.get("generation")
     )
 
-    annotation = record.get("annotation")
-
-    if not isinstance(annotation, dict):
-        raise ValueError(
-            "annotation must be an object."
-        )
-
-    # Intentionally open vocabulary:
-    # concrete examples should drive claim-kind expansion.
-    require_nonempty_string(
-        annotation.get("claim_kind"),
-        field_name="annotation.claim_kind",
-    )
-
-    support_status = annotation.get(
-        "support_status"
-    )
-
-    if support_status not in SUPPORT_STATUSES:
-        raise ValueError(
-            "Unsupported annotation.support_status: "
-            f"{support_status!r}"
-        )
-
-    assertion_strength = annotation.get(
-        "assertion_strength"
-    )
-
-    if assertion_strength not in ASSERTION_STRENGTHS:
-        raise ValueError(
-            "Unsupported annotation.assertion_strength: "
-            f"{assertion_strength!r}"
-        )
-
-    require_nonempty_string(
-        annotation.get("rationale"),
-        field_name="annotation.rationale",
-    )
-
     evidence = record.get("evidence")
 
     if not isinstance(evidence, list) or not evidence:
@@ -233,11 +335,29 @@ def validate_annotation_record(
             "evidence must contain at least one item."
         )
 
+    evidence_ids: list[str] = []
+
     for index, item in enumerate(evidence):
         validate_evidence_item(
             item,
             index=index,
         )
+        evidence_ids.append(item["evidence_id"])
+
+    if len(set(evidence_ids)) != len(evidence_ids):
+        raise ValueError(
+            "Evidence IDs must be unique within a record."
+        )
+
+    semantic_units = record.get("semantic_units")
+
+    validate_semantic_units(
+        semantic_units,
+        statement_text=statement_text,
+        evidence_ids=set(evidence_ids),
+    )
+
+    has_units = bool(semantic_units)
 
     review = record.get("review")
 
@@ -254,10 +374,54 @@ def validate_annotation_record(
             f"{review_status!r}"
         )
 
-    require_nonempty_string(
-        review.get("reviewed_by"),
-        field_name="review.reviewed_by",
-    )
+    proposed_by = review.get("proposed_by")
+
+    if proposed_by is not None:
+        require_nonempty_string(
+            proposed_by,
+            field_name="review.proposed_by",
+        )
+
+    reviewed_by = review.get("reviewed_by")
+
+    if review_status == "reviewed":
+        require_nonempty_string(
+            reviewed_by,
+            field_name="review.reviewed_by",
+        )
+    elif reviewed_by is not None:
+        raise ValueError(
+            "review.reviewed_by must be null "
+            "unless review.status is 'reviewed'."
+        )
+
+    annotation = record.get("annotation")
+
+    if review_status == "open":
+        if annotation is not None:
+            raise ValueError(
+                "annotation must be null when "
+                "review.status is 'open'."
+            )
+
+        if has_units:
+            raise ValueError(
+                "open records cannot contain reviewed semantic units."
+            )
+
+        return
+
+    if annotation is None and not has_units:
+        raise ValueError(
+            "A proposed or reviewed record must contain either "
+            "a statement-level annotation or semantic units."
+        )
+
+    if annotation is not None:
+        validate_annotation_payload(
+            annotation,
+            field_name="annotation",
+        )
 
 
 def validate_annotation_records(
