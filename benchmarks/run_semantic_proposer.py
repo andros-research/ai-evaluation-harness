@@ -206,14 +206,33 @@ def call_ollama(
             f"valid JSON: {exc}"
         ) from exc
 
+    context_tokens = result.get(
+        "context"
+    )
+
+    metadata = {
+        key: value
+        for key, value
+        in result.items()
+        if key not in {
+            "response",
+            "context",
+        }
+    }
+
+    if isinstance(
+        context_tokens,
+        list,
+    ):
+        metadata[
+            "context_token_count"
+        ] = len(
+            context_tokens
+        )
+
     return {
         "proposal": proposal,
-        "ollama_metadata": {
-            key: value
-            for key, value
-            in result.items()
-            if key != "response"
-        },
+        "ollama_metadata": metadata,
     }
 
 
