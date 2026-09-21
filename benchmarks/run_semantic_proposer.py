@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,7 @@ from build_semantic_proposer_prompt import (
     annotations_for_record,
     build_example,
     build_model_prompt,
+    build_model_visible_guide,
     build_reference_answer,
     load_corpus,
 )
@@ -446,8 +448,10 @@ def main() -> None:
         in EXAMPLE_IDS
     ]
 
-    guide = GUIDE_PATH.read_text(
-        encoding="utf-8"
+    guide = build_model_visible_guide(
+        GUIDE_PATH.read_text(
+            encoding="utf-8"
+        )
     )
 
     prompt = build_model_prompt(
@@ -455,6 +459,39 @@ def main() -> None:
         examples=examples,
         target=target,
     )
+
+    target_text = target[
+        "statement"
+    ]["text"]
+
+    if args.target_id in prompt:
+        raise SystemExit(
+            "STOP: target annotation ID leaked "
+            "into model-visible prompt."
+        )
+
+    leaked_record_ids = re.findall(
+        r"semantic_(?:pilot|challenge|harvest)_\d+",
+        prompt,
+    )
+
+    if leaked_record_ids:
+        raise SystemExit(
+            "STOP: reviewed semantic record IDs leaked "
+            "into model-visible prompt: "
+            f"{sorted(set(leaked_record_ids))}"
+        )
+
+    target_occurrences = prompt.count(
+        target_text
+    )
+
+    if target_occurrences != 1:
+        raise SystemExit(
+            "STOP: target statement appears "
+            f"{target_occurrences} times in prompt; "
+            "expected exactly once."
+        )
 
     reference = (
         build_reference_answer(

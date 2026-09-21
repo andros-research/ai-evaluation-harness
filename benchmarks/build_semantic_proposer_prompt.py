@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 
@@ -117,9 +118,19 @@ def build_example(record: dict) -> dict:
     }
 
 
+def build_model_visible_guide(
+    guide: str,
+) -> str:
+    """Remove reviewed record IDs from model-visible guidance."""
+    return re.sub(
+        r"semantic_(?:pilot|challenge|harvest)_\d+",
+        "`reviewed_example`",
+        guide,
+    )
+
+
 def build_target(record: dict) -> dict:
     return {
-        "annotation_id": record["annotation_id"],
         "statement": record["statement"]["text"],
         "evidence": compact_evidence(record),
     }
@@ -316,8 +327,10 @@ def main() -> None:
         for example_id in example_ids
     ]
 
-    guide = GUIDE_PATH.read_text(
-        encoding="utf-8"
+    guide = build_model_visible_guide(
+        GUIDE_PATH.read_text(
+            encoding="utf-8"
+        )
     )
 
     model_prompt = build_model_prompt(
