@@ -1,0 +1,107 @@
+{
+  "comparison_id": "fred_semantic_discovery_20260920",
+  "input_context": "benchmarks/data/fred_macro_context.json",
+  "comparison_window": "12m",
+  "ollama_host": "http://127.0.0.1:11434",
+  "narrative_timeout_s": 600,
+  "runs": [
+    {
+      "label": "llama3_semantic_conservative_t0",
+      "mode": "llm",
+      "model": "llama3",
+      "prompt_variant": "semantic_conservative",
+      "temperature": 0.0,
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_semantic_conservative_t07",
+      "mode": "llm",
+      "model": "llama3",
+      "prompt_variant": "semantic_conservative",
+      "temperature": 0.7,
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_semantic_analytical_t0",
+      "mode": "llm",
+      "model": "llama3",
+      "prompt_variant": "semantic_analytical",
+      "temperature": 0.0,
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_semantic_analytical_t07",
+      "mode": "llm",
+      "model": "llama3",
+      "prompt_variant": "semantic_analytical",
+      "temperature": 0.7,
+      "repetitions": 1
+    },
+
+    {
+      "label": "llama3_70b_semantic_conservative_t0",
+      "mode": "llm",
+      "model": "llama3:70b",
+      "prompt_variant": "semantic_conservative",
+      "temperature": 0.0,
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_70b_semantic_conservative_t07",
+      "mode": "llm",
+      "model": "llama3:70b",
+      "prompt_variant": "semantic_conservative",
+      "temperature": 0.7,
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_70b_semantic_analytical_t0",
+      "mode": "llm",
+      "model": "llama3:70b",
+      "prompt_variant": "semantic_analytical",
+      "temperature": 0.0,
+      "repetitions": 1
+    },
+    {
+      "label": "llama3_70b_semantic_analytical_t07",
+      "mode": "llm",
+      "model": "llama3:70b",
+      "prompt_variant": "semantic_analytical",
+      "temperature": 0.7,
+      "repetitions": 1
+    },
+
+    {
+      "label": "mistral_semantic_conservative_t0",
+      "mode": "llm",
+      "model": "mistral",
+      "prompt_variant": "semantic_conservative",
+      "temperature": 0.0,
+      "repetitions": 1
+    },
+    {
+      "label": "mistral_semantic_conservative_t07",
+      "mode": "llm",
+      "model": "mistral",
+      "prompt_variant": "semantic_conservative",
+      "temperature": 0.7,
+      "repetitions": 1
+    },
+    {
+      "label": "mistral_semantic_analytical_t0",
+      "mode": "llm",
+      "model": "mistral",
+      "prompt_variant": "semantic_analytical",
+      "temperature": 0.0,
+      "repetitions": 1
+    },
+    {
+      "label": "mistral_semantic_analytical_t07",
+      "mode": "llm",
+      "model": "mistral",
+      "prompt_variant": "semantic_analytical",
+      "temperature": 0.7,
+      "repetitions": 1
+    }
+  ]
+}
