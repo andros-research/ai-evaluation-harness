@@ -243,49 +243,70 @@ def compare_units(
     proposed_units: list[dict],
     reference_units: list[dict],
 ) -> dict:
-    count_match = (
+    """Compare segmentation separately from classification."""
+    unit_count_match = (
         len(proposed_units)
         == len(reference_units)
     )
 
-    unit_results = []
+    pair_count = min(
+        len(proposed_units),
+        len(reference_units),
+    )
 
     max_units = max(
         len(proposed_units),
         len(reference_units),
     )
 
+    unit_results = []
+
+    classification_evaluable_units = 0
+    classification_field_checks = 0
+    classification_field_matches = 0
+
     for index in range(max_units):
         proposed = (
             proposed_units[index]
-            if index
-            < len(proposed_units)
+            if index < len(proposed_units)
             else None
         )
 
         reference = (
             reference_units[index]
-            if index
-            < len(reference_units)
+            if index < len(reference_units)
             else None
         )
 
-        if (
-            proposed is None
-            or reference is None
-        ):
+        if proposed is None:
             unit_results.append({
                 "unit_index": index,
-                "proposal_present":
-                    proposed is not None,
-                "reference_present":
-                    reference is not None,
-                "span_match": False,
-                "claim_kind_match": False,
-                "support_status_match":
-                    False,
-                "assertion_strength_match":
-                    False,
+                "alignment_status": "reference_only",
+                "proposal_present": False,
+                "reference_present": True,
+                "proposed_text": None,
+                "reference_text": reference["text"],
+                "span_match": None,
+                "classification_scored": False,
+                "claim_kind_match": None,
+                "support_status_match": None,
+                "assertion_strength_match": None,
+            })
+            continue
+
+        if reference is None:
+            unit_results.append({
+                "unit_index": index,
+                "alignment_status": "proposal_only",
+                "proposal_present": True,
+                "reference_present": False,
+                "proposed_text": proposed["text"],
+                "reference_text": None,
+                "span_match": None,
+                "classification_scored": False,
+                "claim_kind_match": None,
+                "support_status_match": None,
+                "assertion_strength_match": None,
             })
             continue
 
@@ -293,77 +314,107 @@ def compare_units(
             "annotation"
         ]
 
+        span_match = (
+            proposed["text"]
+            == reference["text"]
+        )
+
+        claim_kind_match = (
+            proposed["claim_kind"]
+            == annotation["claim_kind"]
+        )
+
+        support_status_match = (
+            proposed["support_status"]
+            == annotation["support_status"]
+        )
+
+        assertion_strength_match = (
+            proposed["assertion_strength"]
+            == annotation["assertion_strength"]
+        )
+
+        # Classification accuracy is scored only when the
+        # proposer and reference identify the exact same span.
+        classification_scored = span_match
+
+        if classification_scored:
+            classification_evaluable_units += 1
+            classification_field_checks += 3
+
+            classification_field_matches += sum([
+                claim_kind_match,
+                support_status_match,
+                assertion_strength_match,
+            ])
+
         unit_results.append({
             "unit_index": index,
+            "alignment_status": "paired_by_index",
             "proposal_present": True,
             "reference_present": True,
-            "span_match": (
-                proposed["text"]
-                == reference["text"]
-            ),
-            "claim_kind_match": (
-                proposed["claim_kind"]
-                == annotation[
-                    "claim_kind"
-                ]
-            ),
-            "support_status_match": (
-                proposed[
-                    "support_status"
-                ]
-                == annotation[
-                    "support_status"
-                ]
-            ),
-            "assertion_strength_match": (
-                proposed[
-                    "assertion_strength"
-                ]
-                == annotation[
-                    "assertion_strength"
-                ]
-            ),
-            "proposed_rationale": (
-                proposed["rationale"]
-            ),
-            "reference_rationale": (
-                annotation["rationale"]
-            ),
+            "proposed_text": proposed["text"],
+            "reference_text": reference["text"],
+            "span_match": span_match,
+            "classification_scored": classification_scored,
+            "claim_kind_match": claim_kind_match,
+            "support_status_match": support_status_match,
+            "assertion_strength_match": assertion_strength_match,
+            "proposed_rationale": proposed["rationale"],
+            "reference_rationale": annotation["rationale"],
         })
 
-    scored_fields = []
+    paired_results = [
+        result
+        for result in unit_results
+        if result["alignment_status"]
+        == "paired_by_index"
+    ]
 
-    for result in unit_results:
-        for field in (
-            "span_match",
-            "claim_kind_match",
-            "support_status_match",
-            "assertion_strength_match",
-        ):
-            scored_fields.append(
-                bool(result[field])
-            )
+    exact_segmentation_match = (
+        unit_count_match
+        and len(paired_results)
+        == len(reference_units)
+        and all(
+            result["span_match"] is True
+            for result in paired_results
+        )
+    )
 
-    exact_categorical_match = (
-        count_match
-        and all(scored_fields)
+    if classification_field_checks:
+        exact_classification_match_on_exact_spans = (
+            classification_field_matches
+            == classification_field_checks
+        )
+    else:
+        exact_classification_match_on_exact_spans = None
+
+    exact_full_match = (
+        exact_segmentation_match
+        and exact_classification_match_on_exact_spans
+        is True
     )
 
     return {
-        "unit_count_match":
-            count_match,
-        "proposed_unit_count":
-            len(proposed_units),
-        "reference_unit_count":
-            len(reference_units),
-        "unit_results":
-            unit_results,
-        "n_field_checks":
-            len(scored_fields),
-        "n_field_matches":
-            sum(scored_fields),
-        "exact_categorical_match":
-            exact_categorical_match,
+        "unit_count_match": unit_count_match,
+        "exact_segmentation_match": exact_segmentation_match,
+        "proposed_unit_count": len(proposed_units),
+        "reference_unit_count": len(reference_units),
+        "paired_unit_count": pair_count,
+        "classification_evaluable_unit_count": (
+            classification_evaluable_units
+        ),
+        "classification_field_checks": (
+            classification_field_checks
+        ),
+        "classification_field_matches": (
+            classification_field_matches
+        ),
+        "exact_classification_match_on_exact_spans": (
+            exact_classification_match_on_exact_spans
+        ),
+        "exact_full_match": exact_full_match,
+        "unit_results": unit_results,
     }
 
 
@@ -617,7 +668,7 @@ def main() -> None:
 
     comparison_artifact = {
         "schema_version":
-            "semantic_proposer_comparison_v0_1",
+            "semantic_proposer_comparison_v0_2",
         "created_at":
             datetime.now(
                 timezone.utc
@@ -665,18 +716,53 @@ def main() -> None:
     )
 
     print(
-        "field_matches:",
-        (
-            f"{comparison['n_field_matches']}"
-            f"/"
-            f"{comparison['n_field_checks']}"
-        ),
+        "exact_segmentation_match:",
+        comparison[
+            "exact_segmentation_match"
+        ],
     )
 
     print(
-        "exact_categorical_match:",
+        "classification_evaluable_units:",
+        (
+            f"{comparison['classification_evaluable_unit_count']}"
+            f"/"
+            f"{comparison['reference_unit_count']}"
+        ),
+    )
+
+    classification_checks = (
         comparison[
-            "exact_categorical_match"
+            "classification_field_checks"
+        ]
+    )
+
+    if classification_checks:
+        print(
+            "classification_field_matches_on_exact_spans:",
+            (
+                f"{comparison['classification_field_matches']}"
+                f"/"
+                f"{classification_checks}"
+            ),
+        )
+    else:
+        print(
+            "classification_field_matches_on_exact_spans:",
+            "N/A",
+        )
+
+    print(
+        "exact_classification_match_on_exact_spans:",
+        comparison[
+            "exact_classification_match_on_exact_spans"
+        ],
+    )
+
+    print(
+        "exact_full_match:",
+        comparison[
+            "exact_full_match"
         ],
     )
 
@@ -690,18 +776,64 @@ def main() -> None:
             result["unit_index"],
         )
 
-        for field in (
-            "span_match",
-            "claim_kind_match",
-            "support_status_match",
-            "assertion_strength_match",
+        print(
+            "  alignment_status:",
+            result["alignment_status"],
+        )
+
+        print(
+            "  proposed_text:",
+            repr(
+                result["proposed_text"]
+            ),
+        )
+
+        print(
+            "  reference_text:",
+            repr(
+                result["reference_text"]
+            ),
+        )
+
+        print(
+            "  span_match:",
+            result["span_match"],
+        )
+
+        print(
+            "  classification_scored:",
+            result[
+                "classification_scored"
+            ],
+        )
+
+        if (
+            result["proposal_present"]
+            and result["reference_present"]
         ):
             print(
-                f"  {field}:",
-                result[field],
+                "  claim_kind_match:",
+                result[
+                    "claim_kind_match"
+                ],
             )
 
-    print()
+            print(
+                "  support_status_match:",
+                result[
+                    "support_status_match"
+                ],
+            )
+
+            print(
+                "  assertion_strength_match:",
+                result[
+                    "assertion_strength_match"
+                ],
+            )
+
+        print()
+
     print(
         "comparison artifact:",
         comparison_path,
