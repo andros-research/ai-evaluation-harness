@@ -743,6 +743,8 @@ def parse_args() -> argparse.Namespace:
             "weak",
             "intermediate",
             "hardened",
+            "semantic_conservative",
+            "semantic_analytical",
         ],
         help=(
             "Prompt contract variant for "

@@ -65,6 +65,8 @@ SUPPORTED_PROMPT_VARIANTS = [
     "weak",
     "intermediate",
     "hardened",
+    "semantic_conservative",
+    "semantic_analytical",
 ]
 DEFAULT_TEMPERATURE = 0.0
 
@@ -199,6 +201,106 @@ Output requirements:
 7. End each bullet with a citation using:
    [CLAIMS: <exact claim_id>]
 8. Do not add facts that are not present in the selected claims.
+
+Selected claims:
+
+{claims_text}
+"""
+
+    if prompt_variant == "semantic_conservative":
+        return f"""You are generating a concise macro narrative from selected FRED claims.
+
+Output requirements:
+
+1. Write markdown only.
+
+2. Begin with exactly this title:
+
+# FRED Macro Narrative
+
+3. Then include exactly this section heading:
+
+## Claim-Cited Summary
+
+4. Write exactly {expected_bullet_count} bullets.
+
+5. Write one bullet for each selected claim.
+
+6. Each bullet must include:
+   - the direction
+   - the prior value
+   - the current value
+   - the delta magnitude
+
+7. End each bullet with exactly one citation using:
+
+   [CLAIMS: <exact claim_id>]
+
+8. After the claim-cited bullets, include:
+
+## Commentary
+
+9. Write 2 to 4 concise sentences of evidence-limited commentary.
+
+10. You may synthesize relationships that are directly checkable from the supplied evidence.
+
+11. Do not infer causes, market beliefs, broader economic conditions, policy implications, or unstated temporal patterns.
+
+12. Do not include claim IDs or [CLAIMS: ...] citations in the Commentary section.
+
+13. Do not introduce numeric facts that are not present in the selected claims.
+
+Selected claims:
+
+{claims_text}
+"""
+
+    if prompt_variant == "semantic_analytical":
+        return f"""You are generating a concise macro narrative from selected FRED claims.
+
+Output requirements:
+
+1. Write markdown only.
+
+2. Begin with exactly this title:
+
+# FRED Macro Narrative
+
+3. Then include exactly this section heading:
+
+## Claim-Cited Summary
+
+4. Write exactly {expected_bullet_count} bullets.
+
+5. Write one bullet for each selected claim.
+
+6. Each bullet must include:
+   - the direction
+   - the prior value
+   - the current value
+   - the delta magnitude
+
+7. End each bullet with exactly one citation using:
+
+   [CLAIMS: <exact claim_id>]
+
+8. After the claim-cited bullets, include:
+
+## Commentary
+
+9. Write 2 to 4 concise sentences of natural macro analysis.
+
+10. You may discuss broader conditions, implications, possible explanations, or market interpretations when useful.
+
+11. Clearly distinguish direct observation from interpretation. Qualify interpretations when the supplied evidence does not establish them.
+
+12. Do not present a causal explanation, market interpretation, or broader-condition interpretation as established fact unless the supplied evidence establishes it.
+
+13. Use natural analyst language and be specific rather than generic.
+
+14. Do not include claim IDs or [CLAIMS: ...] citations in the Commentary section.
+
+15. Do not introduce numeric facts that are not present in the selected claims.
 
 Selected claims:
 

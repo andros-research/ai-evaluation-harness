@@ -69,6 +69,8 @@ SUPPORTED_PROMPT_VARIANTS = {
     "weak",
     "intermediate",
     "hardened",
+    "semantic_conservative",
+    "semantic_analytical",
 }
 DEFAULT_TEMPERATURE = 0.0
 
