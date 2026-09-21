@@ -64,9 +64,9 @@ Examples of relationships that should remain intact include:
 - temporal pattern
 - magnitude judgment
 
-For the v0.1 pilot, each example contains one statement-sized annotation unit.
+The initial v0.1 pilot used one statement-sized annotation unit per example.
 
-Later versions may split longer sentences into multiple semantic units when one sentence contains several distinct commitments.
+The current semantic record also supports multiple semantic units when one statement contains several distinct commitments. Each unit preserves its exact source text and receives its own evidence-relative annotation.
 
 Example:
 
@@ -93,7 +93,7 @@ The exact source text should always remain preserved.
 
 It does not determine whether the statement is supported.
 
-Current v0.1 kinds are:
+Current reviewed claim kinds include:
 
 ## `empirical_comparison`
 
@@ -172,6 +172,89 @@ Reference examples:
 
 - `semantic_pilot_007`
 - `semantic_pilot_008`
+
+---
+
+## `scope_generalization`
+
+A statement that moves from a specific supplied measure to a broader condition or category.
+
+Example:
+
+```text
+Evidence:
+Unemployment rate decreased from 4.3 to 4.1.
+
+Statement:
+The labor market strengthened.
+```
+
+A single unemployment-rate comparison may be relevant to the broader labor-market claim without being sufficient to establish it.
+
+Reviewed examples include:
+
+- `semantic_challenge_001`
+- `semantic_challenge_003`
+- `semantic_challenge_004`
+- `semantic_harvest_001`
+- `semantic_harvest_002`
+
+---
+
+## `magnitude_judgment`
+
+A qualitative characterization of the size or importance of an observed change.
+
+Example:
+
+```text
+The labor market softened only modestly.
+```
+
+Words such as `modestly`, `sharply`, `substantially`, or `materially` require an appropriate benchmark. A supplied numerical change does not automatically establish the qualitative magnitude judgment.
+
+Reviewed example:
+
+- `semantic_challenge_004`
+
+---
+
+## `market_interpretation`
+
+A statement that interprets observed data or market prices as indicating market beliefs, expectations, sentiment, motives, or related latent market states.
+
+Example:
+
+```text
+The rise in the 10-year yield suggests markets became more concerned about inflation.
+```
+
+A market-price move can be directly observed while the proposed belief or motive remains insufficiently established.
+
+Reviewed examples include:
+
+- `semantic_challenge_002`
+- `semantic_harvest_003`
+- `semantic_harvest_005`
+- `semantic_harvest_006`
+
+---
+
+## `policy_interpretation`
+
+A statement that interprets evidence in terms of policy stance, policy response, or possible policy behavior.
+
+Example:
+
+```text
+Higher inflation may prompt the Federal Reserve to maintain a hawkish stance.
+```
+
+Evidence about inflation or interest rates does not by itself establish a policy reaction, policy intention, or broader characterization of policy stance.
+
+Reviewed example:
+
+- `semantic_harvest_004`
 
 ---
 
@@ -311,7 +394,7 @@ The available evidence determines the support relationship.
 
 It is separate from support.
 
-Current v0.1 values include:
+Current reviewed assertion-strength values include:
 
 ## `asserted`
 
@@ -326,6 +409,37 @@ The decline in the federal funds rate caused the fall in unemployment.
 Reference:
 
 - `semantic_pilot_007`
+
+---
+
+## `qualified_inference`
+
+The statement presents an interpretation as indicated or suggested by the evidence rather than as an established fact.
+
+Typical constructions include:
+
+```text
+suggests
+might suggest
+indicating
+might reflect
+```
+
+Example:
+
+```text
+The rise in the 10-year yield suggests markets became more concerned about inflation.
+```
+
+This differs from `qualified_possibility` because the statement is primarily describing an inference from observed evidence, rather than merely saying that an outcome or explanation may be possible.
+
+Reviewed examples include:
+
+- `semantic_challenge_002`
+- `semantic_harvest_001`
+- `semantic_harvest_003`
+- `semantic_harvest_005`
+- `semantic_harvest_006`
 
 ---
 
@@ -527,12 +641,34 @@ The objective is to make that movement visible and auditable.
 
 ---
 
-# Next Step
+# Current Corpus and Next Step
 
-Use the reviewed pilot and this guide to create slightly richer examples where the boundary between observation and interpretation is less obvious.
+The current reviewed corpus contains:
 
-Do not expand the taxonomy merely because more labels are imaginable.
+```text
+8 reference records
+4 challenge records
+6 naturally occurring model-output records
+18 reviewed records total
+20 semantic annotation units
+```
 
-Add distinctions only when concrete examples demonstrate that the current scheme cannot represent something important.
+The corpus now includes both statement-level and multi-unit annotations and has survived constructed challenges as well as naturally generated model language.
 
-After the annotation framework survives those examples, begin designing the first constrained semantic evaluator.
+The working rule remains:
+
+> Preserve interesting complexity without immediately expanding the ontology.
+
+Do not add distinctions merely because more labels are imaginable. Add them when concrete examples show that the existing framework cannot represent something important.
+
+The next phase is the first constrained semantic proposer:
+
+```text
+reviewed guide + reviewed examples + supplied evidence
+                         ↓
+                 model proposal
+                         ↓
+            held-out human comparison
+```
+
+The proposer is not an oracle. Its purpose is to test whether the reviewed semantic framework can be reproduced consistently enough to help bootstrap annotation of larger model-output populations.
