@@ -52,14 +52,40 @@ def load_corpus() -> list[dict]:
 def annotations_for_record(
     record: dict,
 ) -> list[dict]:
-    if record.get("semantic_units"):
-        return [
-            {
-                "text": unit["text"],
-                "annotation": unit["annotation"],
-            }
-            for unit in record["semantic_units"]
-        ]
+    semantic_units = (
+        record.get("semantic_units")
+        or []
+    )
+
+    if semantic_units:
+        answers = []
+
+        for unit in semantic_units:
+            annotations = unit.get(
+                "annotations"
+            )
+
+            if annotations is None:
+                annotation = unit.get(
+                    "annotation"
+                )
+
+                if annotation is None:
+                    raise ValueError(
+                        "Semantic unit has no annotation payload."
+                    )
+
+                annotations = [
+                    annotation
+                ]
+
+            for annotation in annotations:
+                answers.append({
+                    "text": unit["text"],
+                    "annotation": annotation,
+                })
+
+        return answers
 
     return [
         {

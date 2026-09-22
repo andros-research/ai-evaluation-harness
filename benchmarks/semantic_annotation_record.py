@@ -279,10 +279,53 @@ def validate_semantic_units(
                     f"{evidence_id}"
                 )
 
-        validate_annotation_payload(
-            unit.get("annotation"),
-            field_name=f"{prefix}.annotation",
+        annotation = unit.get(
+            "annotation"
         )
+
+        annotations = unit.get(
+            "annotations"
+        )
+
+        if (
+            annotation is not None
+            and annotations is not None
+        ):
+            raise ValueError(
+                f"{prefix} cannot contain both "
+                "annotation and annotations."
+            )
+
+        if annotations is None:
+            if annotation is None:
+                raise ValueError(
+                    f"{prefix} must contain annotation "
+                    "or annotations."
+                )
+
+            annotations = [
+                annotation
+            ]
+
+        if (
+            not isinstance(annotations, list)
+            or not annotations
+        ):
+            raise ValueError(
+                f"{prefix}.annotations must be "
+                "a non-empty array."
+            )
+
+        for annotation_index, item in enumerate(
+            annotations
+        ):
+            validate_annotation_payload(
+                item,
+                field_name=(
+                    f"{prefix}.annotations"
+                    f"[{annotation_index}]"
+                ),
+            )
 
 
 def validate_annotation_record(
