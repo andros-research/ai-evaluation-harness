@@ -15,20 +15,13 @@ from build_semantic_proposer_prompt import (
     build_model_visible_guide,
     build_reference_answer,
     load_corpus,
+    select_example_ids,
 )
 
 
 DEFAULT_MODEL = "llama3:70b"
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434"
-
-EXAMPLE_IDS = [
-    "semantic_pilot_004",
-    "semantic_pilot_005",
-    "semantic_challenge_002",
-    "semantic_challenge_004",
-    "semantic_harvest_004",
-]
 
 
 def write_json(
@@ -485,24 +478,25 @@ def main() -> None:
             "human reference."
         )
 
-    if args.target_id in EXAMPLE_IDS:
-        raise SystemExit(
-            "STOP: target is part of the "
-            "few-shot example set."
-        )
+    example_ids = select_example_ids(
+        args.target_id
+    )
 
     examples = [
         build_example(
             by_id[example_id]
         )
         for example_id
-        in EXAMPLE_IDS
+        in example_ids
     ]
 
     guide = build_model_visible_guide(
         GUIDE_PATH.read_text(
             encoding="utf-8"
-        )
+        ),
+        target_text=target[
+            "statement"
+        ]["text"],
     )
 
     prompt = build_model_prompt(
@@ -680,7 +674,7 @@ def main() -> None:
         "temperature":
             args.temperature,
         "few_shot_example_ids":
-            EXAMPLE_IDS,
+            example_ids,
         "artifacts": {
             "prompt":
                 str(prompt_path),

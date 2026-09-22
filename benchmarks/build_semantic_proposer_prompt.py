@@ -120,13 +120,23 @@ def build_example(record: dict) -> dict:
 
 def build_model_visible_guide(
     guide: str,
+    *,
+    target_text: str | None = None,
 ) -> str:
-    """Remove reviewed record IDs from model-visible guidance."""
-    return re.sub(
+    """Remove record IDs and held-out target text from guidance."""
+    visible = re.sub(
         r"semantic_(?:pilot|challenge|harvest)_\d+",
-        "`reviewed_example`",
+        "reviewed_example",
         guide,
     )
+
+    if target_text:
+        visible = visible.replace(
+            target_text,
+            "[held-out target statement removed]",
+        )
+
+    return visible
 
 
 def build_target(record: dict) -> dict:
@@ -236,6 +246,39 @@ def build_model_prompt(
     return "\n".join(sections)
 
 
+FEW_SHOT_CANDIDATE_IDS = [
+    "semantic_pilot_004",
+    "semantic_pilot_005",
+    "semantic_challenge_002",
+    "semantic_challenge_004",
+    "semantic_harvest_004",
+    "semantic_harvest_002",
+]
+
+FEW_SHOT_EXAMPLE_COUNT = 5
+
+
+def select_example_ids(
+    target_id: str,
+) -> list[str]:
+    """Select reviewed examples while excluding the held-out target."""
+    eligible = [
+        example_id
+        for example_id in FEW_SHOT_CANDIDATE_IDS
+        if example_id != target_id
+    ]
+
+    if len(eligible) < FEW_SHOT_EXAMPLE_COUNT:
+        raise ValueError(
+            "Not enough eligible few-shot examples "
+            "after excluding the held-out target."
+        )
+
+    return eligible[
+        :FEW_SHOT_EXAMPLE_COUNT
+    ]
+
+
 def build_reference_answer(
     target: dict,
 ) -> dict:
@@ -306,19 +349,9 @@ def main() -> None:
             "Target must have a reviewed human answer."
         )
 
-    example_ids = [
-        "semantic_pilot_004",
-        "semantic_pilot_005",
-        "semantic_challenge_002",
-        "semantic_challenge_004",
-        "semantic_harvest_004",
-    ]
-
-    if args.target_id in example_ids:
-        raise SystemExit(
-            "STOP: target appears in the few-shot "
-            "example set."
-        )
+    example_ids = select_example_ids(
+        args.target_id
+    )
 
     examples = [
         build_example(
@@ -330,7 +363,10 @@ def main() -> None:
     guide = build_model_visible_guide(
         GUIDE_PATH.read_text(
             encoding="utf-8"
-        )
+        ),
+        target_text=target[
+            "statement"
+        ]["text"],
     )
 
     model_prompt = build_model_prompt(
