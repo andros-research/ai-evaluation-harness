@@ -66,7 +66,7 @@ Examples of relationships that should remain intact include:
 
 The initial v0.1 pilot used one statement-sized annotation unit per example.
 
-The current semantic record also supports multiple semantic units when one statement contains several distinct commitments. Each unit preserves its exact source text and receives its own evidence-relative annotation.
+The current semantic record uses claim-bearing spans. Each span preserves exact source text and may receive one or more evidence-relative semantic annotations. Distinct semantic moves do not need to map one-to-one to separate text spans.
 
 Example:
 

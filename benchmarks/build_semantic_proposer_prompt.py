@@ -98,36 +98,56 @@ def annotations_for_record(
 def compact_evidence(
     record: dict,
 ) -> list[dict]:
+    """Preserve full evidence payload while exposing common fields."""
     compact = []
 
     for item in record["evidence"]:
-        payload = item["payload"]
+        payload = item.get(
+            "payload"
+        )
+
+        if not isinstance(
+            payload,
+            dict,
+        ):
+            payload = {}
 
         compact.append(
             {
-                "evidence_id": item["evidence_id"],
-                "source_type": item["source_type"],
-                "claim_text": payload.get(
-                    "claim_text"
-                ),
-                "metric_name": payload.get(
-                    "metric_name"
-                ),
-                "current_value": payload.get(
-                    "current_value"
-                ),
-                "prior_value": payload.get(
-                    "prior_value"
-                ),
-                "delta_value": payload.get(
-                    "delta_value"
-                ),
-                "direction": payload.get(
-                    "direction"
-                ),
-                "comparison_window": payload.get(
-                    "comparison_window"
-                ),
+                "evidence_id":
+                    item["evidence_id"],
+                "source_type":
+                    item["source_type"],
+                "claim_text":
+                    payload.get(
+                        "claim_text"
+                    ),
+                "metric_name":
+                    payload.get(
+                        "metric_name"
+                    ),
+                "current_value":
+                    payload.get(
+                        "current_value"
+                    ),
+                "prior_value":
+                    payload.get(
+                        "prior_value"
+                    ),
+                "delta_value":
+                    payload.get(
+                        "delta_value"
+                    ),
+                "direction":
+                    payload.get(
+                        "direction"
+                    ),
+                "comparison_window":
+                    payload.get(
+                        "comparison_window"
+                    ),
+                "payload":
+                    payload,
             }
         )
 
