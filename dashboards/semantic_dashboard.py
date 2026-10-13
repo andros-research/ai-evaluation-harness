@@ -278,7 +278,9 @@ def render_token_telemetry(
 
     st.caption(
         "Click a token to inspect its probability "
-        "distribution and top alternatives."
+        "distribution and top alternatives. "
+        "Bar = observed-token probability; "
+        "H = next-token entropy in nats."
     )
 
     column_weights = [
@@ -353,8 +355,35 @@ def render_token_telemetry(
                 },
             )
 
+            probability = float(
+                token.get(
+                    "probability",
+                    0.0,
+                )
+            )
+
+            probability = max(
+                0.0,
+                min(
+                    1.0,
+                    probability,
+                ),
+            )
+
+            entropy = float(
+                token.get(
+                    "entropy_nats",
+                    0.0,
+                )
+            )
+
+            st.progress(
+                probability
+            )
+
             st.caption(
-                f"{100.0 * token.get('probability', 0.0):.1f}%"
+                f"{100.0 * probability:.1f}%"
+                f" · H {entropy:.2f}"
             )
 
     # --------------------------------------------------------
