@@ -25,6 +25,11 @@ REVIEWS_PATH = (
     / "semantic_reviews.jsonl"
 )
 
+TOKEN_TELEMETRY_PATH = Path(
+    "benchmarks/fixtures/"
+    "token_telemetry_llama3_semantic_conservative_v0_1.json"
+)
+
 KNOWN_CLAIM_KINDS = {
     "empirical_comparison",
     "unit_conversion",
@@ -149,6 +154,459 @@ def reviews_as_jsonl() -> str:
             + "\n"
             for row in rows
         )
+    )
+
+
+def load_token_telemetry() -> dict | None:
+    if not TOKEN_TELEMETRY_PATH.exists():
+        return None
+
+    return json.loads(
+        TOKEN_TELEMETRY_PATH.read_text(
+            encoding="utf-8"
+        )
+    )
+
+
+def token_display_label(
+    token: dict,
+) -> str:
+    fragment = token.get(
+        "claim_text_fragment",
+        "",
+    )
+
+    if fragment:
+        stripped = fragment.strip()
+
+        if stripped:
+            return stripped
+
+        return fragment
+
+    token_text = token.get(
+        "token_text",
+        "",
+    )
+
+    stripped = token_text.strip()
+
+    return (
+        stripped
+        if stripped
+        else token_text
+    )
+
+
+def select_token(
+    *,
+    state_key: str,
+    token_index: int,
+) -> None:
+    st.session_state[
+        state_key
+    ] = token_index
+
+
+def render_token_telemetry(
+    *,
+    telemetry: dict,
+) -> None:
+    st.subheader(
+        "Token telemetry"
+    )
+
+    source = telemetry.get(
+        "source_generation",
+        {},
+    )
+
+    scoring = telemetry.get(
+        "scoring",
+        {},
+    )
+
+    st.caption(
+        "Teacher-forced rescore of the reviewed historical "
+        "generation. The original Ollama / Q4_0 logits were "
+        "not captured; probabilities shown here come from "
+        f"{scoring.get('model', 'the scoring model')} "
+        f"using {scoring.get('dtype', 'unknown dtype')} "
+        "PyTorch inference."
+    )
+
+    tokens = telemetry.get(
+        "tokens",
+        [],
+    )
+
+    if not tokens:
+        st.warning(
+            "Telemetry artifact contains no token records."
+        )
+        return
+
+    claim_id = telemetry.get(
+        "claim_id",
+        "unknown",
+    )
+
+    token_state_key = (
+        "token_telemetry_selected_"
+        + claim_id
+    )
+
+    valid_token_indices = list(
+        range(
+            len(tokens)
+        )
+    )
+
+    if (
+        st.session_state.get(
+            token_state_key
+        )
+        not in valid_token_indices
+    ):
+        st.session_state[
+            token_state_key
+        ] = 0
+
+    st.markdown(
+        "#### Token strip"
+    )
+
+    st.caption(
+        "Click a token to inspect its probability "
+        "distribution and top alternatives."
+    )
+
+    column_weights = [
+        max(
+            1.0,
+            min(
+                3.0,
+                0.8
+                + 0.18
+                * len(
+                    token_display_label(
+                        token
+                    )
+                ),
+            ),
+        )
+        for token in tokens
+    ]
+
+    token_columns = st.columns(
+        column_weights,
+        gap="small",
+    )
+
+    selected_from_state = (
+        st.session_state[
+            token_state_key
+        ]
+    )
+
+    for token_index, (
+        column,
+        token,
+    ) in enumerate(
+        zip(
+            token_columns,
+            tokens,
+        )
+    ):
+        with column:
+            label = (
+                token_display_label(
+                    token
+                )
+            )
+
+            is_selected = (
+                token_index
+                == selected_from_state
+            )
+
+            st.button(
+                label,
+                key=(
+                    "token_strip_"
+                    + claim_id
+                    + "_"
+                    + str(token_index)
+                ),
+                type=(
+                    "primary"
+                    if is_selected
+                    else "secondary"
+                ),
+                use_container_width=True,
+                on_click=select_token,
+                kwargs={
+                    "state_key":
+                        token_state_key,
+                    "token_index":
+                        token_index,
+                },
+            )
+
+            st.caption(
+                f"{100.0 * token.get('probability', 0.0):.1f}%"
+            )
+
+    # --------------------------------------------------------
+    # Reviewed semantic rail.
+    #
+    # These annotations currently apply to the reviewed
+    # claim-bearing span as a whole. They are deliberately
+    # not presented as exact token-local boundaries.
+    # --------------------------------------------------------
+
+    human_review = telemetry.get(
+        "human_review",
+        {},
+    )
+
+    reviewed_annotations = (
+        human_review.get(
+            "reviewed_annotations"
+        )
+        or []
+    )
+
+    if reviewed_annotations:
+        st.markdown(
+            "#### Reviewed semantic layer"
+        )
+
+        annotation_columns = st.columns(
+            len(
+                reviewed_annotations
+            ),
+            gap="small",
+        )
+
+        for column, annotation in zip(
+            annotation_columns,
+            reviewed_annotations,
+        ):
+            with column:
+                with st.container(
+                    border=True
+                ):
+                    st.markdown(
+                        "**"
+                        + annotation.get(
+                            "claim_kind",
+                            "unknown",
+                        )
+                        + "**"
+                    )
+
+                    st.markdown(
+                        annotation.get(
+                            "support_status",
+                            "unknown",
+                        )
+                        + " · "
+                        + annotation.get(
+                            "assertion_strength",
+                            "unknown",
+                        )
+                    )
+
+                    rationale = (
+                        annotation.get(
+                            "rationale",
+                            ""
+                        )
+                    )
+
+                    if rationale:
+                        st.caption(
+                            rationale
+                        )
+
+        st.caption(
+            "Human-reviewed annotations currently apply "
+            "to the claim-bearing span as a whole. "
+            "Exact token-local semantic boundaries are "
+            "not yet adjudicated; token-level transitions "
+            "remain an exploratory signal."
+        )
+
+    token_df = pd.DataFrame(
+        [
+            {
+                "Index":
+                    token.get(
+                        "claim_token_index"
+                    ),
+                "Token":
+                    token_display_label(
+                        token
+                    ),
+                "P(token)":
+                    (
+                        f"{100.0 * token.get('probability', 0.0):.2f}%"
+                    ),
+                "LogP":
+                    (
+                        f"{token.get('logprob', 0.0):.4f}"
+                    ),
+                "Entropy":
+                    (
+                        f"{token.get('entropy_nats', 0.0):.4f}"
+                    ),
+                "Rank":
+                    token.get(
+                        "rank"
+                    ),
+            }
+            for token in tokens
+        ]
+    )
+
+    with st.expander(
+        "Token telemetry table",
+        expanded=False,
+    ):
+        st.dataframe(
+            token_df,
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    selected_token_index = st.selectbox(
+        "Inspect token",
+        options=list(
+            range(
+                len(tokens)
+            )
+        ),
+        format_func=lambda idx: (
+            f"{idx:02d} · "
+            f"{token_display_label(tokens[idx])}"
+        ),
+        key=token_state_key,
+    )
+
+    selected = tokens[
+        selected_token_index
+    ]
+
+    metric_a, metric_b, metric_c, metric_d, metric_e = (
+        st.columns(5)
+    )
+
+    metric_a.metric(
+        "Probability",
+        (
+            f"{100.0 * selected.get('probability', 0.0):.2f}%"
+        ),
+    )
+
+    metric_b.metric(
+        "Log probability",
+        (
+            f"{selected.get('logprob', 0.0):.4f}"
+        ),
+    )
+
+    metric_c.metric(
+        "Entropy",
+        (
+            f"{selected.get('entropy_nats', 0.0):.4f}"
+        ),
+    )
+
+    metric_d.metric(
+        "Vocabulary rank",
+        selected.get(
+            "rank",
+            "",
+        ),
+    )
+
+    metric_e.metric(
+        "Token ID",
+        selected.get(
+            "token_id",
+            "",
+        ),
+    )
+
+    st.caption(
+        "Model token: "
+        f"{selected.get('token_text', '')!r}"
+        " · Claim fragment: "
+        f"{selected.get('claim_text_fragment', '')!r}"
+        " · Context tokens before observed token: "
+        f"{selected.get('context_token_count', '')}"
+    )
+
+    with st.expander(
+        (
+            "Top alternatives for "
+            f"{selected.get('token_text', '')!r}"
+        )
+    ):
+        top_k = selected.get(
+            "top_k",
+            [],
+        )
+
+        if not top_k:
+            st.caption(
+                "No top-k alternatives recorded."
+            )
+        else:
+            top_k_df = pd.DataFrame(
+                [
+                    {
+                        "Rank":
+                            alternative.get(
+                                "rank"
+                            ),
+                        "Model token":
+                            repr(
+                                alternative.get(
+                                    "token_text",
+                                    "",
+                                )
+                            ),
+                        "Probability":
+                            (
+                                f"{100.0 * alternative.get('probability', 0.0):.3f}%"
+                            ),
+                    }
+                    for alternative
+                    in top_k
+                ]
+            )
+
+            st.dataframe(
+                top_k_df,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+    context = telemetry.get(
+        "context",
+        {},
+    )
+
+    st.caption(
+        "Scoring context: "
+        f"{context.get('total_tokens_through_claim', '')} "
+        "tokens through the end of the claim"
+        " · Source model: "
+        f"{source.get('model', '')}"
+        " · Source temperature: "
+        f"{source.get('temperature', '')}"
     )
 
 
@@ -1247,6 +1705,24 @@ with inspector_tab:
             st.error(
                 str(exc)
             )
+
+    token_telemetry = (
+        load_token_telemetry()
+    )
+
+    if (
+        token_telemetry
+        and token_telemetry.get(
+            "claim_id"
+        )
+        == selected_claim_id
+    ):
+        st.divider()
+
+        render_token_telemetry(
+            telemetry=
+                token_telemetry,
+        )
 
     st.divider()
 
