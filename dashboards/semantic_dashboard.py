@@ -505,21 +505,32 @@ def render_token_telemetry(
                     (
                         "<div style='"
                         "text-align:center;"
-                        "font-size:1.55rem;"
-                        "line-height:1;"
-                        "margin-top:-0.25rem;"
+                        "line-height:1.15;"
+                        "margin-top:-0.30rem;"
+                        "white-space:nowrap;"
+                        "'>"
+                        "<div style='"
+                        "font-size:1.45rem;"
                         "'>↑</div>"
+                        "<div style='"
+                        "font-size:0.72rem;"
+                        "font-weight:600;"
+                        "opacity:0.85;"
+                        "'>"
+                        + transition_cue.get(
+                            "label",
+                            "",
+                        )
+                        + "</div>"
+                        "</div>"
                     ),
                     unsafe_allow_html=True,
                 )
 
             st.caption(
-                "Exploratory semantic-transition cue: "
-                f"{transition_cue.get('label', '')} "
-                f"at {transition_cue.get('token_text', '')!r}. "
-                "This is not a human-adjudicated token boundary; "
-                "the reviewed semantic annotations below apply "
-                "to the claim-bearing span as a whole."
+                "Exploratory token-level cue only; "
+                "human-reviewed semantic annotations "
+                "still apply to the full claim-bearing span."
             )
 
     # --------------------------------------------------------
