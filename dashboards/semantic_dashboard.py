@@ -59,6 +59,14 @@ REVIEW_STATUSES = [
     "deferred",
 ]
 
+EXPLORATORY_TRANSITION_CUES = {
+    "llama3_semantic_conservative_t0__commentary_02": {
+        "token_index": 6,
+        "label": "observation → interpretation",
+        "token_text": "indicating",
+    },
+}
+
 
 def load_jsonl(
     path: Path,
@@ -384,6 +392,56 @@ def render_token_telemetry(
             st.caption(
                 f"{100.0 * probability:.1f}%"
                 f" · H {entropy:.2f}"
+            )
+
+    transition_cue = (
+        EXPLORATORY_TRANSITION_CUES.get(
+            claim_id
+        )
+    )
+
+    if transition_cue:
+        transition_index = (
+            transition_cue.get(
+                "token_index"
+            )
+        )
+
+        if (
+            isinstance(
+                transition_index,
+                int,
+            )
+            and transition_index
+            in valid_token_indices
+        ):
+            transition_columns = st.columns(
+                column_weights,
+                gap="small",
+            )
+
+            with transition_columns[
+                transition_index
+            ]:
+                st.markdown(
+                    (
+                        "<div style='"
+                        "text-align:center;"
+                        "font-size:1.55rem;"
+                        "line-height:1;"
+                        "margin-top:-0.25rem;"
+                        "'>↑</div>"
+                    ),
+                    unsafe_allow_html=True,
+                )
+
+            st.caption(
+                "Exploratory semantic-transition cue: "
+                f"{transition_cue.get('label', '')} "
+                f"at {transition_cue.get('token_text', '')!r}. "
+                "This is not a human-adjudicated token boundary; "
+                "the reviewed semantic annotations below apply "
+                "to the claim-bearing span as a whole."
             )
 
     # --------------------------------------------------------
