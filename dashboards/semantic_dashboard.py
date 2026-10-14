@@ -206,6 +206,81 @@ def token_display_label(
     )
 
 
+def token_hover_text(
+    token: dict,
+) -> str:
+    probability = (
+        100.0
+        * float(
+            token.get(
+                "probability",
+                0.0,
+            )
+        )
+    )
+
+    entropy = float(
+        token.get(
+            "entropy_nats",
+            0.0,
+        )
+    )
+
+    logprob = float(
+        token.get(
+            "logprob",
+            0.0,
+        )
+    )
+
+    lines = [
+        (
+            f"P(token): "
+            f"{probability:.2f}%"
+        ),
+        (
+            f"Entropy: "
+            f"{entropy:.4f} nats"
+        ),
+        (
+            f"Rank: "
+            f"{token.get('rank', '')}"
+        ),
+        (
+            f"LogP: "
+            f"{logprob:.4f}"
+        ),
+        (
+            f"Token ID: "
+            f"{token.get('token_id', '')}"
+        ),
+    ]
+
+    top_k = token.get(
+        "top_k",
+        [],
+    )
+
+    if top_k:
+        lines.append("")
+        lines.append(
+            "Top alternatives:"
+        )
+
+        for alternative in top_k[:5]:
+            lines.append(
+                (
+                    f"{alternative.get('rank', '')}. "
+                    f"{alternative.get('token_text', '')!r} "
+                    f"{100.0 * float(alternative.get('probability', 0.0)):.2f}%"
+                )
+            )
+
+    return "\n".join(
+        lines
+    )
+
+
 def select_token(
     *,
     state_key: str,
@@ -354,6 +429,9 @@ def render_token_telemetry(
                     else "secondary"
                 ),
                 use_container_width=True,
+                help=token_hover_text(
+                    token
+                ),
                 on_click=select_token,
                 kwargs={
                     "state_key":
