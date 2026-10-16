@@ -88,30 +88,35 @@ def repo_relative_source_path(
     return REPO_ROOT / relative
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Teacher-forced token telemetry for one "
-            "human-reviewed semantic claim."
-        )
+def load_inference_runtime():
+    print("Loading tokenizer...")
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        MODEL_ID,
+        clean_up_tokenization_spaces=False,
     )
 
-    parser.add_argument(
-        "--claim-id",
-        default=DEFAULT_CLAIM_ID,
-        help=(
-            "Reviewed claim_id to score. Defaults to "
-            "the original v1.9.1 regression specimen."
-        ),
+    print("Loading model...")
+
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        dtype=torch.bfloat16,
+        device_map={"": "cuda"},
+        low_cpu_mem_usage=True,
     )
 
-    args = parser.parse_args()
+    model.eval()
 
-    claim_id = args.claim_id
+    return tokenizer, model
 
-    reviewed = load_reviewed_claim(
-        claim_id
-    )
+
+def score_reviewed_claim(
+    *,
+    reviewed: dict,
+    tokenizer,
+    model,
+) -> Path:
+    claim_id = reviewed["claim_id"]
 
     output_path = (
         token_telemetry_output_path(
@@ -151,13 +156,6 @@ def main() -> None:
     # Score the exact historical generation through
     # the end of the reviewed claim.
     generated_text = narrative[:claim_end]
-
-    print("Loading tokenizer...")
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        MODEL_ID,
-        clean_up_tokenization_spaces=False,
-    )
 
     # Original user prompt + Llama-3 assistant header.
     chat_encoding = tokenizer.apply_chat_template(
@@ -205,17 +203,6 @@ def main() -> None:
         raise RuntimeError(
             "No generated tokens overlap claim span."
         )
-
-    print("Loading model...")
-
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        dtype=torch.bfloat16,
-        device_map={"": "cuda"},
-        low_cpu_mem_usage=True,
-    )
-
-    model.eval()
 
     full_ids = torch.cat(
         [
@@ -538,6 +525,44 @@ def main() -> None:
             f"{record['entropy_nats']:>9.4f} "
             f"{record['rank']:>5}"
         )
+
+    return output_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Teacher-forced token telemetry for one "
+            "human-reviewed semantic claim."
+        )
+    )
+
+    parser.add_argument(
+        "--claim-id",
+        default=DEFAULT_CLAIM_ID,
+        help=(
+            "Reviewed claim_id to score. Defaults to "
+            "the original v1.9.1 regression specimen."
+        ),
+    )
+
+    args = parser.parse_args()
+
+    # Validate the requested claim before paying the
+    # cost of loading the inference model.
+    reviewed = load_reviewed_claim(
+        args.claim_id
+    )
+
+    tokenizer, model = (
+        load_inference_runtime()
+    )
+
+    score_reviewed_claim(
+        reviewed=reviewed,
+        tokenizer=tokenizer,
+        model=model,
+    )
 
 
 if __name__ == "__main__":
