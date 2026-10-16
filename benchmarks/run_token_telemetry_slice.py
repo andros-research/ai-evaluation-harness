@@ -23,6 +23,7 @@ from benchmarks.generate_fred_narrative_from_claims import (
 
 
 MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
+SOURCE_MODEL = "llama3"
 
 DEFAULT_CLAIM_ID = (
     "llama3_semantic_conservative_t0__commentary_02"
@@ -45,18 +46,27 @@ def token_telemetry_output_path(
     )
 
 
-def load_reviewed_claim(
-    claim_id: str,
-) -> dict:
+def load_reviewed_claims() -> list[dict]:
     rows = [
         json.loads(line)
         for line in REVIEW_FIXTURE.read_text().splitlines()
         if line.strip()
     ]
 
+    if not rows:
+        raise RuntimeError(
+            "Reviewed semantic fixture is empty."
+        )
+
+    return rows
+
+
+def load_reviewed_claim(
+    claim_id: str,
+) -> dict:
     matches = [
         row
-        for row in rows
+        for row in load_reviewed_claims()
         if row["claim_id"] == claim_id
     ]
 
@@ -532,37 +542,108 @@ def score_reviewed_claim(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Teacher-forced token telemetry for one "
-            "human-reviewed semantic claim."
+            "Teacher-forced token telemetry for "
+            "human-reviewed Llama 3 claims."
         )
     )
 
-    parser.add_argument(
+    selection = (
+        parser.add_mutually_exclusive_group()
+    )
+
+    selection.add_argument(
         "--claim-id",
-        default=DEFAULT_CLAIM_ID,
+        default=None,
         help=(
-            "Reviewed claim_id to score. Defaults to "
-            "the original v1.9.1 regression specimen."
+            "One reviewed Llama 3 claim_id to score. "
+            "If omitted, uses the original v1.9.1 "
+            "regression specimen."
+        ),
+    )
+
+    selection.add_argument(
+        "--all-reviewed",
+        action="store_true",
+        help=(
+            "Score every reviewed claim whose "
+            "source_model is llama3."
         ),
     )
 
     args = parser.parse_args()
 
-    # Validate the requested claim before paying the
-    # cost of loading the inference model.
-    reviewed = load_reviewed_claim(
-        args.claim_id
+    if args.all_reviewed:
+        reviewed_claims = [
+            row
+            for row in load_reviewed_claims()
+            if row.get("source_model")
+            == SOURCE_MODEL
+        ]
+    else:
+        claim_id = (
+            args.claim_id
+            or DEFAULT_CLAIM_ID
+        )
+
+        reviewed_claims = [
+            load_reviewed_claim(
+                claim_id
+            )
+        ]
+
+    if not reviewed_claims:
+        raise RuntimeError(
+            "No reviewed Llama 3 claims selected."
+        )
+
+    wrong_model = [
+        row["claim_id"]
+        for row in reviewed_claims
+        if row.get("source_model")
+        != SOURCE_MODEL
+    ]
+
+    if wrong_model:
+        raise RuntimeError(
+            "This scorer only supports source_model "
+            f"{SOURCE_MODEL!r}; incompatible claims: "
+            + ", ".join(wrong_model)
+        )
+
+    print(
+        f"Selected {len(reviewed_claims)} "
+        "reviewed claim(s):"
     )
+
+    for reviewed in reviewed_claims:
+        print(
+            " -",
+            reviewed["claim_id"],
+        )
+
+    print()
 
     tokenizer, model = (
         load_inference_runtime()
     )
 
-    score_reviewed_claim(
-        reviewed=reviewed,
-        tokenizer=tokenizer,
-        model=model,
-    )
+    total = len(reviewed_claims)
+
+    for index, reviewed in enumerate(
+        reviewed_claims,
+        start=1,
+    ):
+        print()
+        print(
+            f"[{index}/{total}] "
+            f"{reviewed['claim_id']}"
+        )
+
+        score_reviewed_claim(
+            reviewed=reviewed,
+            tokenizer=tokenizer,
+            model=model,
+        )
 
 
 if __name__ == "__main__":
