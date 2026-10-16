@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -23,7 +24,7 @@ from benchmarks.generate_fred_narrative_from_claims import (
 
 MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
 
-CLAIM_ID = (
+DEFAULT_CLAIM_ID = (
     "llama3_semantic_conservative_t0__commentary_02"
 )
 
@@ -33,15 +34,20 @@ REVIEW_FIXTURE = (
     / "semantic_dashboard_reviewed_v0_1.jsonl"
 )
 
-OUTPUT_PATH = (
-    REPO_ROOT
-    / "benchmarks/results/token_telemetry/"
-    / CLAIM_ID
-    / "token_telemetry_v0_1.json"
-)
+def token_telemetry_output_path(
+    claim_id: str,
+) -> Path:
+    return (
+        REPO_ROOT
+        / "benchmarks/results/token_telemetry/"
+        / claim_id
+        / "token_telemetry_v0_1.json"
+    )
 
 
-def load_reviewed_claim() -> dict:
+def load_reviewed_claim(
+    claim_id: str,
+) -> dict:
     rows = [
         json.loads(line)
         for line in REVIEW_FIXTURE.read_text().splitlines()
@@ -51,13 +57,13 @@ def load_reviewed_claim() -> dict:
     matches = [
         row
         for row in rows
-        if row["claim_id"] == CLAIM_ID
+        if row["claim_id"] == claim_id
     ]
 
     if len(matches) != 1:
         raise RuntimeError(
             f"Expected exactly one reviewed claim for "
-            f"{CLAIM_ID!r}; found {len(matches)}"
+            f"{claim_id!r}; found {len(matches)}"
         )
 
     return matches[0]
@@ -83,7 +89,35 @@ def repo_relative_source_path(
 
 
 def main() -> None:
-    reviewed = load_reviewed_claim()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Teacher-forced token telemetry for one "
+            "human-reviewed semantic claim."
+        )
+    )
+
+    parser.add_argument(
+        "--claim-id",
+        default=DEFAULT_CLAIM_ID,
+        help=(
+            "Reviewed claim_id to score. Defaults to "
+            "the original v1.9.1 regression specimen."
+        ),
+    )
+
+    args = parser.parse_args()
+
+    claim_id = args.claim_id
+
+    reviewed = load_reviewed_claim(
+        claim_id
+    )
+
+    output_path = (
+        token_telemetry_output_path(
+            claim_id
+        )
+    )
 
     claim_span = reviewed["claim_span"]
     prompt_variant = reviewed["prompt_variant"]
@@ -386,7 +420,7 @@ def main() -> None:
         "schema_version":
             "token_telemetry_v0_1",
         "claim_id":
-            CLAIM_ID,
+            claim_id,
         "telemetry_mode":
             "teacher_forced_rescore",
         "historical_logits_recovered":
@@ -457,12 +491,12 @@ def main() -> None:
             token_records,
     }
 
-    OUTPUT_PATH.parent.mkdir(
+    output_path.parent.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    OUTPUT_PATH.write_text(
+    output_path.write_text(
         json.dumps(
             artifact,
             indent=2,
@@ -474,7 +508,7 @@ def main() -> None:
     print()
     print("TOKEN TELEMETRY ARTIFACT")
     print("-" * 72)
-    print("output:", OUTPUT_PATH)
+    print("output:", output_path)
     print(
         "claim tokens:",
         len(token_records),
