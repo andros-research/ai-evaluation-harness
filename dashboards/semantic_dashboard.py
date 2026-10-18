@@ -25,9 +25,17 @@ REVIEWS_PATH = (
     / "semantic_reviews.jsonl"
 )
 
-TOKEN_TELEMETRY_PATH = Path(
+TOKEN_TELEMETRY_ROOT = Path(
+    "benchmarks/results/token_telemetry"
+)
+
+FROZEN_TELEMETRY_PATH = Path(
     "benchmarks/fixtures/"
     "token_telemetry_llama3_semantic_conservative_v0_1.json"
+)
+
+FROZEN_TELEMETRY_CLAIM_ID = (
+    "llama3_semantic_conservative_t0__commentary_02"
 )
 
 KNOWN_CLAIM_KINDS = {
@@ -165,15 +173,40 @@ def reviews_as_jsonl() -> str:
     )
 
 
-def load_token_telemetry() -> dict | None:
-    if not TOKEN_TELEMETRY_PATH.exists():
-        return None
-
-    return json.loads(
-        TOKEN_TELEMETRY_PATH.read_text(
-            encoding="utf-8"
+def load_token_telemetry(
+    claim_id: str,
+) -> dict | None:
+    if not claim_id or Path(claim_id).name != claim_id:
+        raise ValueError(
+            f"Invalid telemetry claim_id: {claim_id!r}"
         )
+
+    path = (
+        TOKEN_TELEMETRY_ROOT
+        / claim_id
+        / "token_telemetry_v0_1.json"
     )
+
+    if not path.exists():
+        if claim_id != FROZEN_TELEMETRY_CLAIM_ID:
+            return None
+
+        path = FROZEN_TELEMETRY_PATH
+
+        if not path.exists():
+            return None
+
+    telemetry = json.loads(
+        path.read_text(encoding="utf-8")
+    )
+
+    if telemetry.get("claim_id") != claim_id:
+        raise RuntimeError(
+            "Telemetry artifact claim_id mismatch: "
+            f"{path}"
+        )
+
+    return telemetry
 
 
 def token_display_label(
@@ -1883,7 +1916,9 @@ with inspector_tab:
             )
 
     token_telemetry = (
-        load_token_telemetry()
+        load_token_telemetry(
+            selected_claim_id
+        )
     )
 
     if (
