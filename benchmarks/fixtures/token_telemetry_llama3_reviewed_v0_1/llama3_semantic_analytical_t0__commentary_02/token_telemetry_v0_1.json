@@ -1,0 +1,1965 @@
+{
+  "schema_version": "token_telemetry_v0_1",
+  "claim_id": "llama3_semantic_analytical_t0__commentary_02",
+  "telemetry_mode": "teacher_forced_rescore",
+  "historical_logits_recovered": false,
+  "source_generation": {
+    "model": "llama3",
+    "backend": "ollama",
+    "quantization": "Q4_0",
+    "temperature": 0.0,
+    "prompt_variant": "semantic_analytical",
+    "narrative_path": "benchmarks/results/semantic_model_comparisons/fred_semantic_discovery_20260920/runs/llama3_semantic_analytical_t0/repetition_001/fred_narratives/fred_narrative.md"
+  },
+  "scoring": {
+    "model": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "backend": "transformers_pytorch",
+    "dtype": "bfloat16",
+    "device": "cuda",
+    "vocab_size": 128256
+  },
+  "context": {
+    "raw_prompt_chars": 3318,
+    "raw_prompt_sha256": "b8238532480e83e86dadbb3eed173977d2ad40919867e3d9f0d8fbbf6292217a",
+    "prompt_chat_tokens": 941,
+    "generated_tokens_through_claim": 277,
+    "total_tokens_through_claim": 1218
+  },
+  "claim": {
+    "text": "This suggests that price pressures remain elevated, which may prompt the Federal Reserve to maintain its hawkish stance on interest rates.",
+    "narrative_char_start": 839,
+    "narrative_char_end": 977,
+    "token_count": 24,
+    "decoded_token_slice": " This suggests that price pressures remain elevated, which may prompt the Federal Reserve to maintain its hawkish stance on interest rates.",
+    "aligned_claim_text": "This suggests that price pressures remain elevated, which may prompt the Federal Reserve to maintain its hawkish stance on interest rates."
+  },
+  "human_review": {
+    "review_status": "corrected",
+    "reviewed_at": "2026-10-05T01:18:45.654630+00:00",
+    "reviewed_annotations": [
+      {
+        "claim_kind": "policy_interpretation",
+        "support_status": "insufficient_evidence",
+        "assertion_strength": "qualified_possibility",
+        "rationale": "The supplied evidence establishes an increase in headline CPI year-over-year inflation, but it does not establish how the Federal Reserve will respond."
+      },
+      {
+        "claim_kind": "temporal_pattern",
+        "support_status": "insufficient_evidence",
+        "assertion_strength": "qualified_inference",
+        "rationale": "“remain” asserts persistence through time that the endpoints do not establish"
+      },
+      {
+        "claim_kind": "scope_generalization",
+        "support_status": "insufficient_evidence",
+        "assertion_strength": "qualified_inference",
+        "rationale": "“price pressures” broadens from the supplied headline CPI evidence"
+      },
+      {
+        "claim_kind": "magnitude_judgment",
+        "support_status": "insufficient_evidence",
+        "assertion_strength": "qualified_inference",
+        "rationale": "no benchmark establishes what counts as elevated"
+      }
+    ],
+    "review_note": ""
+  },
+  "tokens": [
+    {
+      "claim_token_index": 0,
+      "generation_token_index": 253,
+      "full_sequence_position": 1194,
+      "context_token_count": 1194,
+      "token_id": 1115,
+      "token_text": " This",
+      "claim_text_fragment": "This",
+      "narrative_char_start": 838,
+      "narrative_char_end": 843,
+      "claim_char_start": 0,
+      "claim_char_end": 4,
+      "probability": 0.8449006676673889,
+      "logprob": -0.1685362309217453,
+      "entropy_nats": 0.6123388409614563,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 1115,
+          "token_text": " This",
+          "probability": 0.8449006676673889
+        },
+        {
+          "rank": 2,
+          "token_id": 26982,
+          "token_text": " Meanwhile",
+          "probability": 0.11434487253427505
+        },
+        {
+          "rank": 3,
+          "token_id": 4452,
+          "token_text": " However",
+          "probability": 0.009385998360812664
+        },
+        {
+          "rank": 4,
+          "token_id": 1952,
+          "token_text": " On",
+          "probability": 0.008283114992082119
+        },
+        {
+          "rank": 5,
+          "token_id": 18185,
+          "token_text": " Despite",
+          "probability": 0.004433631896972656
+        },
+        {
+          "rank": 6,
+          "token_id": 763,
+          "token_text": " In",
+          "probability": 0.003912666346877813
+        },
+        {
+          "rank": 7,
+          "token_id": 6104,
+          "token_text": " While",
+          "probability": 0.003912666346877813
+        },
+        {
+          "rank": 8,
+          "token_id": 82671,
+          "token_text": " Conversely",
+          "probability": 0.003452915931120515
+        },
+        {
+          "rank": 9,
+          "token_id": 578,
+          "token_text": " The",
+          "probability": 0.003047187812626362
+        },
+        {
+          "rank": 10,
+          "token_id": 2468,
+          "token_text": " At",
+          "probability": 0.0018482126761227846
+        }
+      ]
+    },
+    {
+      "claim_token_index": 1,
+      "generation_token_index": 254,
+      "full_sequence_position": 1195,
+      "context_token_count": 1195,
+      "token_id": 13533,
+      "token_text": " suggests",
+      "claim_text_fragment": " suggests",
+      "narrative_char_start": 843,
+      "narrative_char_end": 852,
+      "claim_char_start": 4,
+      "claim_char_end": 13,
+      "probability": 0.30943262577056885,
+      "logprob": -1.1730148792266846,
+      "entropy_nats": 2.605790138244629,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 13533,
+          "token_text": " suggests",
+          "probability": 0.30943262577056885
+        },
+        {
+          "rank": 2,
+          "token_id": 1253,
+          "token_text": " may",
+          "probability": 0.1656273454427719
+        },
+        {
+          "rank": 3,
+          "token_id": 374,
+          "token_text": " is",
+          "probability": 0.08865392953157425
+        },
+        {
+          "rank": 4,
+          "token_id": 10205,
+          "token_text": " rise",
+          "probability": 0.08865392953157425
+        },
+        {
+          "rank": 5,
+          "token_id": 1436,
+          "token_text": " could",
+          "probability": 0.08328265696763992
+        },
+        {
+          "rank": 6,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 0.03695645555853844
+        },
+        {
+          "rank": 7,
+          "token_id": 5376,
+          "token_text": " increase",
+          "probability": 0.028781717643141747
+        },
+        {
+          "rank": 8,
+          "token_id": 6650,
+          "token_text": " growth",
+          "probability": 0.028781717643141747
+        },
+        {
+          "rank": 9,
+          "token_id": 40872,
+          "token_text": " upward",
+          "probability": 0.02539977990090847
+        },
+        {
+          "rank": 10,
+          "token_id": 35435,
+          "token_text": " upt",
+          "probability": 0.011271086521446705
+        }
+      ]
+    },
+    {
+      "claim_token_index": 2,
+      "generation_token_index": 255,
+      "full_sequence_position": 1196,
+      "context_token_count": 1196,
+      "token_id": 430,
+      "token_text": " that",
+      "claim_text_fragment": " that",
+      "narrative_char_start": 852,
+      "narrative_char_end": 857,
+      "claim_char_start": 13,
+      "claim_char_end": 18,
+      "probability": 0.9808740019798279,
+      "logprob": -0.019311275333166122,
+      "entropy_nats": 0.13791623711585999,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 430,
+          "token_text": " that",
+          "probability": 0.9808740019798279
+        },
+        {
+          "rank": 2,
+          "token_id": 14529,
+          "token_text": " ongoing",
+          "probability": 0.005832489114254713
+        },
+        {
+          "rank": 3,
+          "token_id": 264,
+          "token_text": " a",
+          "probability": 0.00514715351164341
+        },
+        {
+          "rank": 4,
+          "token_id": 26048,
+          "token_text": " persistent",
+          "probability": 0.0027550726663321257
+        },
+        {
+          "rank": 5,
+          "token_id": 25544,
+          "token_text": " inflation",
+          "probability": 0.0013014042051509023
+        },
+        {
+          "rank": 6,
+          "token_id": 23135,
+          "token_text": " persist",
+          "probability": 0.00044975324999541044
+        },
+        {
+          "rank": 7,
+          "token_id": 1063,
+          "token_text": " some",
+          "probability": 0.0003091107646469027
+        },
+        {
+          "rank": 8,
+          "token_id": 29759,
+          "token_text": " sustained",
+          "probability": 0.0003091107646469027
+        },
+        {
+          "rank": 9,
+          "token_id": 7982,
+          "token_text": " growing",
+          "probability": 0.0002903826825786382
+        },
+        {
+          "rank": 10,
+          "token_id": 16448,
+          "token_text": " rising",
+          "probability": 0.00025626178830862045
+        }
+      ]
+    },
+    {
+      "claim_token_index": 3,
+      "generation_token_index": 256,
+      "full_sequence_position": 1197,
+      "context_token_count": 1197,
+      "token_id": 3430,
+      "token_text": " price",
+      "claim_text_fragment": " price",
+      "narrative_char_start": 857,
+      "narrative_char_end": 863,
+      "claim_char_start": 18,
+      "claim_char_end": 24,
+      "probability": 0.3594755530357361,
+      "logprob": -1.0231091976165771,
+      "entropy_nats": 1.3753854036331177,
+      "rank": 2,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 25544,
+          "token_text": " inflation",
+          "probability": 0.4615756869316101
+        },
+        {
+          "rank": 2,
+          "token_id": 3430,
+          "token_text": " price",
+          "probability": 0.3594755530357361
+        },
+        {
+          "rank": 3,
+          "token_id": 279,
+          "token_text": " the",
+          "probability": 0.08020982891321182
+        },
+        {
+          "rank": 4,
+          "token_id": 16940,
+          "token_text": " underlying",
+          "probability": 0.029507549479603767
+        },
+        {
+          "rank": 5,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 0.026040319353342056
+        },
+        {
+          "rank": 6,
+          "token_id": 7729,
+          "token_text": " prices",
+          "probability": 0.01579424738883972
+        },
+        {
+          "rank": 7,
+          "token_id": 21913,
+          "token_text": " pricing",
+          "probability": 0.007460674736648798
+        },
+        {
+          "rank": 8,
+          "token_id": 7631,
+          "token_text": " demand",
+          "probability": 0.0031100718770176172
+        },
+        {
+          "rank": 9,
+          "token_id": 7100,
+          "token_text": " economic",
+          "probability": 0.0027446288149803877
+        },
+        {
+          "rank": 10,
+          "token_id": 5190,
+          "token_text": " higher",
+          "probability": 0.0016647016163915396
+        }
+      ]
+    },
+    {
+      "claim_token_index": 4,
+      "generation_token_index": 257,
+      "full_sequence_position": 1198,
+      "context_token_count": 1198,
+      "token_id": 40850,
+      "token_text": " pressures",
+      "claim_text_fragment": " pressures",
+      "narrative_char_start": 863,
+      "narrative_char_end": 873,
+      "claim_char_start": 24,
+      "claim_char_end": 34,
+      "probability": 0.9897270798683167,
+      "logprob": -0.010326054878532887,
+      "entropy_nats": 0.06563333421945572,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 40850,
+          "token_text": " pressures",
+          "probability": 0.9897270798683167
+        },
+        {
+          "rank": 2,
+          "token_id": 7410,
+          "token_text": " pressure",
+          "probability": 0.007556660566478968
+        },
+        {
+          "rank": 3,
+          "token_id": 6650,
+          "token_text": " growth",
+          "probability": 0.0021650195121765137
+        },
+        {
+          "rank": 4,
+          "token_id": 20334,
+          "token_text": " stability",
+          "probability": 0.0001777155266609043
+        },
+        {
+          "rank": 5,
+          "token_id": 12992,
+          "token_text": " increases",
+          "probability": 0.0001777155266609043
+        },
+        {
+          "rank": 6,
+          "token_id": 5990,
+          "token_text": " levels",
+          "probability": 9.512426913715899e-05
+        },
+        {
+          "rank": 7,
+          "token_id": 8612,
+          "token_text": " Press",
+          "probability": 1.8731079762801528e-05
+        },
+        {
+          "rank": 8,
+          "token_id": 2237,
+          "token_text": " level",
+          "probability": 1.5528610674664378e-05
+        },
+        {
+          "rank": 9,
+          "token_id": 38268,
+          "token_text": " rises",
+          "probability": 6.473288067354588e-06
+        },
+        {
+          "rank": 10,
+          "token_id": 3577,
+          "token_text": " press",
+          "probability": 5.3665439736505505e-06
+        }
+      ]
+    },
+    {
+      "claim_token_index": 5,
+      "generation_token_index": 258,
+      "full_sequence_position": 1199,
+      "context_token_count": 1199,
+      "token_id": 7293,
+      "token_text": " remain",
+      "claim_text_fragment": " remain",
+      "narrative_char_start": 873,
+      "narrative_char_end": 880,
+      "claim_char_start": 34,
+      "claim_char_end": 41,
+      "probability": 0.591127336025238,
+      "logprob": -0.5257238149642944,
+      "entropy_nats": 1.0143861770629883,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 7293,
+          "token_text": " remain",
+          "probability": 0.591127336025238
+        },
+        {
+          "rank": 2,
+          "token_id": 1253,
+          "token_text": " may",
+          "probability": 0.2464185506105423
+        },
+        {
+          "rank": 3,
+          "token_id": 527,
+          "token_text": " are",
+          "probability": 0.14946040511131287
+        },
+        {
+          "rank": 4,
+          "token_id": 23135,
+          "token_text": " persist",
+          "probability": 0.0065668304450809956
+        },
+        {
+          "rank": 5,
+          "token_id": 304,
+          "token_text": " in",
+          "probability": 0.003514971351251006
+        },
+        {
+          "rank": 6,
+          "token_id": 3136,
+          "token_text": " continue",
+          "probability": 0.0016603547846898437
+        },
+        {
+          "rank": 7,
+          "token_id": 2643,
+          "token_text": " might",
+          "probability": 0.00047569963498972356
+        },
+        {
+          "rank": 8,
+          "token_id": 617,
+          "token_text": " have",
+          "probability": 0.00017500019748695195
+        },
+        {
+          "rank": 9,
+          "token_id": 8625,
+          "token_text": " remains",
+          "probability": 0.00017500019748695195
+        },
+        {
+          "rank": 10,
+          "token_id": 2103,
+          "token_text": " still",
+          "probability": 0.00012027576303808019
+        }
+      ]
+    },
+    {
+      "claim_token_index": 6,
+      "generation_token_index": 259,
+      "full_sequence_position": 1200,
+      "context_token_count": 1200,
+      "token_id": 32389,
+      "token_text": " elevated",
+      "claim_text_fragment": " elevated",
+      "narrative_char_start": 880,
+      "narrative_char_end": 889,
+      "claim_char_start": 41,
+      "claim_char_end": 50,
+      "probability": 0.3562041223049164,
+      "logprob": -1.0322513580322266,
+      "entropy_nats": 1.0115864276885986,
+      "rank": 2,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 264,
+          "token_text": " a",
+          "probability": 0.5872812867164612
+        },
+        {
+          "rank": 2,
+          "token_id": 32389,
+          "token_text": " elevated",
+          "probability": 0.3562041223049164
+        },
+        {
+          "rank": 3,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 0.01218863483518362
+        },
+        {
+          "rank": 4,
+          "token_id": 304,
+          "token_text": " in",
+          "probability": 0.00949251838028431
+        },
+        {
+          "rank": 5,
+          "token_id": 3118,
+          "token_text": " present",
+          "probability": 0.005080978851765394
+        },
+        {
+          "rank": 6,
+          "token_id": 26048,
+          "token_text": " persistent",
+          "probability": 0.004212279338389635
+        },
+        {
+          "rank": 7,
+          "token_id": 459,
+          "token_text": " an",
+          "probability": 0.00308176944963634
+        },
+        {
+          "rank": 8,
+          "token_id": 24070,
+          "token_text": " moderate",
+          "probability": 0.002895054407417774
+        },
+        {
+          "rank": 9,
+          "token_id": 14738,
+          "token_text": " somewhat",
+          "probability": 0.0019897399470210075
+        },
+        {
+          "rank": 10,
+          "token_id": 3831,
+          "token_text": " strong",
+          "probability": 0.0017559393309056759
+        }
+      ]
+    },
+    {
+      "claim_token_index": 7,
+      "generation_token_index": 260,
+      "full_sequence_position": 1201,
+      "context_token_count": 1201,
+      "token_id": 11,
+      "token_text": ",",
+      "claim_text_fragment": ",",
+      "narrative_char_start": 889,
+      "narrative_char_end": 890,
+      "claim_char_start": 50,
+      "claim_char_end": 51,
+      "probability": 0.7325119376182556,
+      "logprob": -0.3112756609916687,
+      "entropy_nats": 0.6911333203315735,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 0.7325119376182556
+        },
+        {
+          "rank": 2,
+          "token_id": 13,
+          "token_text": ".",
+          "probability": 0.23781178891658783
+        },
+        {
+          "rank": 3,
+          "token_id": 323,
+          "token_text": " and",
+          "probability": 0.02506517805159092
+        },
+        {
+          "rank": 4,
+          "token_id": 8994,
+          "token_text": " despite",
+          "probability": 0.00233142520301044
+        },
+        {
+          "rank": 5,
+          "token_id": 304,
+          "token_text": " in",
+          "probability": 0.0020574757363647223
+        },
+        {
+          "rank": 6,
+          "token_id": 719,
+          "token_text": " but",
+          "probability": 0.00010243568249279633
+        },
+        {
+          "rank": 7,
+          "token_id": 4028,
+          "token_text": " across",
+          "probability": 4.270154386176728e-05
+        },
+        {
+          "rank": 8,
+          "token_id": 65904,
+          "token_text": " amidst",
+          "probability": 1.2234198038640898e-05
+        },
+        {
+          "rank": 9,
+          "token_id": 439,
+          "token_text": " as",
+          "probability": 1.0796640708576888e-05
+        },
+        {
+          "rank": 10,
+          "token_id": 23442,
+          "token_text": " amid",
+          "probability": 1.0796640708576888e-05
+        }
+      ]
+    },
+    {
+      "claim_token_index": 8,
+      "generation_token_index": 261,
+      "full_sequence_position": 1202,
+      "context_token_count": 1202,
+      "token_id": 902,
+      "token_text": " which",
+      "claim_text_fragment": " which",
+      "narrative_char_start": 890,
+      "narrative_char_end": 896,
+      "claim_char_start": 51,
+      "claim_char_end": 57,
+      "probability": 0.35985130071640015,
+      "logprob": -1.022064447402954,
+      "entropy_nats": 1.819848895072937,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 902,
+          "token_text": " which",
+          "probability": 0.35985130071640015
+        },
+        {
+          "rank": 2,
+          "token_id": 13893,
+          "token_text": " potentially",
+          "probability": 0.28025245666503906
+        },
+        {
+          "rank": 3,
+          "token_id": 8051,
+          "token_text": " although",
+          "probability": 0.1323818862438202
+        },
+        {
+          "rank": 4,
+          "token_id": 8994,
+          "token_text": " despite",
+          "probability": 0.06253277510404587
+        },
+        {
+          "rank": 5,
+          "token_id": 323,
+          "token_text": " and",
+          "probability": 0.0551849789917469
+        },
+        {
+          "rank": 6,
+          "token_id": 719,
+          "token_text": " but",
+          "probability": 0.026067540049552917
+        },
+        {
+          "rank": 7,
+          "token_id": 4461,
+          "token_text": " likely",
+          "probability": 0.023004524409770966
+        },
+        {
+          "rank": 8,
+          "token_id": 43169,
+          "token_text": " albeit",
+          "probability": 0.020301420241594315
+        },
+        {
+          "rank": 9,
+          "token_id": 11000,
+          "token_text": " possibly",
+          "probability": 0.012313437648117542
+        },
+        {
+          "rank": 10,
+          "token_id": 1524,
+          "token_text": " even",
+          "probability": 0.005133004393428564
+        }
+      ]
+    },
+    {
+      "claim_token_index": 9,
+      "generation_token_index": 262,
+      "full_sequence_position": 1203,
+      "context_token_count": 1203,
+      "token_id": 1253,
+      "token_text": " may",
+      "claim_text_fragment": " may",
+      "narrative_char_start": 896,
+      "narrative_char_end": 900,
+      "claim_char_start": 57,
+      "claim_char_end": 61,
+      "probability": 0.6468660235404968,
+      "logprob": -0.435616135597229,
+      "entropy_nats": 0.6933832168579102,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 1253,
+          "token_text": " may",
+          "probability": 0.6468660235404968
+        },
+        {
+          "rank": 2,
+          "token_id": 1436,
+          "token_text": " could",
+          "probability": 0.34624242782592773
+        },
+        {
+          "rank": 3,
+          "token_id": 2643,
+          "token_text": " might",
+          "probability": 0.0033944416791200638
+        },
+        {
+          "rank": 4,
+          "token_id": 374,
+          "token_text": " is",
+          "probability": 0.0014150138013064861
+        },
+        {
+          "rank": 5,
+          "token_id": 649,
+          "token_text": " can",
+          "probability": 0.001248745247721672
+        },
+        {
+          "rank": 6,
+          "token_id": 706,
+          "token_text": " has",
+          "probability": 0.00024589241365902126
+        },
+        {
+          "rank": 7,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 0.00024589241365902126
+        },
+        {
+          "rank": 8,
+          "token_id": 304,
+          "token_text": " in",
+          "probability": 0.0002169992949347943
+        },
+        {
+          "rank": 9,
+          "token_id": 690,
+          "token_text": " will",
+          "probability": 1.6733187294448726e-05
+        },
+        {
+          "rank": 10,
+          "token_id": 5398,
+          "token_text": " align",
+          "probability": 1.3031820344622247e-05
+        }
+      ]
+    },
+    {
+      "claim_token_index": 10,
+      "generation_token_index": 263,
+      "full_sequence_position": 1204,
+      "context_token_count": 1204,
+      "token_id": 10137,
+      "token_text": " prompt",
+      "claim_text_fragment": " prompt",
+      "narrative_char_start": 900,
+      "narrative_char_end": 907,
+      "claim_char_start": 61,
+      "claim_char_end": 68,
+      "probability": 0.08760738372802734,
+      "logprob": -2.434890031814575,
+      "entropy_nats": 2.4864931106567383,
+      "rank": 5,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 3063,
+          "token_text": " lead",
+          "probability": 0.2698497176170349
+        },
+        {
+          "rank": 2,
+          "token_id": 617,
+          "token_text": " have",
+          "probability": 0.14444014430046082
+        },
+        {
+          "rank": 3,
+          "token_id": 5536,
+          "token_text": " impact",
+          "probability": 0.11249011009931564
+        },
+        {
+          "rank": 4,
+          "token_id": 387,
+          "token_text": " be",
+          "probability": 0.09927216917276382
+        },
+        {
+          "rank": 5,
+          "token_id": 10137,
+          "token_text": " prompt",
+          "probability": 0.08760738372802734
+        },
+        {
+          "rank": 6,
+          "token_id": 10383,
+          "token_text": " influence",
+          "probability": 0.07731323689222336
+        },
+        {
+          "rank": 7,
+          "token_id": 7236,
+          "token_text": " warrant",
+          "probability": 0.06021161749958992
+        },
+        {
+          "rank": 8,
+          "token_id": 13519,
+          "token_text": " indicate",
+          "probability": 0.019547849893569946
+        },
+        {
+          "rank": 9,
+          "token_id": 2231,
+          "token_text": " put",
+          "probability": 0.014301516115665436
+        },
+        {
+          "rank": 10,
+          "token_id": 3136,
+          "token_text": " continue",
+          "probability": 0.011856372468173504
+        }
+      ]
+    },
+    {
+      "claim_token_index": 11,
+      "generation_token_index": 264,
+      "full_sequence_position": 1205,
+      "context_token_count": 1205,
+      "token_id": 279,
+      "token_text": " the",
+      "claim_text_fragment": " the",
+      "narrative_char_start": 907,
+      "narrative_char_end": 911,
+      "claim_char_start": 68,
+      "claim_char_end": 72,
+      "probability": 0.6887701153755188,
+      "logprob": -0.37284767627716064,
+      "entropy_nats": 1.0407675504684448,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 279,
+          "token_text": " the",
+          "probability": 0.6887701153755188
+        },
+        {
+          "rank": 2,
+          "token_id": 4726,
+          "token_text": " further",
+          "probability": 0.17414836585521698
+        },
+        {
+          "rank": 3,
+          "token_id": 70978,
+          "token_text": " policymakers",
+          "probability": 0.07259584963321686
+        },
+        {
+          "rank": 4,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 0.023568421602249146
+        },
+        {
+          "rank": 5,
+          "token_id": 8792,
+          "token_text": " central",
+          "probability": 0.023568421602249146
+        },
+        {
+          "rank": 6,
+          "token_id": 4947,
+          "token_text": " policy",
+          "probability": 0.007651545573025942
+        },
+        {
+          "rank": 7,
+          "token_id": 2802,
+          "token_text": " interest",
+          "probability": 0.001934613799676299
+        },
+        {
+          "rank": 8,
+          "token_id": 10742,
+          "token_text": " concerns",
+          "probability": 0.001603851211257279
+        },
+        {
+          "rank": 9,
+          "token_id": 264,
+          "token_text": " a",
+          "probability": 0.0013296393444761634
+        },
+        {
+          "rank": 10,
+          "token_id": 5217,
+          "token_text": " additional",
+          "probability": 0.0005206942441873252
+        }
+      ]
+    },
+    {
+      "claim_token_index": 12,
+      "generation_token_index": 265,
+      "full_sequence_position": 1206,
+      "context_token_count": 1206,
+      "token_id": 12411,
+      "token_text": " Federal",
+      "claim_text_fragment": " Federal",
+      "narrative_char_start": 911,
+      "narrative_char_end": 919,
+      "claim_char_start": 72,
+      "claim_char_end": 80,
+      "probability": 0.7485947608947754,
+      "logprob": -0.289557546377182,
+      "entropy_nats": 0.7516710758209229,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 12411,
+          "token_text": " Federal",
+          "probability": 0.7485947608947754
+        },
+        {
+          "rank": 2,
+          "token_id": 8792,
+          "token_text": " central",
+          "probability": 0.14740703999996185
+        },
+        {
+          "rank": 3,
+          "token_id": 24526,
+          "token_text": " Fed",
+          "probability": 0.10131128877401352
+        },
+        {
+          "rank": 4,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 0.0012753208866342902
+        },
+        {
+          "rank": 5,
+          "token_id": 435,
+          "token_text": " F",
+          "probability": 0.0006024189060553908
+        },
+        {
+          "rank": 6,
+          "token_id": 10913,
+          "token_text": " Central",
+          "probability": 0.00025112557341344655
+        },
+        {
+          "rank": 7,
+          "token_id": 6918,
+          "token_text": " federal",
+          "probability": 0.0001344178308499977
+        },
+        {
+          "rank": 8,
+          "token_id": 57853,
+          "token_text": "Federal",
+          "probability": 0.0001046847173711285
+        },
+        {
+          "rank": 9,
+          "token_id": 2326,
+          "token_text": " US",
+          "probability": 5.9647551097441465e-05
+        },
+        {
+          "rank": 10,
+          "token_id": 74214,
+          "token_text": " Monetary",
+          "probability": 4.3639083742164075e-05
+        }
+      ]
+    },
+    {
+      "claim_token_index": 13,
+      "generation_token_index": 266,
+      "full_sequence_position": 1207,
+      "context_token_count": 1207,
+      "token_id": 25820,
+      "token_text": " Reserve",
+      "claim_text_fragment": " Reserve",
+      "narrative_char_start": 919,
+      "narrative_char_end": 927,
+      "claim_char_start": 80,
+      "claim_char_end": 88,
+      "probability": 0.9996622800827026,
+      "logprob": -0.00033778208307921886,
+      "entropy_nats": 0.003054531756788492,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 25820,
+          "token_text": " Reserve",
+          "probability": 0.9996622800827026
+        },
+        {
+          "rank": 2,
+          "token_id": 5377,
+          "token_text": " Open",
+          "probability": 0.0003353494103066623
+        },
+        {
+          "rank": 3,
+          "token_id": 1838,
+          "token_text": " Res",
+          "probability": 1.0673435326680192e-06
+        },
+        {
+          "rank": 4,
+          "token_id": 21137,
+          "token_text": " reserve",
+          "probability": 9.419273965249886e-07
+        },
+        {
+          "rank": 5,
+          "token_id": 15516,
+          "token_text": " Reserved",
+          "probability": 1.8547650881828304e-07
+        },
+        {
+          "rank": 6,
+          "token_id": 58085,
+          "token_text": "reserve",
+          "probability": 7.731811280109468e-08
+        },
+        {
+          "rank": 7,
+          "token_id": 8715,
+          "token_text": " Bank",
+          "probability": 1.4302412587596791e-08
+        },
+        {
+          "rank": 8,
+          "token_id": 1079,
+          "token_text": "Res",
+          "probability": 1.0463868882482075e-08
+        },
+        {
+          "rank": 9,
+          "token_id": 5109,
+          "token_text": "Open",
+          "probability": 9.829895120105903e-09
+        },
+        {
+          "rank": 10,
+          "token_id": 10736,
+          "token_text": " funds",
+          "probability": 9.829895120105903e-09
+        }
+      ]
+    },
+    {
+      "claim_token_index": 14,
+      "generation_token_index": 267,
+      "full_sequence_position": 1208,
+      "context_token_count": 1208,
+      "token_id": 311,
+      "token_text": " to",
+      "claim_text_fragment": " to",
+      "narrative_char_start": 927,
+      "narrative_char_end": 930,
+      "claim_char_start": 88,
+      "claim_char_end": 91,
+      "probability": 0.9999955892562866,
+      "logprob": -4.410734163684538e-06,
+      "entropy_nats": 6.204884266480803e-05,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 311,
+          "token_text": " to",
+          "probability": 0.9999955892562866
+        },
+        {
+          "rank": 2,
+          "token_id": 320,
+          "token_text": " (",
+          "probability": 3.2887442102946807e-06
+        },
+        {
+          "rank": 3,
+          "token_id": 596,
+          "token_text": "'s",
+          "probability": 9.422410016668437e-07
+        },
+        {
+          "rank": 4,
+          "token_id": 998,
+          "token_text": "to",
+          "probability": 2.5109894608021932e-08
+        },
+        {
+          "rank": 5,
+          "token_id": 25820,
+          "token_text": " Reserve",
+          "probability": 1.725776321848116e-08
+        },
+        {
+          "rank": 6,
+          "token_id": 3136,
+          "token_text": " continue",
+          "probability": 1.6212167608387063e-08
+        },
+        {
+          "rank": 7,
+          "token_id": 323,
+          "token_text": " and",
+          "probability": 9.833176939366695e-09
+        },
+        {
+          "rank": 8,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 8.677747409535641e-09
+        },
+        {
+          "rank": 9,
+          "token_id": 1935,
+          "token_text": " take",
+          "probability": 8.677747409535641e-09
+        },
+        {
+          "rank": 10,
+          "token_id": 477,
+          "token_text": " or",
+          "probability": 6.758237081072593e-09
+        }
+      ]
+    },
+    {
+      "claim_token_index": 15,
+      "generation_token_index": 268,
+      "full_sequence_position": 1209,
+      "context_token_count": 1209,
+      "token_id": 10519,
+      "token_text": " maintain",
+      "claim_text_fragment": " maintain",
+      "narrative_char_start": 930,
+      "narrative_char_end": 939,
+      "claim_char_start": 91,
+      "claim_char_end": 100,
+      "probability": 0.8926229476928711,
+      "logprob": -0.1135910227894783,
+      "entropy_nats": 0.5514484643936157,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 10519,
+          "token_text": " maintain",
+          "probability": 0.8926229476928711
+        },
+        {
+          "rank": 2,
+          "token_id": 2980,
+          "token_text": " consider",
+          "probability": 0.039219118654727936
+        },
+        {
+          "rank": 3,
+          "token_id": 3136,
+          "token_text": " continue",
+          "probability": 0.023787599056959152
+        },
+        {
+          "rank": 4,
+          "token_id": 1935,
+          "token_text": " take",
+          "probability": 0.011236462742090225
+        },
+        {
+          "rank": 5,
+          "token_id": 2567,
+          "token_text": " keep",
+          "probability": 0.009916143491864204
+        },
+        {
+          "rank": 6,
+          "token_id": 32834,
+          "token_text": " reass",
+          "probability": 0.006815258879214525
+        },
+        {
+          "rank": 7,
+          "token_id": 40175,
+          "token_text": " reconsider",
+          "probability": 0.00601444486528635
+        },
+        {
+          "rank": 8,
+          "token_id": 312,
+          "token_text": " re",
+          "probability": 0.003219300415366888
+        },
+        {
+          "rank": 9,
+          "token_id": 7652,
+          "token_text": " adjust",
+          "probability": 0.0019526045070961118
+        },
+        {
+          "rank": 10,
+          "token_id": 67845,
+          "token_text": " tighten",
+          "probability": 0.0013420040486380458
+        }
+      ]
+    },
+    {
+      "claim_token_index": 16,
+      "generation_token_index": 269,
+      "full_sequence_position": 1210,
+      "context_token_count": 1210,
+      "token_id": 1202,
+      "token_text": " its",
+      "claim_text_fragment": " its",
+      "narrative_char_start": 939,
+      "narrative_char_end": 943,
+      "claim_char_start": 100,
+      "claim_char_end": 104,
+      "probability": 0.9086094498634338,
+      "logprob": -0.09583999961614609,
+      "entropy_nats": 0.3772816061973572,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 1202,
+          "token_text": " its",
+          "probability": 0.9086094498634338
+        },
+        {
+          "rank": 2,
+          "token_id": 264,
+          "token_text": " a",
+          "probability": 0.05808545649051666
+        },
+        {
+          "rank": 3,
+          "token_id": 477,
+          "token_text": " or",
+          "probability": 0.031090904027223587
+        },
+        {
+          "rank": 4,
+          "token_id": 872,
+          "token_text": " their",
+          "probability": 0.001366038923151791
+        },
+        {
+          "rank": 5,
+          "token_id": 2802,
+          "token_text": " interest",
+          "probability": 0.0002689888933673501
+        },
+        {
+          "rank": 6,
+          "token_id": 459,
+          "token_text": " an",
+          "probability": 0.0001848731772042811
+        },
+        {
+          "rank": 7,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 9.895548282656819e-05
+        },
+        {
+          "rank": 8,
+          "token_id": 76920,
+          "token_text": " hawk",
+          "probability": 6.00195380684454e-05
+        },
+        {
+          "rank": 9,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 3.640368959167972e-05
+        },
+        {
+          "rank": 10,
+          "token_id": 19738,
+          "token_text": " aggressive",
+          "probability": 2.83512199530378e-05
+        }
+      ]
+    },
+    {
+      "claim_token_index": 17,
+      "generation_token_index": 270,
+      "full_sequence_position": 1211,
+      "context_token_count": 1211,
+      "token_id": 76920,
+      "token_text": " hawk",
+      "claim_text_fragment": " hawk",
+      "narrative_char_start": 943,
+      "narrative_char_end": 948,
+      "claim_char_start": 104,
+      "claim_char_end": 109,
+      "probability": 0.5379499197006226,
+      "logprob": -0.619989812374115,
+      "entropy_nats": 1.5689525604248047,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 76920,
+          "token_text": " hawk",
+          "probability": 0.5379499197006226
+        },
+        {
+          "rank": 2,
+          "token_id": 77880,
+          "token_text": " tightening",
+          "probability": 0.1979006975889206
+        },
+        {
+          "rank": 3,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 0.10592861473560333
+        },
+        {
+          "rank": 4,
+          "token_id": 1510,
+          "token_text": " current",
+          "probability": 0.03438998758792877
+        },
+        {
+          "rank": 5,
+          "token_id": 10508,
+          "token_text": " tight",
+          "probability": 0.023635869845747948
+        },
+        {
+          "rank": 6,
+          "token_id": 58096,
+          "token_text": " restrictive",
+          "probability": 0.020858580246567726
+        },
+        {
+          "rank": 7,
+          "token_id": 19738,
+          "token_text": " aggressive",
+          "probability": 0.020858580246567726
+        },
+        {
+          "rank": 8,
+          "token_id": 2802,
+          "token_text": " interest",
+          "probability": 0.01624467968940735
+        },
+        {
+          "rank": 9,
+          "token_id": 30031,
+          "token_text": " stance",
+          "probability": 0.011164793744683266
+        },
+        {
+          "rank": 10,
+          "token_id": 46878,
+          "token_text": " cautious",
+          "probability": 0.008695149794220924
+        }
+      ]
+    },
+    {
+      "claim_token_index": 18,
+      "generation_token_index": 271,
+      "full_sequence_position": 1212,
+      "context_token_count": 1212,
+      "token_id": 819,
+      "token_text": "ish",
+      "claim_text_fragment": "ish",
+      "narrative_char_start": 948,
+      "narrative_char_end": 951,
+      "claim_char_start": 109,
+      "claim_char_end": 112,
+      "probability": 0.9999996423721313,
+      "logprob": -3.576278118089249e-07,
+      "entropy_nats": 6.2663307289767545e-06,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 819,
+          "token_text": "ish",
+          "probability": 0.9999996423721313
+        },
+        {
+          "rank": 2,
+          "token_id": 67853,
+          "token_text": "-ish",
+          "probability": 1.4449803131810768e-07
+        },
+        {
+          "rank": 3,
+          "token_id": 16849,
+          "token_text": "ISH",
+          "probability": 1.275190584237862e-07
+        },
+        {
+          "rank": 4,
+          "token_id": 65923,
+          "token_text": "ishly",
+          "probability": 4.691164434689199e-08
+        },
+        {
+          "rank": 5,
+          "token_id": 1706,
+          "token_text": "lish",
+          "probability": 1.3440409674103648e-08
+        },
+        {
+          "rank": 6,
+          "token_id": 30031,
+          "token_text": " stance",
+          "probability": 8.152020392060422e-09
+        },
+        {
+          "rank": 7,
+          "token_id": 1637,
+          "token_text": "ward",
+          "probability": 7.194133289090132e-09
+        },
+        {
+          "rank": 8,
+          "token_id": 39672,
+          "token_text": "isher",
+          "probability": 6.348800152267131e-09
+        },
+        {
+          "rank": 9,
+          "token_id": 16438,
+          "token_text": "isch",
+          "probability": 3.6174372386454934e-09
+        },
+        {
+          "rank": 10,
+          "token_id": 569,
+          "token_text": "ard",
+          "probability": 5.211412412720051e-10
+        }
+      ]
+    },
+    {
+      "claim_token_index": 19,
+      "generation_token_index": 272,
+      "full_sequence_position": 1213,
+      "context_token_count": 1213,
+      "token_id": 30031,
+      "token_text": " stance",
+      "claim_text_fragment": " stance",
+      "narrative_char_start": 951,
+      "narrative_char_end": 958,
+      "claim_char_start": 112,
+      "claim_char_end": 119,
+      "probability": 0.9810110330581665,
+      "logprob": -0.019171535968780518,
+      "entropy_nats": 0.09958511590957642,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 30031,
+          "token_text": " stance",
+          "probability": 0.9810110330581665
+        },
+        {
+          "rank": 2,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 0.017967842519283295
+        },
+        {
+          "rank": 3,
+          "token_id": 16630,
+          "token_text": " tone",
+          "probability": 0.0006148256943561137
+        },
+        {
+          "rank": 4,
+          "token_id": 4947,
+          "token_text": " policy",
+          "probability": 0.00012106636131647974
+        },
+        {
+          "rank": 5,
+          "token_id": 5603,
+          "token_text": " approach",
+          "probability": 0.00010684069275157526
+        },
+        {
+          "rank": 6,
+          "token_id": 74214,
+          "token_text": " Monetary",
+          "probability": 5.0467970140744e-05
+        },
+        {
+          "rank": 7,
+          "token_id": 48378,
+          "token_text": " posture",
+          "probability": 3.930449383915402e-05
+        },
+        {
+          "rank": 8,
+          "token_id": 2802,
+          "token_text": " interest",
+          "probability": 3.468609429546632e-05
+        },
+        {
+          "rank": 9,
+          "token_id": 10396,
+          "token_text": " policies",
+          "probability": 8.77001821208978e-06
+        },
+        {
+          "rank": 10,
+          "token_id": 15837,
+          "token_text": " bias",
+          "probability": 8.77001821208978e-06
+        }
+      ]
+    },
+    {
+      "claim_token_index": 20,
+      "generation_token_index": 273,
+      "full_sequence_position": 1214,
+      "context_token_count": 1214,
+      "token_id": 389,
+      "token_text": " on",
+      "claim_text_fragment": " on",
+      "narrative_char_start": 958,
+      "narrative_char_end": 961,
+      "claim_char_start": 119,
+      "claim_char_end": 122,
+      "probability": 0.4594201147556305,
+      "logprob": -0.7777901887893677,
+      "entropy_nats": 0.8006874322891235,
+      "rank": 2,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 13,
+          "token_text": ".",
+          "probability": 0.5205911993980408
+        },
+        {
+          "rank": 2,
+          "token_id": 389,
+          "token_text": " on",
+          "probability": 0.4594201147556305
+        },
+        {
+          "rank": 3,
+          "token_id": 311,
+          "token_text": " to",
+          "probability": 0.010804526507854462
+        },
+        {
+          "rank": 4,
+          "token_id": 304,
+          "token_text": " in",
+          "probability": 0.005103697068989277
+        },
+        {
+          "rank": 5,
+          "token_id": 323,
+          "token_text": " and",
+          "probability": 0.0024108157958835363
+        },
+        {
+          "rank": 6,
+          "token_id": 477,
+          "token_text": " or",
+          "probability": 0.0010049776174128056
+        },
+        {
+          "rank": 7,
+          "token_id": 8994,
+          "token_text": " despite",
+          "probability": 0.00019789182988461107
+        },
+        {
+          "rank": 8,
+          "token_id": 369,
+          "token_text": " for",
+          "probability": 0.00017463891708757728
+        },
+        {
+          "rank": 9,
+          "token_id": 994,
+          "token_text": " when",
+          "probability": 0.00010592385660856962
+        },
+        {
+          "rank": 10,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 5.66969538340345e-05
+        }
+      ]
+    },
+    {
+      "claim_token_index": 21,
+      "generation_token_index": 274,
+      "full_sequence_position": 1215,
+      "context_token_count": 1215,
+      "token_id": 2802,
+      "token_text": " interest",
+      "claim_text_fragment": " interest",
+      "narrative_char_start": 961,
+      "narrative_char_end": 970,
+      "claim_char_start": 122,
+      "claim_char_end": 131,
+      "probability": 0.5924404859542847,
+      "logprob": -0.5235048532485962,
+      "entropy_nats": 0.6797283887863159,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 2802,
+          "token_text": " interest",
+          "probability": 0.5924404859542847
+        },
+        {
+          "rank": 2,
+          "token_id": 33384,
+          "token_text": " monetary",
+          "probability": 0.40717801451683044
+        },
+        {
+          "rank": 3,
+          "token_id": 25544,
+          "token_text": " inflation",
+          "probability": 0.00013659294927492738
+        },
+        {
+          "rank": 4,
+          "token_id": 74214,
+          "token_text": " Monetary",
+          "probability": 0.00010637869854690507
+        },
+        {
+          "rank": 5,
+          "token_id": 25074,
+          "token_text": " Interest",
+          "probability": 3.0478007829515263e-05
+        },
+        {
+          "rank": 6,
+          "token_id": 13014,
+          "token_text": "interest",
+          "probability": 2.6896746931015514e-05
+        },
+        {
+          "rank": 7,
+          "token_id": 7969,
+          "token_text": " rates",
+          "probability": 2.3736298317089677e-05
+        },
+        {
+          "rank": 8,
+          "token_id": 35656,
+          "token_text": "Interest",
+          "probability": 1.2705123481282499e-05
+        },
+        {
+          "rank": 9,
+          "token_id": 4947,
+          "token_text": " policy",
+          "probability": 1.2705123481282499e-05
+        },
+        {
+          "rank": 10,
+          "token_id": 4478,
+          "token_text": " rate",
+          "probability": 1.2705123481282499e-05
+        }
+      ]
+    },
+    {
+      "claim_token_index": 22,
+      "generation_token_index": 275,
+      "full_sequence_position": 1216,
+      "context_token_count": 1216,
+      "token_id": 7969,
+      "token_text": " rates",
+      "claim_text_fragment": " rates",
+      "narrative_char_start": 970,
+      "narrative_char_end": 976,
+      "claim_char_start": 131,
+      "claim_char_end": 137,
+      "probability": 0.9998385310173035,
+      "logprob": -0.00016151554882526398,
+      "entropy_nats": 0.0015904792817309499,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 7969,
+          "token_text": " rates",
+          "probability": 0.9998385310173035
+        },
+        {
+          "rank": 2,
+          "token_id": 4478,
+          "token_text": " rate",
+          "probability": 0.00015843578148633242
+        },
+        {
+          "rank": 3,
+          "token_id": 48076,
+          "token_text": " Rates",
+          "probability": 1.994412286876468e-06
+        },
+        {
+          "rank": 4,
+          "token_id": 44126,
+          "token_text": "-rate",
+          "probability": 7.337032457144232e-07
+        },
+        {
+          "rank": 5,
+          "token_id": 67585,
+          "token_text": "rates",
+          "probability": 3.0585303534280683e-07
+        },
+        {
+          "rank": 6,
+          "token_id": 56473,
+          "token_text": "_rates",
+          "probability": 2.8448736699715482e-08
+        },
+        {
+          "rank": 7,
+          "token_id": 83723,
+          "token_text": "Rates",
+          "probability": 2.2155898449227607e-08
+        },
+        {
+          "rank": 8,
+          "token_id": 68585,
+          "token_text": " hikes",
+          "probability": 1.725503118166216e-08
+        },
+        {
+          "rank": 9,
+          "token_id": 4947,
+          "token_text": " policy",
+          "probability": 8.150699670750328e-09
+        },
+        {
+          "rank": 10,
+          "token_id": 20359,
+          "token_text": " Rate",
+          "probability": 6.347770753478699e-09
+        }
+      ]
+    },
+    {
+      "claim_token_index": 23,
+      "generation_token_index": 276,
+      "full_sequence_position": 1217,
+      "context_token_count": 1217,
+      "token_id": 13,
+      "token_text": ".",
+      "claim_text_fragment": ".",
+      "narrative_char_start": 976,
+      "narrative_char_end": 977,
+      "claim_char_start": 137,
+      "claim_char_end": 138,
+      "probability": 0.9990560412406921,
+      "logprob": -0.0009444067254662514,
+      "entropy_nats": 0.008378677070140839,
+      "rank": 1,
+      "top_k": [
+        {
+          "rank": 1,
+          "token_id": 13,
+          "token_text": ".",
+          "probability": 0.9990560412406921
+        },
+        {
+          "rank": 2,
+          "token_id": 311,
+          "token_text": " to",
+          "probability": 0.0007095038890838623
+        },
+        {
+          "rank": 3,
+          "token_id": 304,
+          "token_text": " in",
+          "probability": 0.00012329334276728332
+        },
+        {
+          "rank": 4,
+          "token_id": 323,
+          "token_text": " and",
+          "probability": 6.599417247343808e-05
+        },
+        {
+          "rank": 5,
+          "token_id": 8994,
+          "token_text": " despite",
+          "probability": 1.2995022188988514e-05
+        },
+        {
+          "rank": 6,
+          "token_id": 11,
+          "token_text": ",",
+          "probability": 1.0120533261215314e-05
+        },
+        {
+          "rank": 7,
+          "token_id": 382,
+          "token_text": ".\n\n",
+          "probability": 7.881879355409183e-06
+        },
+        {
+          "rank": 8,
+          "token_id": 369,
+          "token_text": " for",
+          "probability": 6.955734534130897e-06
+        },
+        {
+          "rank": 9,
+          "token_id": 627,
+          "token_text": ".\n",
+          "probability": 1.0666964271877077e-06
+        },
+        {
+          "rank": 10,
+          "token_id": 23442,
+          "token_text": " amid",
+          "probability": 1.0666964271877077e-06
+        }
+      ]
+    }
+  ]
+}

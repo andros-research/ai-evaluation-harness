@@ -1,0 +1,494 @@
+{
+  "schema_version": "token_telemetry_summary_v0_1",
+  "source_model": "llama3",
+  "claim_count": 8,
+  "claims": [
+    {
+      "claim_id": "llama3_semantic_conservative_t0__commentary_01",
+      "claim_text": "The recent data suggests a mixed bag of economic indicators, with inflation rising and interest rates falling.",
+      "prompt_variant": "semantic_conservative",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "scope_generalization"
+      ],
+      "support_statuses": [
+        "insufficient_evidence"
+      ],
+      "assertion_strengths": [
+        "asserted"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "scope_generalization",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "asserted",
+          "rationale": "The evidence supplies multiple measures supporting the claim."
+        }
+      ],
+      "token_count": 19,
+      "mean_probability": 0.6386759557614201,
+      "median_probability": 0.6977027654647827,
+      "mean_logprob": -0.6256788313081703,
+      "mean_negative_logprob": 0.6256788313081703,
+      "claim_perplexity": 1.8695146118319352,
+      "mean_entropy_nats": 1.0194309310080778,
+      "max_entropy_nats": 2.746269702911377,
+      "rank_gt_1_count": 2,
+      "rank_gt_1_share": 0.10526315789473684,
+      "lowest_probability_token": {
+        "claim_token_index": 10,
+        "token_text": ",",
+        "claim_text_fragment": ",",
+        "probability": 0.05339160934090614,
+        "logprob": -2.9301016330718994,
+        "entropy_nats": 0.21080031991004944,
+        "rank": 2
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 1,
+        "token_text": " recent",
+        "claim_text_fragment": " recent",
+        "probability": 0.2280304729938507,
+        "logprob": -1.478276014328003,
+        "entropy_nats": 2.746269702911377,
+        "rank": 1
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_conservative_t0__commentary_02",
+      "claim_text": "The unemployment rate has decreased, indicating a strengthening labor market.",
+      "prompt_variant": "semantic_conservative",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "magnitude_judgment",
+        "scope_generalization"
+      ],
+      "support_statuses": [
+        "insufficient_evidence"
+      ],
+      "assertion_strengths": [
+        "asserted",
+        "qualified_inference"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "magnitude_judgment",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "asserted",
+          "rationale": "one unemployment-rate movement does not, by itself, establish the broader state of the labor market."
+        },
+        {
+          "claim_kind": "scope_generalization",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "“indicating” signals an inference rather than a bare assertion."
+        }
+      ],
+      "token_count": 12,
+      "mean_probability": 0.7470534692207972,
+      "median_probability": 0.888520747423172,
+      "mean_logprob": -0.41863257410768995,
+      "mean_negative_logprob": 0.41863257410768995,
+      "claim_perplexity": 1.5198818082546464,
+      "mean_entropy_nats": 0.8236608140245304,
+      "max_entropy_nats": 2.545461416244507,
+      "rank_gt_1_count": 1,
+      "rank_gt_1_share": 0.08333333333333333,
+      "lowest_probability_token": {
+        "claim_token_index": 1,
+        "token_text": " unemployment",
+        "claim_text_fragment": " unemployment",
+        "probability": 0.1559751033782959,
+        "logprob": -1.8580588102340698,
+        "entropy_nats": 2.1716394424438477,
+        "rank": 3
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 8,
+        "token_text": " strengthening",
+        "claim_text_fragment": " strengthening",
+        "probability": 0.3357866704463959,
+        "logprob": -1.0912792682647705,
+        "entropy_nats": 2.545461416244507,
+        "rank": 1
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_conservative_t0__commentary_03",
+      "claim_text": "These developments may have implications for monetary policy decisions in the coming months.",
+      "prompt_variant": "semantic_conservative",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "policy_interpretation"
+      ],
+      "support_statuses": [
+        "insufficient_evidence"
+      ],
+      "assertion_strengths": [
+        "qualified_possibility"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "policy_interpretation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_possibility",
+          "rationale": "“May have implications” is explicitly possibility language. And the supplied evidence does not directly establish what policy decisions will follow."
+        }
+      ],
+      "token_count": 14,
+      "mean_probability": 0.6923620977572033,
+      "median_probability": 0.763445645570755,
+      "mean_logprob": -0.5049812629483442,
+      "mean_negative_logprob": 0.5049812629483442,
+      "claim_perplexity": 1.656954473728424,
+      "mean_entropy_nats": 0.8590822888363618,
+      "max_entropy_nats": 2.3511641025543213,
+      "rank_gt_1_count": 2,
+      "rank_gt_1_share": 0.14285714285714285,
+      "lowest_probability_token": {
+        "claim_token_index": 3,
+        "token_text": " have",
+        "claim_text_fragment": " have",
+        "probability": 0.12541353702545166,
+        "logprob": -2.076138734817505,
+        "entropy_nats": 2.3511641025543213,
+        "rank": 3
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 3,
+        "token_text": " have",
+        "claim_text_fragment": " have",
+        "probability": 0.12541353702545166,
+        "logprob": -2.076138734817505,
+        "entropy_nats": 2.3511641025543213,
+        "rank": 3
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_analytical_t0__commentary_01",
+      "claim_text": "The recent inflation data shows a continued upward trend, with CPI year-over-year inflation increasing by 0.414 percentage points.",
+      "prompt_variant": "semantic_analytical",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "empirical_comparison",
+        "temporal_pattern"
+      ],
+      "support_statuses": [
+        "insufficient_evidence",
+        "supported"
+      ],
+      "assertion_strengths": [
+        "asserted"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "temporal_pattern",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "asserted",
+          "rationale": "The endpoints support the 0.414-percentage-point increase, but two observations do not establish a continued upward trend."
+        },
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "the 0.414-point increase itself is directly supported"
+        }
+      ],
+      "token_count": 25,
+      "mean_probability": 0.7926639711856842,
+      "median_probability": 0.9616568088531494,
+      "mean_logprob": -0.3371345622634226,
+      "mean_negative_logprob": 0.3371345622634226,
+      "claim_perplexity": 1.400927563039578,
+      "mean_entropy_nats": 0.641743843160566,
+      "max_entropy_nats": 2.2757298946380615,
+      "rank_gt_1_count": 3,
+      "rank_gt_1_share": 0.12,
+      "lowest_probability_token": {
+        "claim_token_index": 6,
+        "token_text": " continued",
+        "claim_text_fragment": " continued",
+        "probability": 0.17310747504234314,
+        "logprob": -1.7538425922393799,
+        "entropy_nats": 2.2757298946380615,
+        "rank": 3
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 6,
+        "token_text": " continued",
+        "claim_text_fragment": " continued",
+        "probability": 0.17310747504234314,
+        "logprob": -1.7538425922393799,
+        "entropy_nats": 2.2757298946380615,
+        "rank": 3
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_analytical_t0__commentary_02",
+      "claim_text": "This suggests that price pressures remain elevated, which may prompt the Federal Reserve to maintain its hawkish stance on interest rates.",
+      "prompt_variant": "semantic_analytical",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "magnitude_judgment",
+        "policy_interpretation",
+        "scope_generalization",
+        "temporal_pattern"
+      ],
+      "support_statuses": [
+        "insufficient_evidence"
+      ],
+      "assertion_strengths": [
+        "qualified_inference",
+        "qualified_possibility"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "policy_interpretation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_possibility",
+          "rationale": "The supplied evidence establishes an increase in headline CPI year-over-year inflation, but it does not establish how the Federal Reserve will respond."
+        },
+        {
+          "claim_kind": "temporal_pattern",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "“remain” asserts persistence through time that the endpoints do not establish"
+        },
+        {
+          "claim_kind": "scope_generalization",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "“price pressures” broadens from the supplied headline CPI evidence"
+        },
+        {
+          "claim_kind": "magnitude_judgment",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "no benchmark establishes what counts as elevated"
+        }
+      ],
+      "token_count": 24,
+      "mean_probability": 0.711106205979983,
+      "median_probability": 0.7405533492565155,
+      "mean_logprob": -0.45707750812249276,
+      "mean_negative_logprob": 0.45707750812249276,
+      "claim_perplexity": 1.5794512998100965,
+      "mean_entropy_nats": 0.7665462208090617,
+      "max_entropy_nats": 2.605790138244629,
+      "rank_gt_1_count": 4,
+      "rank_gt_1_share": 0.16666666666666666,
+      "lowest_probability_token": {
+        "claim_token_index": 10,
+        "token_text": " prompt",
+        "claim_text_fragment": " prompt",
+        "probability": 0.08760738372802734,
+        "logprob": -2.434890031814575,
+        "entropy_nats": 2.4864931106567383,
+        "rank": 5
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 1,
+        "token_text": " suggests",
+        "claim_text_fragment": " suggests",
+        "probability": 0.30943262577056885,
+        "logprob": -1.1730148792266846,
+        "entropy_nats": 2.605790138244629,
+        "rank": 1
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_analytical_t0__commentary_03",
+      "claim_text": "Meanwhile, the unemployment rate has decreased, indicating a strong labor market.",
+      "prompt_variant": "semantic_analytical",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "empirical_comparison",
+        "magnitude_judgment",
+        "scope_generalization"
+      ],
+      "support_statuses": [
+        "insufficient_evidence",
+        "supported"
+      ],
+      "assertion_strengths": [
+        "asserted",
+        "qualified_inference"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "magnitude_judgment",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "calling labor market \"strong\" not fully supported and is qualified as an inference"
+        },
+        {
+          "claim_kind": "scope_generalization",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "moving from one unemployment statistic to the overall labor market"
+        },
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "\"unemployment has decreased\"; narrow statement of empirical fact"
+        }
+      ],
+      "token_count": 14,
+      "mean_probability": 0.8630378991365433,
+      "median_probability": 0.8966643214225769,
+      "mean_logprob": -0.17818858989955647,
+      "mean_negative_logprob": 0.17818858989955647,
+      "claim_perplexity": 1.1950506744711242,
+      "mean_entropy_nats": 0.4791080951080299,
+      "max_entropy_nats": 1.8904932737350464,
+      "rank_gt_1_count": 0,
+      "rank_gt_1_share": 0.0,
+      "lowest_probability_token": {
+        "claim_token_index": 10,
+        "token_text": " strong",
+        "claim_text_fragment": " strong",
+        "probability": 0.3430350720882416,
+        "logprob": -1.0699225664138794,
+        "entropy_nats": 1.8904932737350464,
+        "rank": 1
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 10,
+        "token_text": " strong",
+        "claim_text_fragment": " strong",
+        "probability": 0.3430350720882416,
+        "logprob": -1.0699225664138794,
+        "entropy_nats": 1.8904932737350464,
+        "rank": 1
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_analytical_t0__commentary_04",
+      "claim_text": "The effective federal funds rate has also declined, potentially signaling a more accommodative monetary policy.",
+      "prompt_variant": "semantic_analytical",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "empirical_comparison",
+        "policy_interpretation"
+      ],
+      "support_statuses": [
+        "insufficient_evidence",
+        "supported"
+      ],
+      "assertion_strengths": [
+        "asserted",
+        "qualified_inference"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "policy_interpretation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "“Potentially signaling” is clearly not asserted. A lower effective fed funds rate establishes that the rate declined; calling the overall policy stance “more accommodative” is an additional interpretation."
+        },
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "Empirical statement of fed funds rate fell"
+        }
+      ],
+      "token_count": 18,
+      "mean_probability": 0.7761385320789285,
+      "median_probability": 0.948197990655899,
+      "mean_logprob": -0.4612960983199375,
+      "mean_negative_logprob": 0.4612960983199375,
+      "claim_perplexity": 1.586128431719964,
+      "mean_entropy_nats": 0.59595520978918,
+      "max_entropy_nats": 2.925870418548584,
+      "rank_gt_1_count": 2,
+      "rank_gt_1_share": 0.1111111111111111,
+      "lowest_probability_token": {
+        "claim_token_index": 9,
+        "token_text": " potentially",
+        "claim_text_fragment": " potentially",
+        "probability": 0.06451006233692169,
+        "logprob": -2.740934133529663,
+        "entropy_nats": 1.942542552947998,
+        "rank": 4
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 12,
+        "token_text": " more",
+        "claim_text_fragment": " more",
+        "probability": 0.19287975132465363,
+        "logprob": -1.6456882953643799,
+        "entropy_nats": 2.925870418548584,
+        "rank": 1
+      }
+    },
+    {
+      "claim_id": "llama3_semantic_analytical_t0__commentary_05",
+      "claim_text": "Finally, the 10-year Treasury yield has increased, reflecting growing optimism in the economy.",
+      "prompt_variant": "semantic_analytical",
+      "source_model": "llama3",
+      "review_status": "corrected",
+      "claim_kinds": [
+        "empirical_comparison",
+        "market_interpretation"
+      ],
+      "support_statuses": [
+        "insufficient_evidence",
+        "supported"
+      ],
+      "assertion_strengths": [
+        "asserted"
+      ],
+      "reviewed_annotations": [
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "statement of yields increasing"
+        },
+        {
+          "claim_kind": "market_interpretation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "asserted",
+          "rationale": "“reflecting growing optimism in the economy” reaches beyond supplied evidence"
+        }
+      ],
+      "token_count": 18,
+      "mean_probability": 0.7304328115036091,
+      "median_probability": 0.9800431430339813,
+      "mean_logprob": -0.5852086915326455,
+      "mean_negative_logprob": 0.5852086915326455,
+      "claim_perplexity": 1.795365624150361,
+      "mean_entropy_nats": 0.5448463548149686,
+      "max_entropy_nats": 1.7481567859649658,
+      "rank_gt_1_count": 5,
+      "rank_gt_1_share": 0.2777777777777778,
+      "lowest_probability_token": {
+        "claim_token_index": 13,
+        "token_text": " optimism",
+        "claim_text_fragment": " optimism",
+        "probability": 0.060958463698625565,
+        "logprob": -2.797562599182129,
+        "entropy_nats": 1.7086458206176758,
+        "rank": 5
+      },
+      "highest_entropy_token": {
+        "claim_token_index": 12,
+        "token_text": " growing",
+        "claim_text_fragment": " growing",
+        "probability": 0.11257608979940414,
+        "logprob": -2.1841259002685547,
+        "entropy_nats": 1.7481567859649658,
+        "rank": 2
+      }
+    }
+  ]
+}
