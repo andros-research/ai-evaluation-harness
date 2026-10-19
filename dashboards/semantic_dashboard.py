@@ -1700,220 +1700,220 @@ with inspector_tab:
         f"> {row['claim_span']}"
     )
 
-    st.subheader(
-        "Machine-proposed semantic annotations"
-    )
-
-    for annotation in row.get(
-        "semantic_annotations",
-        [],
+    with st.expander(
+        "Machine-proposed semantic annotations",
+        expanded=False,
     ):
-        render_annotation(
-            annotation
-        )
-
-    st.subheader(
-        "Evidence"
-    )
-
-    render_evidence(
-        row.get(
-            "evidence",
+        for annotation in row.get(
+            "semantic_annotations",
             [],
-        )
-    )
+        ):
+            render_annotation(
+                annotation
+            )
 
-    st.subheader(
-        "Human review"
-    )
-
-    if existing_review:
-        st.info(
-            "A saved review already exists for this claim."
-        )
-
-    initial_status = (
-        existing_review.get(
-            "review_status"
-        )
-        if existing_review
-        else "accepted"
-    )
-
-    initial_status_index = (
-        REVIEW_STATUSES.index(
-            initial_status
-        )
-        if initial_status
-        in REVIEW_STATUSES
-        else 0
-    )
-
-    with st.form(
-        key=(
-            "review_form_"
-            + selected_claim_id
-        )
+    with st.expander(
+        "Evidence",
+        expanded=False,
     ):
-        decision = st.radio(
-            "Review decision",
-            REVIEW_STATUSES,
-            index=
-                initial_status_index,
-            horizontal=True,
-        )
-
-        st.caption(
-            "For ACCEPTED, the machine annotations are "
-            "copied into the reviewed result. "
-            "For CORRECTED, edit the table below."
-        )
-
-        editable = (
-            review_annotations_df(
-                row=row,
-                existing_review=
-                    existing_review,
+        render_evidence(
+            row.get(
+                "evidence",
+                [],
             )
         )
 
-        edited = st.data_editor(
-            editable,
-            num_rows="dynamic",
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "claim_kind":
-                    st.column_config.TextColumn(
-                        "Claim kind",
-                        required=True,
-                    ),
-                "support_status":
-                    st.column_config.SelectboxColumn(
-                        "Support",
-                        options=
-                            SUPPORT_STATUSES,
-                        required=True,
-                    ),
-                "assertion_strength":
-                    st.column_config.SelectboxColumn(
-                        "Assertion strength",
-                        options=
-                            ASSERTION_STRENGTHS,
-                        required=True,
-                    ),
-                "rationale":
-                    st.column_config.TextColumn(
-                        "Rationale",
-                        width="large",
-                    ),
-            },
+    with st.expander(
+        "Human review",
+        expanded=False,
+    ):
+        if existing_review:
+            st.info(
+                "A saved review already exists for this claim."
+            )
+
+        initial_status = (
+            existing_review.get(
+                "review_status"
+            )
+            if existing_review
+            else "accepted"
         )
 
-        note = st.text_area(
-            "Reviewer note",
-            value=(
-                existing_review.get(
-                    "review_note",
-                    ""
+        initial_status_index = (
+            REVIEW_STATUSES.index(
+                initial_status
+            )
+            if initial_status
+            in REVIEW_STATUSES
+            else 0
+        )
+
+        with st.form(
+            key=(
+                "review_form_"
+                + selected_claim_id
+            )
+        ):
+            decision = st.radio(
+                "Review decision",
+                REVIEW_STATUSES,
+                index=
+                    initial_status_index,
+                horizontal=True,
+            )
+
+            st.caption(
+                "For ACCEPTED, the machine annotations are "
+                "copied into the reviewed result. "
+                "For CORRECTED, edit the table below."
+            )
+
+            editable = (
+                review_annotations_df(
+                    row=row,
+                    existing_review=
+                        existing_review,
                 )
-                if existing_review
-                else ""
-            ),
-            placeholder=(
-                "Why did you accept, correct, or defer this claim?"
-            ),
-        )
-
-        save_clicked = (
-            st.form_submit_button(
-                "Save review",
-                type="primary",
             )
-        )
 
-    if save_clicked:
-        try:
-            if decision == "accepted":
-                reviewed_annotations = (
-                    row.get(
-                        "semantic_annotations",
-                        [],
+            edited = st.data_editor(
+                editable,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "claim_kind":
+                        st.column_config.TextColumn(
+                            "Claim kind",
+                            required=True,
+                        ),
+                    "support_status":
+                        st.column_config.SelectboxColumn(
+                            "Support",
+                            options=
+                                SUPPORT_STATUSES,
+                            required=True,
+                        ),
+                    "assertion_strength":
+                        st.column_config.SelectboxColumn(
+                            "Assertion strength",
+                            options=
+                                ASSERTION_STRENGTHS,
+                            required=True,
+                        ),
+                    "rationale":
+                        st.column_config.TextColumn(
+                            "Rationale",
+                            width="large",
+                        ),
+                },
+            )
+
+            note = st.text_area(
+                "Reviewer note",
+                value=(
+                    existing_review.get(
+                        "review_note",
+                        ""
                     )
+                    if existing_review
+                    else ""
+                ),
+                placeholder=(
+                    "Why did you accept, correct, or defer this claim?"
+                ),
+            )
+
+            save_clicked = (
+                st.form_submit_button(
+                    "Save review",
+                    type="primary",
+                )
+            )
+
+        if save_clicked:
+            try:
+                if decision == "accepted":
+                    reviewed_annotations = (
+                        row.get(
+                            "semantic_annotations",
+                            [],
+                        )
+                    )
+
+                elif (
+                    decision
+                    == "corrected"
+                ):
+                    reviewed_annotations = (
+                        dataframe_to_annotations(
+                            edited
+                        )
+                    )
+
+                    if not reviewed_annotations:
+                        raise ValueError(
+                            "A corrected review must contain "
+                            "at least one annotation."
+                        )
+
+                else:
+                    reviewed_annotations = None
+
+                review = {
+                    "schema_version":
+                        "semantic_review_v0_1",
+                    "claim_id":
+                        selected_claim_id,
+                    "review_status":
+                        decision,
+                    "reviewed_at":
+                        datetime.now(
+                            timezone.utc
+                        ).isoformat(),
+                    "source_model":
+                        row.get(
+                            "source_model"
+                        ),
+                    "prompt_variant":
+                        row.get(
+                            "prompt_variant"
+                        ),
+                    "generation_temperature":
+                        row.get(
+                            "generation_temperature"
+                        ),
+                    "claim_span":
+                        row.get(
+                            "claim_span"
+                        ),
+                    "machine_annotations":
+                        row.get(
+                            "semantic_annotations",
+                            [],
+                        ),
+                    "reviewed_annotations":
+                        reviewed_annotations,
+                    "review_note":
+                        note.strip(),
+                }
+
+                save_review(
+                    review
                 )
 
-            elif (
-                decision
-                == "corrected"
-            ):
-                reviewed_annotations = (
-                    dataframe_to_annotations(
-                        edited
-                    )
+                st.success(
+                    "Review saved to "
+                    f"{REVIEWS_PATH}"
                 )
 
-                if not reviewed_annotations:
-                    raise ValueError(
-                        "A corrected review must contain "
-                        "at least one annotation."
-                    )
+                st.rerun()
 
-            else:
-                reviewed_annotations = None
-
-            review = {
-                "schema_version":
-                    "semantic_review_v0_1",
-                "claim_id":
-                    selected_claim_id,
-                "review_status":
-                    decision,
-                "reviewed_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
-                "source_model":
-                    row.get(
-                        "source_model"
-                    ),
-                "prompt_variant":
-                    row.get(
-                        "prompt_variant"
-                    ),
-                "generation_temperature":
-                    row.get(
-                        "generation_temperature"
-                    ),
-                "claim_span":
-                    row.get(
-                        "claim_span"
-                    ),
-                "machine_annotations":
-                    row.get(
-                        "semantic_annotations",
-                        [],
-                    ),
-                "reviewed_annotations":
-                    reviewed_annotations,
-                "review_note":
-                    note.strip(),
-            }
-
-            save_review(
-                review
-            )
-
-            st.success(
-                "Review saved to "
-                f"{REVIEWS_PATH}"
-            )
-
-            st.rerun()
-
-        except Exception as exc:
-            st.error(
-                str(exc)
-            )
+            except Exception as exc:
+                st.error(
+                    str(exc)
+                )
 
     token_telemetry = (
         load_token_telemetry(
