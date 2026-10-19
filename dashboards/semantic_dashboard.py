@@ -1570,10 +1570,11 @@ if not rows:
     st.stop()
 
 
-inspector_tab, summary_tab = (
+inspector_tab, token_tab, semantic_tab = (
     st.tabs([
         "Claim Inspector",
-        "Discovery Summary",
+        "Token Analytics",
+        "Semantic Discovery",
     ])
 )
 
@@ -2006,7 +2007,7 @@ with inspector_tab:
     )
 
 
-with summary_tab:
+with semantic_tab:
     summary = (
         build_discovery_summary(
             rows,
@@ -2202,11 +2203,10 @@ with summary_tab:
     )
 
 
+with token_tab:
     # --------------------------------------------------
     # Reviewed Llama 3 token telemetry corpus
     # --------------------------------------------------
-
-    st.divider()
 
     st.subheader(
         "Token telemetry — reviewed Llama 3 corpus"
