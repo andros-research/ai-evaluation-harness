@@ -29,6 +29,11 @@ TOKEN_TELEMETRY_ROOT = Path(
     "benchmarks/results/token_telemetry"
 )
 
+FROZEN_TELEMETRY_ROOT = Path(
+    "benchmarks/fixtures/"
+    "token_telemetry_llama3_reviewed_v0_1"
+)
+
 FROZEN_TELEMETRY_PATH = Path(
     "benchmarks/fixtures/"
     "token_telemetry_llama3_semantic_conservative_v0_1.json"
@@ -176,25 +181,35 @@ def reviews_as_jsonl() -> str:
 def load_token_telemetry(
     claim_id: str,
 ) -> dict | None:
-    if not claim_id or Path(claim_id).name != claim_id:
+    if (
+        not claim_id
+        or claim_id in (".", "..")
+        or Path(claim_id).name != claim_id
+    ):
         raise ValueError(
             f"Invalid telemetry claim_id: {claim_id!r}"
         )
 
-    path = (
-        TOKEN_TELEMETRY_ROOT
-        / claim_id
-        / "token_telemetry_v0_1.json"
+    filename = "token_telemetry_v0_1.json"
+
+    candidates = [
+        TOKEN_TELEMETRY_ROOT / claim_id / filename,
+        FROZEN_TELEMETRY_ROOT / claim_id / filename,
+    ]
+
+    if claim_id == FROZEN_TELEMETRY_CLAIM_ID:
+        candidates.append(
+            FROZEN_TELEMETRY_PATH
+        )
+
+    path = next(
+        (candidate for candidate in candidates
+         if candidate.is_file()),
+        None,
     )
 
-    if not path.exists():
-        if claim_id != FROZEN_TELEMETRY_CLAIM_ID:
-            return None
-
-        path = FROZEN_TELEMETRY_PATH
-
-        if not path.exists():
-            return None
+    if path is None:
+        return None
 
     telemetry = json.loads(
         path.read_text(encoding="utf-8")
@@ -2212,12 +2227,23 @@ with token_tab:
         "Token telemetry — reviewed Llama 3 corpus"
     )
 
-    telemetry_summary_path = (
-        TOKEN_TELEMETRY_ROOT
-        / "token_telemetry_summary_v0_1.json"
+    summary_filename = (
+        "token_telemetry_summary_v0_1.json"
     )
 
-    if not telemetry_summary_path.exists():
+    telemetry_summary_path = next(
+        (
+            candidate
+            for candidate in [
+                TOKEN_TELEMETRY_ROOT / summary_filename,
+                FROZEN_TELEMETRY_ROOT / summary_filename,
+            ]
+            if candidate.is_file()
+        ),
+        None,
+    )
+
+    if telemetry_summary_path is None:
         st.info(
             "Token telemetry summary not generated. "
             "Run benchmarks/summarize_token_telemetry.py."
