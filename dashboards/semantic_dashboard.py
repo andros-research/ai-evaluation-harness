@@ -1485,6 +1485,53 @@ def render_model_output(
         )
 
 
+def reset_prompt_filter() -> None:
+    """Reset prompt selection after a manual model change."""
+    st.session_state.pop(
+        "semantic_prompt_filter",
+        None,
+    )
+
+
+def navigate_from_telemetry_table() -> None:
+    """Synchronize the inspector with a selected corpus row."""
+    event = st.session_state.get(
+        "token_summary_table"
+    )
+
+    if event is None:
+        return
+
+    selected_rows = event["selection"]["rows"]
+
+    if not selected_rows:
+        return
+
+    targets = st.session_state.get(
+        "token_summary_targets",
+        [],
+    )
+
+    row_index = selected_rows[0]
+
+    if not 0 <= row_index < len(targets):
+        return
+
+    target = targets[row_index]
+
+    st.session_state[
+        "semantic_selected_claim_id"
+    ] = target["claim_id"]
+
+    st.session_state[
+        "semantic_model_filter"
+    ] = target["source_model"]
+
+    st.session_state[
+        "semantic_prompt_filter"
+    ] = target["prompt_variant"]
+
+
 st.set_page_config(
     page_title=(
         "Semantic Evaluation Lab"
@@ -1550,6 +1597,8 @@ with inspector_tab:
             st.selectbox(
                 "Source model",
                 models,
+                key="semantic_model_filter",
+                on_change=reset_prompt_filter,
             )
         )
 
@@ -1568,6 +1617,7 @@ with inspector_tab:
             st.selectbox(
                 "Prompt",
                 prompt_options,
+                key="semantic_prompt_filter",
             )
         )
 
@@ -2262,10 +2312,24 @@ with summary_tab:
             table_rows
         )
 
+        st.session_state[
+            "token_summary_targets"
+        ] = [
+            {
+                "claim_id": item["claim_id"],
+                "source_model": item["source_model"],
+                "prompt_variant": item["prompt_variant"],
+            }
+            for item in claim_summaries
+        ]
+
         st.dataframe(
             telemetry_df,
             hide_index=True,
             use_container_width=True,
+            selection_mode="single-row",
+            on_select=navigate_from_telemetry_table,
+            key="token_summary_table",
             column_config={
                 "Mean P": st.column_config.NumberColumn(
                     "Mean P",
@@ -2280,6 +2344,12 @@ with summary_tab:
                     format="%.3f",
                 ),
             },
+        )
+
+        st.caption(
+            "Select a table row, then open the "
+            "Claim Inspector tab to explore its "
+            "full narrative and token telemetry."
         )
 
         st.caption(
