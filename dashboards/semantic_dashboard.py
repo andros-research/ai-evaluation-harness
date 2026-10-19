@@ -2150,3 +2150,143 @@ with summary_tab:
         "Discovery-batch counts are descriptive only. "
         "They are not stable estimates of model behavior."
     )
+
+
+    # --------------------------------------------------
+    # Reviewed Llama 3 token telemetry corpus
+    # --------------------------------------------------
+
+    st.divider()
+
+    st.subheader(
+        "Token telemetry — reviewed Llama 3 corpus"
+    )
+
+    telemetry_summary_path = (
+        TOKEN_TELEMETRY_ROOT
+        / "token_telemetry_summary_v0_1.json"
+    )
+
+    if not telemetry_summary_path.exists():
+        st.info(
+            "Token telemetry summary not generated. "
+            "Run benchmarks/summarize_token_telemetry.py."
+        )
+
+    else:
+        telemetry_summary = json.loads(
+            telemetry_summary_path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+        claim_summaries = (
+            telemetry_summary.get(
+                "claims",
+                [],
+            )
+        )
+
+        if (
+            telemetry_summary.get("claim_count")
+            != len(claim_summaries)
+        ):
+            st.warning(
+                "Telemetry summary claim count mismatch."
+            )
+
+        st.caption(
+            f"{len(claim_summaries)} reviewed claims. "
+            "Teacher-forced BF16 rescoring of "
+            "historical Ollama Q4_0 generations. "
+            "All metrics are descriptive."
+        )
+
+        table_rows = []
+
+        for item in claim_summaries:
+            lowest = item[
+                "lowest_probability_token"
+            ]
+
+            highest = item[
+                "highest_entropy_token"
+            ]
+
+            short_id = (
+                item["claim_id"]
+                .replace(
+                    "llama3_semantic_",
+                    "",
+                )
+                .replace(
+                    "_t0__commentary_",
+                    " / ",
+                )
+            )
+
+            table_rows.append(
+                {
+                    "Claim": short_id,
+                    "Mean P": item[
+                        "mean_probability"
+                    ],
+                    "Mean H": item[
+                        "mean_entropy_nats"
+                    ],
+                    "PPL": item[
+                        "claim_perplexity"
+                    ],
+                    "Rank >1": (
+                        f"{item['rank_gt_1_count']}"
+                        f"/{item['token_count']}"
+                    ),
+                    "Lowest P token": (
+                        f"{lowest['token_text'].strip()!r} "
+                        f"({lowest['probability']:.1%})"
+                    ),
+                    "Highest H token": (
+                        f"{highest['token_text'].strip()!r} "
+                        f"({highest['entropy_nats']:.2f})"
+                    ),
+                    "Claim kinds": ", ".join(
+                        item["claim_kinds"]
+                    ),
+                    "Support": ", ".join(
+                        item["support_statuses"]
+                    ),
+                }
+            )
+
+        telemetry_df = pd.DataFrame(
+            table_rows
+        )
+
+        st.dataframe(
+            telemetry_df,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Mean P": st.column_config.NumberColumn(
+                    "Mean P",
+                    format="%.3f",
+                ),
+                "Mean H": st.column_config.NumberColumn(
+                    "Mean H",
+                    format="%.3f",
+                ),
+                "PPL": st.column_config.NumberColumn(
+                    "PPL",
+                    format="%.3f",
+                ),
+            },
+        )
+
+        st.caption(
+            "Mean P = arithmetic mean observed-token "
+            "probability; Mean H = average next-token "
+            "entropy in nats; PPL = exp(mean negative "
+            "log probability); Rank >1 = historical "
+            "tokens not ranked first by the BF16 scorer. "
+            "Semantic labels apply to whole claims."
+        )
