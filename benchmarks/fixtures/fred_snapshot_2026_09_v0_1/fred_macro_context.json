@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-10-26T03:55:25.950338Z",
+  "latest_date": "2026-09-01",
+  "prior_date_6m": "2026-03-01",
+  "prior_date_12m": "2025-09-01",
+  "prior_date_24m": "2024-09-01",
+  "series": {
+    "CPI_YOY": {
+      "series_id": "CPIAUCSL",
+      "description": "Consumer Price Index for All Urban Consumers: All Items"
+    },
+    "UNRATE": {
+      "series_id": "UNRATE",
+      "description": "Unemployment Rate"
+    },
+    "FEDFUNDS": {
+      "series_id": "FEDFUNDS",
+      "description": "Effective Federal Funds Rate"
+    },
+    "GS10": {
+      "series_id": "GS10",
+      "description": "10-Year Treasury Constant Maturity Rate"
+    }
+  },
+  "contexts": {
+    "latest_snapshot": "Date: 2026-09-01\nCPI_YOY: 3.72\nUNRATE: 4.20\nFEDFUNDS: 3.75\nGS10: 4.99",
+    "snapshot_alt_1": "Date: 2024-09-01\nCPI_YOY: 2.43\nUNRATE: 4.10\nFEDFUNDS: 5.13\nGS10: 3.72",
+    "comparison_6m": "Date A: 2026-03-01\nCPI_YOY: 3.29\nUNRATE: 4.30\nFEDFUNDS: 3.64\nGS10: 4.25\n\nDate B: 2026-09-01\nCPI_YOY: 3.72\nUNRATE: 4.20\nFEDFUNDS: 3.75\nGS10: 4.99",
+    "comparison_12m": "Date A: 2025-09-01\nCPI_YOY: 3.02\nUNRATE: 4.40\nFEDFUNDS: 4.22\nGS10: 4.12\n\nDate B: 2026-09-01\nCPI_YOY: 3.72\nUNRATE: 4.20\nFEDFUNDS: 3.75\nGS10: 4.99",
+    "comparison_24m": "Date A: 2024-09-01\nCPI_YOY: 2.43\nUNRATE: 4.10\nFEDFUNDS: 5.13\nGS10: 3.72\n\nDate B: 2026-09-01\nCPI_YOY: 3.72\nUNRATE: 4.20\nFEDFUNDS: 3.75\nGS10: 4.99"
+  },
+  "latest_values": {
+    "CPI_YOY": 3.717,
+    "UNRATE": 4.2,
+    "FEDFUNDS": 3.75,
+    "GS10": 4.99
+  },
+  "prior_values_6m": {
+    "CPI_YOY": 3.286,
+    "UNRATE": 4.3,
+    "FEDFUNDS": 3.64,
+    "GS10": 4.25
+  },
+  "prior_values_12m": {
+    "CPI_YOY": 3.023,
+    "UNRATE": 4.4,
+    "FEDFUNDS": 4.22,
+    "GS10": 4.12
+  },
+  "prior_values_24m": {
+    "CPI_YOY": 2.426,
+    "UNRATE": 4.1,
+    "FEDFUNDS": 5.13,
+    "GS10": 3.72
+  },
+  "snapshot_provenance": {
+    "observation_month": "2026-09-01",
+    "retrieved_at_utc": "2026-10-26T03:55:25.950344+00:00",
+    "source": "FRED series/observations API",
+    "series_ids": {
+      "CPI_YOY": "CPIAUCSL",
+      "UNRATE": "UNRATE",
+      "FEDFUNDS": "FEDFUNDS",
+      "GS10": "GS10"
+    },
+    "vintage_policy": "Current FRED revisions at retrieval; no historical vintage pinned"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "fred_snapshot_manifest_v0_1",
+  "observation_month": "2026-09-01",
+  "comparison_window": "12m",
+  "retrieved_at_utc": "2026-10-26T03:55:25.950344+00:00",
+  "vintage_policy": "Current FRED revisions at retrieval; no historical vintage pinned",
+  "selected_claim_count": 4,
+  "files_sha256": {
+    "fred_macro_context.json": "b55c298dbaedb62f0f8db4ef0fd50c120b9a79c41627f1e26a8ebc8d85512697",
+    "fred_claims/fred_claims.json": "25f86e431568e0068e614fbf64575b0485d8d39843fe733fac46a58e880c1f79",
+    "fred_claims/fred_claims_metadata.json": "57e2c9eaf43fbff543ac368fa5ec0d0d906417dd05b700849ef9d9beef7e52f3",
+    "fred_claims/selected_fred_claims.json": "bd14e9cf8aa8fdd5a3e83df46fcce83cd9d12643b186b8b06f1f18f0656fc9e5",
+    "fred_claims/selected_fred_claims_metadata.json": "5d280c7218ddc8b985c41b99ff02f2d68fd4c2f9cd00c7b93849581f58c87786"
+  }
+}

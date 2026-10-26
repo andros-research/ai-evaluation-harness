@@ -1,0 +1,31 @@
+{
+  "claim_types_included": [
+    "prior_comparison"
+  ],
+  "comparison_windows_included": [
+    "12m"
+  ],
+  "input_file": "benchmarks/results/fred_snapshots/2026_09_v0_1/fred_claims/fred_claims.json",
+  "n_input_claims": 4,
+  "n_selected_claims": 4,
+  "output_files": {
+    "metadata_json": "benchmarks/results/fred_snapshots/2026_09_v0_1/fred_claims/selected_fred_claims_metadata.json",
+    "selected_csv": "benchmarks/results/fred_snapshots/2026_09_v0_1/fred_claims/selected_fred_claims.csv",
+    "selected_json": "benchmarks/results/fred_snapshots/2026_09_v0_1/fred_claims/selected_fred_claims.json"
+  },
+  "selected_at": "2026-10-26T04:01:11.206621+00:00",
+  "selected_claim_ids": [
+    "fred__cpi_yoy__CPIAUCSL__prior_comparison__2026-09-01",
+    "fred__unrate__UNRATE__prior_comparison__2026-09-01",
+    "fred__fedfunds__FEDFUNDS__prior_comparison__2026-09-01",
+    "fred__gs10__GS10__prior_comparison__2026-09-01"
+  ],
+  "selection_method": "eligible_for_narrative_filter",
+  "selection_schema_version": "fred_selected_claims_v0_1",
+  "series_included": [
+    "CPIAUCSL",
+    "FEDFUNDS",
+    "GS10",
+    "UNRATE"
+  ]
+}
