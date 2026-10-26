@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -157,6 +158,55 @@ def build_snapshot_values(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Build a FRED macro context snapshot."
+    )
+
+    parser.add_argument(
+        "--snapshot-date",
+        default=None,
+        help="Exact monthly observation date, YYYY-MM-01.",
+    )
+
+    parser.add_argument(
+        "--output-path",
+        type=Path,
+        default=None,
+        help="Isolated destination for the snapshot JSON.",
+    )
+
+    args = parser.parse_args()
+
+    if args.snapshot_date and args.output_path is None:
+        parser.error(
+            "--snapshot-date requires --output-path "
+            "to protect the existing context."
+        )
+
+    if args.snapshot_date:
+        parsed = datetime.strptime(
+            args.snapshot_date, "%Y-%m-%d"
+        )
+
+        if (
+            parsed.day != 1
+            or parsed.strftime("%Y-%m-%d")
+            != args.snapshot_date
+        ):
+            parser.error(
+                "Snapshot date must be YYYY-MM-01."
+            )
+
+    output_path = args.output_path or OUT_PATH
+
+    if (
+        args.output_path is not None
+        and output_path.exists()
+    ):
+        raise FileExistsError(
+            f"Refusing to overwrite: {output_path}"
+        )
+
     api_key = os.environ.get("FRED_API_KEY")
     if not api_key:
         raise RuntimeError("FRED_API_KEY is not set.")
@@ -168,7 +218,32 @@ def main() -> None:
 
     cpi_yoy_series = compute_cpi_yoy(raw_series["CPI_YOY"])
 
-    latest_date = latest_valid(raw_series["UNRATE"]).date
+    latest_date = (
+        args.snapshot_date
+        or latest_valid(raw_series["UNRATE"]).date
+    )
+
+    if args.snapshot_date:
+        missing = [
+            key
+            for key in SERIES_CONFIG
+            if not any(
+                obs.date == latest_date
+                and obs.value is not None
+                for obs in raw_series[key]
+            )
+        ]
+
+        cpi_yoy = cpi_yoy_series.get(latest_date)
+
+        if cpi_yoy is None or cpi_yoy.value is None:
+            missing.append("CPI_YOY_DERIVED")
+
+        if missing:
+            raise RuntimeError(
+                f"Missing exact observations for "
+                f"{latest_date}: {missing}"
+            )
     prior_date_12m = add_months_approx(latest_date, 12)
     prior_date_24m = add_months_approx(latest_date, 24)
     prior_date_6m = add_months_approx(latest_date, 6)
@@ -211,9 +286,32 @@ def main() -> None:
         "prior_values_24m": prior_values_24m,
     }
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    OUT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Wrote {OUT_PATH}")
+    if args.snapshot_date:
+        payload["snapshot_provenance"] = {
+            "observation_month": latest_date,
+            "retrieved_at_utc": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "source": "FRED series/observations API",
+            "series_ids": {
+                key: config["series_id"]
+                for key, config in SERIES_CONFIG.items()
+            },
+            "vintage_policy":
+                "Current FRED revisions at retrieval; "
+                "no historical vintage pinned",
+        }
+
+    output_path.parent.mkdir(
+        parents=True, exist_ok=True
+    )
+
+    output_path.write_text(
+        json.dumps(payload, indent=2),
+        encoding="utf-8",
+    )
+
+    print(f"Wrote {output_path}")
 
 
 if __name__ == "__main__":
