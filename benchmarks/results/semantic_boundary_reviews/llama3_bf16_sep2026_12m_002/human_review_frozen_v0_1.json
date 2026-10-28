@@ -1,0 +1,160 @@
+{
+  "schema_version": "native_human_semantic_review_v0_1",
+  "run_id": "llama3_bf16_sep2026_12m_002",
+  "status": "frozen",
+  "frozen_at_utc": "2026-10-28T02:37:46.838686+00:00",
+  "review_method": "Human discussion and adjudication using supplied FRED evidence, without prospective machine proposals or generation-time token telemetry.",
+  "source_sha256": {
+    "review_packet": "27b3bad9242e9ad19b547104712fd80393a3b035ca6af7493da91eaf31ba0c20",
+    "review_draft": "23af6d0080bc0c76ff7f6b7b1ceb281650c6835faffd89a3f18cb16bce1db0b7",
+    "generated_narrative": "981dd34b786e2d11d77f9687d9ca3b52cd60d325c7583e377d2bcc6362a5910c"
+  },
+  "machine_proposals_consulted": false,
+  "token_telemetry_consulted": false,
+  "reviews": [
+    {
+      "sentence_id": "llama3_bf16_sep2026_12m_002__commentary_01",
+      "claim_span": "The recent data suggests a mixed bag of economic indicators.",
+      "narrative_char_start": 658,
+      "narrative_char_end": 718,
+      "semantic_annotations": [
+        {
+          "claim_kind": "scope_generalization",
+          "support_status": "supported",
+          "assertion_strength": "qualified_inference",
+          "rationale": "The four indicators exhibit differing movements; a mixed picture is a defensible summary."
+        }
+      ],
+      "boundary_decision": {
+        "present": false,
+        "anchor_text": null,
+        "sentence_char_offset": null,
+        "narrative_char_offset": null,
+        "direction": null,
+        "confidence": "high",
+        "note": "Entire sentence is a qualified summary."
+      },
+      "review_status": "frozen"
+    },
+    {
+      "sentence_id": "llama3_bf16_sep2026_12m_002__commentary_02",
+      "claim_span": "Inflation continues to rise, albeit at a slower pace, while the unemployment rate has decreased.",
+      "narrative_char_start": 719,
+      "narrative_char_end": 815,
+      "semantic_annotations": [
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "The evidence establishes higher CPI YoY inflation and lower unemployment between the endpoints."
+        },
+        {
+          "claim_kind": "temporal_pattern",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "asserted",
+          "rationale": "Continuation and deceleration require a time path not established by the two endpoints."
+        }
+      ],
+      "boundary_decision": {
+        "present": true,
+        "anchor_text": "while",
+        "sentence_char_offset": 54,
+        "narrative_char_offset": 773,
+        "direction": "mixed_temporal_claim_to_empirical_observation",
+        "confidence": "moderate",
+        "note": "First clause mixes supported movement with unsupported temporal extensions."
+      },
+      "review_status": "frozen"
+    },
+    {
+      "sentence_id": "llama3_bf16_sep2026_12m_002__commentary_03",
+      "claim_span": "The effective federal funds rate has also decreased, indicating a more accommodative monetary policy.",
+      "narrative_char_start": 816,
+      "narrative_char_end": 917,
+      "semantic_annotations": [
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "The effective funds rate declined from 4.22 to 3.75."
+        },
+        {
+          "claim_kind": "policy_interpretation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "The rate movement alone does not establish a change in monetary policy stance."
+        }
+      ],
+      "boundary_decision": {
+        "present": true,
+        "anchor_text": "indicating",
+        "sentence_char_offset": 53,
+        "narrative_char_offset": 869,
+        "direction": "empirical_observation_to_policy_interpretation",
+        "confidence": "high",
+        "note": "Clean observation-to-inference transition."
+      },
+      "review_status": "frozen"
+    },
+    {
+      "sentence_id": "llama3_bf16_sep2026_12m_002__commentary_04",
+      "claim_span": "Meanwhile, the 10-year Treasury yield has increased, potentially reflecting market expectations of future rate hikes.",
+      "narrative_char_start": 918,
+      "narrative_char_end": 1035,
+      "semantic_annotations": [
+        {
+          "claim_kind": "empirical_comparison",
+          "support_status": "supported",
+          "assertion_strength": "asserted",
+          "rationale": "The 10-year yield increased from 4.12 to 4.99."
+        },
+        {
+          "claim_kind": "market_interpretation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "The supplied yield comparison does not establish investors' expectations about future rate hikes."
+        }
+      ],
+      "boundary_decision": {
+        "present": true,
+        "anchor_text": "potentially",
+        "sentence_char_offset": 53,
+        "narrative_char_offset": 971,
+        "direction": "empirical_observation_to_market_interpretation",
+        "confidence": "high",
+        "note": "Clean observation-to-inference transition."
+      },
+      "review_status": "frozen"
+    },
+    {
+      "sentence_id": "llama3_bf16_sep2026_12m_002__commentary_05",
+      "claim_span": "These developments may be indicative of a complex macroeconomic environment, with multiple factors influencing the direction of the economy.",
+      "narrative_char_start": 1036,
+      "narrative_char_end": 1176,
+      "semantic_annotations": [
+        {
+          "claim_kind": "scope_generalization",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "qualified_inference",
+          "rationale": "The four observations do not establish the broader characterization of a complex economic environment."
+        },
+        {
+          "claim_kind": "causal_explanation",
+          "support_status": "insufficient_evidence",
+          "assertion_strength": "asserted",
+          "rationale": "Multiple influencing factors are invoked without identification or supporting causal evidence."
+        }
+      ],
+      "boundary_decision": {
+        "present": false,
+        "anchor_text": null,
+        "sentence_char_offset": null,
+        "narrative_char_offset": null,
+        "direction": null,
+        "confidence": "high",
+        "note": "Two interpretive commitments, but no empirical-to-interpretive boundary."
+      },
+      "review_status": "frozen"
+    }
+  ]
+}
