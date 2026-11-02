@@ -1,0 +1,97 @@
+You are generating a concise macro narrative from selected FRED claims.
+
+Output requirements:
+
+1. Write markdown only.
+
+2. Begin with exactly this title:
+
+# FRED Macro Narrative
+
+3. Then include exactly this section heading:
+
+## Claim-Cited Summary
+
+4. Write exactly 4 bullets.
+
+5. Write one bullet for each selected claim.
+
+6. Each bullet must include:
+   - the direction
+   - the prior value
+   - the current value
+   - the delta magnitude
+
+7. End each bullet with exactly one citation using:
+
+   [CLAIMS: <exact claim_id>]
+
+8. After the claim-cited bullets, include:
+
+## Commentary
+
+9. Write 2 to 4 concise sentences of natural macro analysis.
+
+10. You may discuss broader conditions, implications, possible explanations, or market interpretations when useful.
+
+11. Clearly distinguish direct observation from interpretation. Qualify interpretations when the supplied evidence does not establish them.
+
+12. Do not present a causal explanation, market interpretation, or broader-condition interpretation as established fact unless the supplied evidence establishes it.
+
+13. Use natural analyst language and be specific rather than generic.
+
+14. Do not include claim IDs or [CLAIMS: ...] citations in the Commentary section.
+
+15. Do not introduce numeric facts that are not present in the selected claims.
+
+Selected claims:
+
+claim_id: fred__cpi_yoy__CPIAUCSL__prior_comparison__2026-09-01
+claim_text: CPI year-over-year inflation increased by 0.694 percentage points versus the prior observation, from 3.023 to 3.717.
+source_series: CPIAUCSL
+metric_name: cpi_yoy
+comparison_window: 12m
+current_value: 3.717
+prior_value: 3.023
+delta_value: 0.694
+direction: up
+supporting_values: {"current_date": "2026-09-01", "current_value": 3.717, "delta_value": 0.694, "prior_date": "2025-09-01", "prior_value": 3.023, "units": "percentage points"}
+
+---
+
+claim_id: fred__unrate__UNRATE__prior_comparison__2026-09-01
+claim_text: Unemployment rate decreased by 0.2 percentage points versus the prior observation, from 4.4 to 4.2.
+source_series: UNRATE
+metric_name: unrate
+comparison_window: 12m
+current_value: 4.2
+prior_value: 4.4
+delta_value: -0.2
+direction: down
+supporting_values: {"current_date": "2026-09-01", "current_value": 4.2, "delta_value": -0.2, "prior_date": "2025-09-01", "prior_value": 4.4, "units": "percentage points"}
+
+---
+
+claim_id: fred__fedfunds__FEDFUNDS__prior_comparison__2026-09-01
+claim_text: Effective federal funds rate decreased by 0.47 percentage points versus the prior observation, from 4.22 to 3.75.
+source_series: FEDFUNDS
+metric_name: fedfunds
+comparison_window: 12m
+current_value: 3.75
+prior_value: 4.22
+delta_value: -0.47
+direction: down
+supporting_values: {"current_date": "2026-09-01", "current_value": 3.75, "delta_value": -0.47, "prior_date": "2025-09-01", "prior_value": 4.22, "units": "percentage points"}
+
+---
+
+claim_id: fred__gs10__GS10__prior_comparison__2026-09-01
+claim_text: 10-year Treasury yield increased by 0.87 percentage points versus the prior observation, from 4.12 to 4.99.
+source_series: GS10
+metric_name: gs10
+comparison_window: 12m
+current_value: 4.99
+prior_value: 4.12
+delta_value: 0.87
+direction: up
+supporting_values: {"current_date": "2026-09-01", "current_value": 4.99, "delta_value": 0.87, "prior_date": "2025-09-01", "prior_value": 4.12, "units": "percentage points"}
