@@ -296,6 +296,8 @@ def call_ollama(
     temperature: float,
     ollama_host: str,
     timeout_s: int,
+    num_ctx: int | None = None,
+    num_predict: int | None = None,
 ) -> dict:
     payload = {
         "model": model,
@@ -307,6 +309,12 @@ def call_ollama(
                 temperature,
         },
     }
+
+    if num_ctx is not None:
+        payload["options"]["num_ctx"] = num_ctx
+
+    if num_predict is not None:
+        payload["options"]["num_predict"] = num_predict
 
     request = urllib.request.Request(
         (
