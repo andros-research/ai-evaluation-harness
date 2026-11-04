@@ -1,0 +1,451 @@
+{
+  "schema_version": "human_macro_semantic_reference_v0_1",
+  "experiment_id": "v1_9_3_sep2026_multi_model_v0_1",
+  "reference_scope": "Commentary sentences only; original numerical summary bullets reviewed at narrative level but not individually semantic-annotated.",
+  "frozen_source": {
+    "blind_review_packet_path": "benchmarks/results/macro_narrative_reviews/v1_9_3_sep2026_multi_model_v0_1/blind_review_v0_1/blind_review_packet.md",
+    "blind_review_packet_sha256": "f819098ae49cc14bd29f7639d75ff023cf8b8dd9588ac7166cf4a56aaf30f05e",
+    "selected_fred_claims_sha256": "bd14e9cf8aa8fdd5a3e83df46fcce83cd9d12643b186b8b06f1f18f0656fc9e5",
+    "narrative_prompt_sha256": "6b96c868878c6816cd9e474e1817716a4ae6612058e695b162131cfb29dbe261"
+  },
+  "review_provenance": {
+    "method": "collaborative_user_assistant_human_review",
+    "status": "agreed_reference_pending_source_file_verification",
+    "limitations": [
+      "Not a fully independent blinded human evaluation: assistant proposed annotations, user reviewed and agreed.",
+      "Narrative C identity was already recognizable as Llama 3 8B.",
+      "Narratives A/B model identities and OSS reasoning levels were not revealed at review time.",
+      "Three completed narratives; GPT-OSS high was an operational noncompletion, not a reviewable narrative.",
+      "Very small, deliberately exploratory human-reviewed corpus; not statistical evidence of generalization."
+    ],
+    "human_preference": "NARRATIVE_B",
+    "model_identity_mapping_accessed": false,
+    "hidden_model_analysis_or_token_telemetry_accessed": false
+  },
+  "ontology": {
+    "source_guide": "docs/v1_9_semantic_annotation_guide_compact_v0_2_1.md",
+    "config_id": "compact_balanced_v0_2_1",
+    "source": "frozen model classifier guide; human annotations curated independently of its runtime outputs"
+  },
+  "operational_notes": {
+    "generation_arms_planned": 4,
+    "completed_narratives": 3,
+    "noncompletion_arms": 1,
+    "reason": "GPT-OSS high consumed 4096 generated tokens without a final-channel narrative; exclude from narrative-semantic denominators while retaining operational failure."
+  },
+  "narratives": [
+    {
+      "blind_label": "NARRATIVE_A",
+      "narrative_level_review": {
+        "commentary_sentence_count": 4,
+        "summary_bullets": "Four metric-identified bullets and correct underlying values.",
+        "numerical_accuracy": "Underlying comparisons correct.",
+        "evidence_discipline": "Weak: reverses conventional policy-direction rationale and introduces unsupported wage growth.",
+        "macro_synthesis": "Some meaningful yield hypotheses, but major reliability concerns.",
+        "analyst_usefulness": "Low; requires substantive corrections before use.",
+        "review_notes": [
+          "Monetary tightening labeled insufficient_evidence, with separate directional-inconsistency rationale rather than forcing contradicted.",
+          "Wage growth is an absent variable, not an observed labor-series trend."
+        ]
+      },
+      "commentary_sentences": [
+        {
+          "sentence_id": "A_S01",
+          "claim_span": "The data show a tightening of monetary policy, as reflected by the lower federal funds rate, while inflation remains elevated.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The effective federal funds rate is lower.",
+              "rationale": "The frozen series declines from 4.22% to 3.75% across the 12-month comparison.",
+              "annotation_id": "A_S01_A01"
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The data show monetary-policy tightening.",
+              "rationale": "The rate series alone does not establish the full policy stance; treating a falling effective rate as evidence of tightening also runs opposite to the usual rate-based direction.",
+              "annotation_id": "A_S01_A02"
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "Inflation is elevated.",
+              "rationale": "The CPI inflation rate is supplied, but no threshold or reference benchmark establishes that its level is elevated.",
+              "annotation_id": "A_S01_A03"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "Inflation remains elevated.",
+              "rationale": "Remains implies persistence, which the two dated comparison values do not establish.",
+              "annotation_id": "A_S01_A04"
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S02",
+          "claim_span": "Wage growth and labor market slack appear to be moderating, given the drop in unemployment.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The unemployment rate declined.",
+              "rationale": "The frozen unemployment comparison is 4.4% to 4.2%.",
+              "annotation_id": "A_S02_A01"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Wage growth is moderating.",
+              "rationale": "No wage-growth series was supplied; the available unemployment endpoints cannot establish the path of wage growth.",
+              "annotation_id": "A_S02_A02"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Labor-market slack is moderating.",
+              "rationale": "A change in unemployment alone does not establish a continuing moderation in broader labor-market slack.",
+              "annotation_id": "A_S02_A03"
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The unemployment-rate change establishes broader labor-market slack.",
+              "rationale": "The span generalizes from one labor-market indicator to a broader condition without corroborating measures.",
+              "annotation_id": "A_S02_A04"
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S03",
+          "claim_span": "The higher 10‑year yield suggests market expectations of continued inflationary pressure or a shift in risk sentiment.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The 10-year Treasury yield is higher.",
+              "rationale": "The frozen 10-year yield rises from 4.12% to 4.99%.",
+              "annotation_id": "A_S03_A01"
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The yield increase reflects inflation expectations or changing risk sentiment.",
+              "rationale": "The yield movement is observed, but expectations and sentiment are not observed in the packet; the alternatives are appropriately expressed as interpretations.",
+              "annotation_id": "A_S03_A02"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Inflationary pressure is continuing or sentiment is shifting over time.",
+              "rationale": "The word continued and the proposed sentiment shift add dynamics not established by the two-endpoint rate comparison.",
+              "annotation_id": "A_S03_A03"
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S04",
+          "claim_span": "These movements could signal a balancing act by the Fed between curbing inflation and supporting employment.",
+          "annotations": [
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "The observed moves may reflect a Fed balancing act between inflation and employment.",
+              "rationale": "The packet contains no evidence of Fed intentions or deliberations; could signal frames it as a possible policy interpretation.",
+              "annotation_id": "A_S04_A01"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "blind_label": "NARRATIVE_B",
+      "narrative_level_review": {
+        "commentary_sentence_count": 3,
+        "summary_bullets": "Four bullets contain numbers/directions/citations but omit metric names; poor standalone readability.",
+        "numerical_accuracy": "Underlying numerical comparisons correct; derived 10Y–effective fed funds spread widens by 134 bp.",
+        "evidence_discipline": "Mostly appropriately qualified economic hypotheses, with unsupported temporal, magnitude, and scope extensions.",
+        "macro_synthesis": "Strongest cross-series synthesis of the three; identifies diverging short/long rates.",
+        "analyst_usefulness": "Preferred narrative, despite summary-bullet shortcomings.",
+        "review_notes": [
+          "Market expectations are not observed directly and are insufficiently evidenced.",
+          "Yield-curve language is supported only for the narrower 10Y–effective fed funds spread, not the entire Treasury curve."
+        ]
+      },
+      "commentary_sentences": [
+        {
+          "sentence_id": "B_S01",
+          "claim_span": "The year‑over‑year CPI has risen sharply, suggesting that price pressures remain elevated.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "CPI year-over-year inflation increased.",
+              "rationale": "The frozen CPI YoY series rises from 3.023% to 3.717%.",
+              "annotation_id": "B_S01_A01"
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The rise was sharp.",
+              "rationale": "The change is +0.694 percentage points, but the packet provides no threshold establishing a sharp increase.",
+              "annotation_id": "B_S01_A02"
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The CPI change characterizes broader price pressures.",
+              "rationale": "One CPI rate comparison does not independently establish the overall condition of price pressures.",
+              "annotation_id": "B_S01_A03"
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Price pressures are elevated.",
+              "rationale": "No benchmark defining an elevated price-pressure condition is supplied.",
+              "annotation_id": "B_S01_A04"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Price pressures remain elevated.",
+              "rationale": "Remain asserts persistence beyond what two dated observations demonstrate.",
+              "annotation_id": "B_S01_A05"
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S02",
+          "claim_span": "Meanwhile, the unemployment rate has slipped, indicating that labor markets are still tightening.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "Unemployment declined.",
+              "rationale": "The frozen unemployment-rate observation declines from 4.4% to 4.2%.",
+              "annotation_id": "B_S02_A01"
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Labor markets are tightening more broadly.",
+              "rationale": "A single unemployment-rate comparison cannot establish labor-market tightening across other conditions.",
+              "annotation_id": "B_S02_A02"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Labor-market tightening is continuing.",
+              "rationale": "Still asserts a continuing trend not established by the supplied endpoints.",
+              "annotation_id": "B_S02_A03"
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S03",
+          "claim_span": "The decline in the federal funds rate, coupled with higher 10‑year Treasury yields, points to a potential shift in monetary policy expectations and a widening yield curve.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The effective federal funds rate declined.",
+              "rationale": "The frozen effective rate falls from 4.22% to 3.75%.",
+              "annotation_id": "B_S03_A01"
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The 10-year Treasury yield increased.",
+              "rationale": "The frozen 10-year yield rises from 4.12% to 4.99%.",
+              "annotation_id": "B_S03_A02"
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "The divergent rates indicate a possible shift in market expectations about monetary policy.",
+              "rationale": "There are no direct measures of investor expectations or the drivers of the two rates; potential signals a possibility, not an established mechanism.",
+              "annotation_id": "B_S03_A03"
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The 10-year Treasury yield minus the effective fed funds rate spread widened.",
+              "rationale": "The spread moved from 4.12−4.22 = −0.10 percentage points to 4.99−3.75 = +1.24, widening by 1.34 percentage points (134 bp). This supports the narrower cross-instrument spread claim, not necessarily every portion of the Treasury yield curve.",
+              "annotation_id": "B_S03_A04"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "blind_label": "NARRATIVE_C",
+      "narrative_level_review": {
+        "commentary_sentence_count": 5,
+        "summary_bullets": "Four metric-identified numerical bullets; underlying values correct.",
+        "numerical_accuracy": "Underlying comparisons correct.",
+        "evidence_discipline": "Reasonable but unsupported policy and market interpretations; unsupported persistence and deceleration.",
+        "macro_synthesis": "Limited: misses the cross-series rate-divergence opportunity and ends generically.",
+        "analyst_usefulness": "Readable but modest incremental value.",
+        "review_notes": [
+          "Five commentary sentences violate the frozen 2–4 sentence limit.",
+          "Narrative C was recognizable as Llama from prior reading, so its model identity was not fully blind."
+        ]
+      },
+      "commentary_sentences": [
+        {
+          "sentence_id": "C_S01",
+          "claim_span": "The recent data suggests a mixed bag of economic indicators.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The four supplied series move in mixed directions.",
+              "rationale": "Inflation and the 10-year yield rise while unemployment and the effective federal funds rate fall; this supports an informal cross-indicator description, though it adds little analysis.",
+              "annotation_id": "C_S01_A01"
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S02",
+          "claim_span": "Inflation continues to rise, albeit at a slower pace, while the unemployment rate has decreased.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "CPI year-over-year inflation increased between the observed dates.",
+              "rationale": "The CPI YoY rate rises from 3.023% to 3.717%.",
+              "annotation_id": "C_S02_A01"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "Inflation continues to rise.",
+              "rationale": "Two endpoints do not establish a continuous upward path. The statement concerns the inflation rate, not simply a rising price level.",
+              "annotation_id": "C_S02_A02"
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The pace of inflation increase is slowing.",
+              "rationale": "Determining deceleration of the inflation rate requires an additional comparison of changes or a longer trajectory; the two endpoints are insufficient.",
+              "annotation_id": "C_S02_A03"
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The unemployment rate decreased.",
+              "rationale": "The frozen unemployment rate falls from 4.4% to 4.2%.",
+              "annotation_id": "C_S02_A04"
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S03",
+          "claim_span": "The effective federal funds rate has also decreased, indicating a more accommodative monetary policy.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The effective fed funds rate declined.",
+              "rationale": "The frozen series declines from 4.22% to 3.75%.",
+              "annotation_id": "C_S03_A01"
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The declining effective rate indicates a more accommodative monetary-policy stance.",
+              "rationale": "Directionally coherent as an interpretation, but the effective rate alone does not establish overall policy stance.",
+              "annotation_id": "C_S03_A02"
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S04",
+          "claim_span": "Meanwhile, the 10-year Treasury yield has increased, potentially reflecting market expectations of future rate hikes.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The 10-year Treasury yield increased.",
+              "rationale": "The frozen series rises from 4.12% to 4.99%.",
+              "annotation_id": "C_S04_A01"
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The higher yield reflects expectations of future rate increases.",
+              "rationale": "Expectations are not measured by the supplied series; potentially reflecting properly qualifies this as an inference.",
+              "annotation_id": "C_S04_A02"
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S05",
+          "claim_span": "These developments may be indicative of a complex macroeconomic environment, with multiple factors influencing the direction of the economy.",
+          "annotations": [
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The four observations indicate a complex broader macroeconomic environment.",
+              "rationale": "The claim moves from four rate/indicator observations to a general economic characterization with no explicit criterion for complex.",
+              "annotation_id": "C_S05_A01"
+            },
+            {
+              "claim_kind": "causal_explanation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "Multiple factors influence the direction of the economy.",
+              "rationale": "The embedded clause asserts unspecified causal influences without naming factors or evidencing their effects; it is not independently hedged by may be indicative.",
+              "annotation_id": "C_S05_A02"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "narratives": 3,
+    "commentary_sentences": 12,
+    "semantic_annotations": 35,
+    "commentary_sentences_by_narrative": {
+      "NARRATIVE_A": 4,
+      "NARRATIVE_B": 3,
+      "NARRATIVE_C": 5
+    }
+  }
+}

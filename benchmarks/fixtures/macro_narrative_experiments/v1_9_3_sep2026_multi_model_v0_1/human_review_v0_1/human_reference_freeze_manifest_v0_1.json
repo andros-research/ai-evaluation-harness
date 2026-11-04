@@ -1,0 +1,26 @@
+{
+  "schema_version": "human_macro_semantic_reference_freeze_manifest_v0_1",
+  "status": "source_verified_frozen",
+  "experiment_id": "v1_9_3_sep2026_multi_model_v0_1",
+  "source_packet_path": "benchmarks/results/macro_narrative_reviews/v1_9_3_sep2026_multi_model_v0_1/blind_review_v0_1/blind_review_packet.md",
+  "source_packet_sha256": "f819098ae49cc14bd29f7639d75ff023cf8b8dd9588ac7166cf4a56aaf30f05e",
+  "selected_fred_claims_sha256": "bd14e9cf8aa8fdd5a3e83df46fcce83cd9d12643b186b8b06f1f18f0656fc9e5",
+  "narrative_prompt_sha256": "6b96c868878c6816cd9e474e1817716a4ae6612058e695b162131cfb29dbe261",
+  "reference_file": "human_macro_semantic_reference_v0_1.json",
+  "reference_sha256": "c68938d1830616f5d8aae9a12badf89c3c699f15c6671ecf52a56765c8a9351e",
+  "readable_review_file": "human_macro_semantic_reference_v0_1.md",
+  "readable_review_sha256": "7a30f990a6ba18db289e15d289d28b62cfba3c4c9ee0e51630168d1a87cc36f8",
+  "narratives": 3,
+  "commentary_sentences": 12,
+  "semantic_annotations": 35,
+  "blind_mapping_accessed": false,
+  "model_analysis_or_telemetry_accessed": false,
+  "review_method": "collaborative_human_assisted_review_with_partial_blinding",
+  "limitations": [
+    "Not a fully independent blinded human evaluation: assistant proposed annotations, user reviewed and agreed.",
+    "Narrative C identity was already recognizable as Llama 3 8B.",
+    "Narratives A/B model identities and OSS reasoning levels were not revealed at review time.",
+    "Three completed narratives; GPT-OSS high was an operational noncompletion, not a reviewable narrative.",
+    "Very small, deliberately exploratory human-reviewed corpus; not statistical evidence of generalization."
+  ]
+}
