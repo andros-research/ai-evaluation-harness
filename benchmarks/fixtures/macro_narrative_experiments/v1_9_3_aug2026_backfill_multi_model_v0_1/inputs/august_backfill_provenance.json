@@ -1,0 +1,21 @@
+{
+  "schema_version": "macro_backfill_input_provenance_v0_1",
+  "experiment_id": "v1_9_3_aug2026_backfill_multi_model_v0_1",
+  "execution_mode": "retrospective_backfill",
+  "observation_date": "2026-08-01",
+  "comparison_window": "12m",
+  "reference_experiment_id": "v1_9_3_sep2026_multi_model_v0_1",
+  "reference_claim_schema_path": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_sep2026_multi_model_v0_1/inputs/selected_fred_claims.json",
+  "source_fixture": "benchmarks/fixtures/semantic_dashboard_reviewed_v0_1.jsonl",
+  "source_fixture_sha256": "f9d9282db3032bb4c1fc7089ac591dc426ae8df01690311f7b8a6f4cca609051",
+  "claim_count": 4,
+  "normalized_claim_sha256": {
+    "CPIAUCSL": "e55e52bdd5d4aa7ee89119d8fcdd73953c684e30c58ae3dc49275bcb639242a0",
+    "UNRATE": "07c218f850388660692bd5b35d6cf7826232667b132ed67bf2ff7f7b5026b309",
+    "FEDFUNDS": "af895847ce899a03f48415f43e7ea279ac322f89f3f2709d8276e4524a7a0c48",
+    "GS10": "0906a28b2bdf25ef6df5ed082a0afc101e9f649df9434e9c273451f264781405"
+  },
+  "selected_claims_sha256": "61d5f5e3ba96dac604d8e1f1c9a706d2c2e31d255068ff9059e1b4efbd99f97d",
+  "created_at": "2026-11-07T20:15:37.866108+00:00",
+  "provenance_note": "Historical August 2026 macro state recovered from frozen semantic fixtures. The four canonical claim payloads were audited across frozen fixtures before this retrospective backfill was created. No current FRED retrieval was used."
+}

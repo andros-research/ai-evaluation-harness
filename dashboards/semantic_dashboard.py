@@ -7,6 +7,10 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from macro_lab import render_macro_lab
+from macro_claim_inspector import (
+    render_macro_claim_inspector,
+)
 
 
 DEFAULT_BATCH_ROOT = Path(
@@ -1585,8 +1589,9 @@ if not rows:
     st.stop()
 
 
-inspector_tab, token_tab, semantic_tab = (
+macro_tab, inspector_tab, token_tab, semantic_tab = (
     st.tabs([
+        "Macro Lab",
         "Claim Inspector",
         "Token Analytics",
         "Semantic Discovery",
@@ -1594,628 +1599,661 @@ inspector_tab, token_tab, semantic_tab = (
 )
 
 
+with macro_tab:
+    render_macro_lab()
+
+
 with inspector_tab:
-    top_left, top_right = (
-        st.columns(
-            [1, 1.5]
-        )
+    macro_context_active = (
+        render_macro_claim_inspector()
     )
 
-    models = sorted({
-        row.get(
-            "source_model"
-        )
-        for row in rows
-    })
+    if macro_context_active:
+        st.divider()
 
-    with top_left:
-        selected_model = (
-            st.selectbox(
-                "Source model",
-                models,
-                key="semantic_model_filter",
-                on_change=reset_prompt_filter,
+        st.caption(
+            "Macro experiment mode is active. "
+            "The original v1.9.0 semantic corpus "
+            "is preserved separately below for "
+            "historical inspection."
+        )
+
+    # legacy_inspector_container_v0_1
+    legacy_title = (
+        "Legacy v1.9.0 semantic corpus"
+    )
+
+    legacy_container = (
+        st.expander(
+            legacy_title,
+            expanded=False,
+        )
+        if macro_context_active
+        else st.container()
+    )
+
+    with legacy_container:
+        top_left, top_right = (
+            st.columns(
+                [1, 1.5]
             )
         )
 
-    prompt_options = sorted({
-        row.get(
-            "prompt_variant"
-        )
-        for row in rows
-        if row.get(
-            "source_model"
-        ) == selected_model
-    })
-
-    with top_right:
-        selected_prompt = (
-            st.selectbox(
-                "Prompt",
-                prompt_options,
-                key="semantic_prompt_filter",
-            )
-        )
-
-    filtered = [
-        row
-        for row in rows
-        if (
+        models = sorted({
             row.get(
                 "source_model"
             )
-            == selected_model
-            and row.get(
+            for row in rows
+        })
+
+        with top_left:
+            selected_model = (
+                st.selectbox(
+                    "Source model",
+                    models,
+                    key="semantic_model_filter",
+                    on_change=reset_prompt_filter,
+                )
+            )
+
+        prompt_options = sorted({
+            row.get(
                 "prompt_variant"
             )
-            == selected_prompt
-        )
-    ]
-
-    if not filtered:
-        st.warning(
-            "No claims found for this model / prompt."
-        )
-        st.stop()
-
-    claim_ids = [
-        row["claim_id"]
-        for row in filtered
-    ]
-
-    selected_claim_id = (
-        st.session_state.get(
-            "semantic_selected_claim_id"
-        )
-    )
-
-    if (
-        selected_claim_id
-        not in claim_ids
-    ):
-        selected_claim_id = (
-            claim_ids[0]
-        )
-
-        st.session_state[
-            "semantic_selected_claim_id"
-        ] = selected_claim_id
-
-    st.subheader(
-        "Full model output"
-    )
-
-    st.caption(
-        "Click an analyzed commentary sentence "
-        "to inspect its semantic annotations."
-    )
-
-    with st.container(
-        border=True
-    ):
-        render_model_output(
-            run_rows=filtered,
-            selected_claim_id=
-                selected_claim_id,
-        )
-
-    row = next(
-        item
-        for item in filtered
-        if item["claim_id"]
-        == selected_claim_id
-    )
-
-    existing_review = (
-        reviews.get(
-            selected_claim_id
-        )
-    )
-
-    meta_a, meta_b, meta_c, meta_d = (
-        st.columns(4)
-    )
-
-    with meta_a:
-        st.metric(
-            "Generation temp",
-            row.get(
-                "generation_temperature"
-            ),
-        )
-
-    with meta_b:
-        audit_value = (
-            "PASS"
+            for row in rows
             if row.get(
-                "audit_pass"
+                "source_model"
+            ) == selected_model
+        })
+
+        with top_right:
+            selected_prompt = (
+                st.selectbox(
+                    "Prompt",
+                    prompt_options,
+                    key="semantic_prompt_filter",
+                )
             )
-            else "FAIL"
-        )
 
-        st.metric(
-            "Legacy audit",
-            audit_value,
-        )
-
-    with meta_c:
-        st.metric(
-            "Machine annotations",
-            len(
+        filtered = [
+            row
+            for row in rows
+            if (
                 row.get(
-                    "semantic_annotations",
+                    "source_model"
+                )
+                == selected_model
+                and row.get(
+                    "prompt_variant"
+                )
+                == selected_prompt
+            )
+        ]
+
+        if not filtered:
+            st.warning(
+                "No claims found for this model / prompt."
+            )
+            st.stop()
+
+        claim_ids = [
+            row["claim_id"]
+            for row in filtered
+        ]
+
+        selected_claim_id = (
+            st.session_state.get(
+                "semantic_selected_claim_id"
+            )
+        )
+
+        if (
+            selected_claim_id
+            not in claim_ids
+        ):
+            selected_claim_id = (
+                claim_ids[0]
+            )
+
+            st.session_state[
+                "semantic_selected_claim_id"
+            ] = selected_claim_id
+
+        st.subheader(
+            "Full model output"
+        )
+
+        st.caption(
+            "Click an analyzed commentary sentence "
+            "to inspect its semantic annotations."
+        )
+
+        with st.container(
+            border=True
+        ):
+            render_model_output(
+                run_rows=filtered,
+                selected_claim_id=
+                    selected_claim_id,
+            )
+
+        row = next(
+            item
+            for item in filtered
+            if item["claim_id"]
+            == selected_claim_id
+        )
+
+        existing_review = (
+            reviews.get(
+                selected_claim_id
+            )
+        )
+
+        meta_a, meta_b, meta_c, meta_d = (
+            st.columns(4)
+        )
+
+        with meta_a:
+            st.metric(
+                "Generation temp",
+                row.get(
+                    "generation_temperature"
+                ),
+            )
+
+        with meta_b:
+            audit_value = (
+                "PASS"
+                if row.get(
+                    "audit_pass"
+                )
+                else "FAIL"
+            )
+
+            st.metric(
+                "Legacy audit",
+                audit_value,
+            )
+
+        with meta_c:
+            st.metric(
+                "Machine annotations",
+                len(
+                    row.get(
+                        "semantic_annotations",
+                        [],
+                    )
+                ),
+            )
+
+        with meta_d:
+            st.metric(
+                "Human review",
+                review_status_for(
+                    selected_claim_id,
+                    reviews,
+                ).upper(),
+            )
+
+        st.subheader(
+            "Claim-bearing span"
+        )
+
+        st.markdown(
+            f"> {row['claim_span']}"
+        )
+
+        with st.expander(
+            "Machine-proposed semantic annotations",
+            expanded=False,
+        ):
+            for annotation in row.get(
+                "semantic_annotations",
+                [],
+            ):
+                render_annotation(
+                    annotation
+                )
+
+        with st.expander(
+            "Evidence",
+            expanded=False,
+        ):
+            render_evidence(
+                row.get(
+                    "evidence",
                     [],
                 )
+            )
+
+        with st.expander(
+            "Human review",
+            expanded=False,
+        ):
+            if existing_review:
+                st.info(
+                    "A saved review already exists for this claim."
+                )
+
+            initial_status = (
+                existing_review.get(
+                    "review_status"
+                )
+                if existing_review
+                else "accepted"
+            )
+
+            initial_status_index = (
+                REVIEW_STATUSES.index(
+                    initial_status
+                )
+                if initial_status
+                in REVIEW_STATUSES
+                else 0
+            )
+
+            with st.form(
+                key=(
+                    "review_form_"
+                    + selected_claim_id
+                )
+            ):
+                decision = st.radio(
+                    "Review decision",
+                    REVIEW_STATUSES,
+                    index=
+                        initial_status_index,
+                    horizontal=True,
+                )
+
+                st.caption(
+                    "For ACCEPTED, the machine annotations are "
+                    "copied into the reviewed result. "
+                    "For CORRECTED, edit the table below."
+                )
+
+                editable = (
+                    review_annotations_df(
+                        row=row,
+                        existing_review=
+                            existing_review,
+                    )
+                )
+
+                edited = st.data_editor(
+                    editable,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "claim_kind":
+                            st.column_config.TextColumn(
+                                "Claim kind",
+                                required=True,
+                            ),
+                        "support_status":
+                            st.column_config.SelectboxColumn(
+                                "Support",
+                                options=
+                                    SUPPORT_STATUSES,
+                                required=True,
+                            ),
+                        "assertion_strength":
+                            st.column_config.SelectboxColumn(
+                                "Assertion strength",
+                                options=
+                                    ASSERTION_STRENGTHS,
+                                required=True,
+                            ),
+                        "rationale":
+                            st.column_config.TextColumn(
+                                "Rationale",
+                                width="large",
+                            ),
+                    },
+                )
+
+                note = st.text_area(
+                    "Reviewer note",
+                    value=(
+                        existing_review.get(
+                            "review_note",
+                            ""
+                        )
+                        if existing_review
+                        else ""
+                    ),
+                    placeholder=(
+                        "Why did you accept, correct, or defer this claim?"
+                    ),
+                )
+
+                save_clicked = (
+                    st.form_submit_button(
+                        "Save review",
+                        type="primary",
+                    )
+                )
+
+            if save_clicked:
+                try:
+                    if decision == "accepted":
+                        reviewed_annotations = (
+                            row.get(
+                                "semantic_annotations",
+                                [],
+                            )
+                        )
+
+                    elif (
+                        decision
+                        == "corrected"
+                    ):
+                        reviewed_annotations = (
+                            dataframe_to_annotations(
+                                edited
+                            )
+                        )
+
+                        if not reviewed_annotations:
+                            raise ValueError(
+                                "A corrected review must contain "
+                                "at least one annotation."
+                            )
+
+                    else:
+                        reviewed_annotations = None
+
+                    review = {
+                        "schema_version":
+                            "semantic_review_v0_1",
+                        "claim_id":
+                            selected_claim_id,
+                        "review_status":
+                            decision,
+                        "reviewed_at":
+                            datetime.now(
+                                timezone.utc
+                            ).isoformat(),
+                        "source_model":
+                            row.get(
+                                "source_model"
+                            ),
+                        "prompt_variant":
+                            row.get(
+                                "prompt_variant"
+                            ),
+                        "generation_temperature":
+                            row.get(
+                                "generation_temperature"
+                            ),
+                        "claim_span":
+                            row.get(
+                                "claim_span"
+                            ),
+                        "machine_annotations":
+                            row.get(
+                                "semantic_annotations",
+                                [],
+                            ),
+                        "reviewed_annotations":
+                            reviewed_annotations,
+                        "review_note":
+                            note.strip(),
+                    }
+
+                    save_review(
+                        review
+                    )
+
+                    st.success(
+                        "Review saved to "
+                        f"{REVIEWS_PATH}"
+                    )
+
+                    st.rerun()
+
+                except Exception as exc:
+                    st.error(
+                        str(exc)
+                    )
+
+        token_telemetry = (
+            load_token_telemetry(
+                selected_claim_id
+            )
+        )
+
+        if (
+            token_telemetry
+            and token_telemetry.get(
+                "claim_id"
+            )
+            == selected_claim_id
+        ):
+            st.divider()
+
+            render_token_telemetry(
+                telemetry=
+                    token_telemetry,
+            )
+
+        st.divider()
+
+        review_export = (
+            reviews_as_jsonl()
+        )
+
+        st.download_button(
+            "Download review ledger",
+            data=review_export,
+            file_name=(
+                "semantic_reviews.jsonl"
+            ),
+            mime=(
+                "application/x-ndjson"
+            ),
+            disabled=(
+                not review_export
             ),
         )
 
-    with meta_d:
-        st.metric(
-            "Human review",
-            review_status_for(
-                selected_claim_id,
+
+    with semantic_tab:
+        summary = (
+            build_discovery_summary(
+                rows,
                 reviews,
-            ).upper(),
-        )
-
-    st.subheader(
-        "Claim-bearing span"
-    )
-
-    st.markdown(
-        f"> {row['claim_span']}"
-    )
-
-    with st.expander(
-        "Machine-proposed semantic annotations",
-        expanded=False,
-    ):
-        for annotation in row.get(
-            "semantic_annotations",
-            [],
-        ):
-            render_annotation(
-                annotation
-            )
-
-    with st.expander(
-        "Evidence",
-        expanded=False,
-    ):
-        render_evidence(
-            row.get(
-                "evidence",
-                [],
             )
         )
 
-    with st.expander(
-        "Human review",
-        expanded=False,
-    ):
-        if existing_review:
-            st.info(
-                "A saved review already exists for this claim."
-            )
-
-        initial_status = (
-            existing_review.get(
-                "review_status"
-            )
-            if existing_review
-            else "accepted"
+        metric_a, metric_b, metric_c, metric_d = (
+            st.columns(4)
         )
 
-        initial_status_index = (
-            REVIEW_STATUSES.index(
-                initial_status
-            )
-            if initial_status
-            in REVIEW_STATUSES
-            else 0
+        metric_a.metric(
+            "Claims",
+            summary[
+                "n_claims"
+            ],
         )
 
-        with st.form(
-            key=(
-                "review_form_"
-                + selected_claim_id
-            )
-        ):
-            decision = st.radio(
-                "Review decision",
-                REVIEW_STATUSES,
-                index=
-                    initial_status_index,
-                horizontal=True,
+        metric_b.metric(
+            "Annotations",
+            summary[
+                "n_annotations"
+            ],
+        )
+
+        metric_c.metric(
+            "Source runs",
+            summary[
+                "n_source_runs"
+            ],
+        )
+
+        metric_d.metric(
+            "Classifier successes",
+            summary[
+                "n_classifier_success"
+            ],
+        )
+
+        left, right = (
+            st.columns(2)
+        )
+
+        with left:
+            st.subheader(
+                "Proposed claim kinds"
             )
 
-            st.caption(
-                "For ACCEPTED, the machine annotations are "
-                "copied into the reviewed result. "
-                "For CORRECTED, edit the table below."
+            kind_df = pd.DataFrame(
+                [
+                    {
+                        "claim_kind":
+                            key,
+                        "count":
+                            value,
+                    }
+                    for key, value
+                    in summary[
+                        "kind_counts"
+                    ].most_common()
+                ]
             )
 
-            editable = (
-                review_annotations_df(
-                    row=row,
-                    existing_review=
-                        existing_review,
-                )
-            )
-
-            edited = st.data_editor(
-                editable,
-                num_rows="dynamic",
-                use_container_width=True,
+            st.dataframe(
+                kind_df,
                 hide_index=True,
-                column_config={
-                    "claim_kind":
-                        st.column_config.TextColumn(
-                            "Claim kind",
-                            required=True,
-                        ),
-                    "support_status":
-                        st.column_config.SelectboxColumn(
-                            "Support",
-                            options=
-                                SUPPORT_STATUSES,
-                            required=True,
-                        ),
-                    "assertion_strength":
-                        st.column_config.SelectboxColumn(
-                            "Assertion strength",
-                            options=
-                                ASSERTION_STRENGTHS,
-                            required=True,
-                        ),
-                    "rationale":
-                        st.column_config.TextColumn(
-                            "Rationale",
-                            width="large",
-                        ),
-                },
+                use_container_width=True,
             )
 
-            note = st.text_area(
-                "Reviewer note",
-                value=(
-                    existing_review.get(
-                        "review_note",
-                        ""
+            if not kind_df.empty:
+                st.bar_chart(
+                    kind_df.set_index(
+                        "claim_kind"
                     )
-                    if existing_review
-                    else ""
-                ),
-                placeholder=(
-                    "Why did you accept, correct, or defer this claim?"
-                ),
-            )
-
-            save_clicked = (
-                st.form_submit_button(
-                    "Save review",
-                    type="primary",
                 )
+
+        with right:
+            st.subheader(
+                "Support status"
             )
 
-        if save_clicked:
-            try:
-                if decision == "accepted":
-                    reviewed_annotations = (
-                        row.get(
-                            "semantic_annotations",
-                            [],
-                        )
+            support_df = pd.DataFrame(
+                [
+                    {
+                        "support_status":
+                            key,
+                        "count":
+                            value,
+                    }
+                    for key, value
+                    in summary[
+                        "support_counts"
+                    ].most_common()
+                ]
+            )
+
+            st.dataframe(
+                support_df,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            if not support_df.empty:
+                st.bar_chart(
+                    support_df.set_index(
+                        "support_status"
                     )
+                )
 
-                elif (
-                    decision
-                    == "corrected"
-                ):
-                    reviewed_annotations = (
-                        dataframe_to_annotations(
-                            edited
-                        )
-                    )
+        st.subheader(
+            "New / out-of-ontology labels"
+        )
 
-                    if not reviewed_annotations:
-                        raise ValueError(
-                            "A corrected review must contain "
-                            "at least one annotation."
-                        )
+        if summary[
+            "unknown_counts"
+        ]:
+            unknown_df = pd.DataFrame(
+                [
+                    {
+                        "claim_kind":
+                            key,
+                        "count":
+                            value,
+                    }
+                    for key, value
+                    in summary[
+                        "unknown_counts"
+                    ].most_common()
+                ]
+            )
 
-                else:
-                    reviewed_annotations = None
+            st.dataframe(
+                unknown_df,
+                hide_index=True,
+                use_container_width=True,
+            )
+        else:
+            st.success(
+                "No out-of-ontology labels in this batch."
+            )
 
-                review = {
-                    "schema_version":
-                        "semantic_review_v0_1",
-                    "claim_id":
-                        selected_claim_id,
+        st.subheader(
+            "Model / prompt comparison"
+        )
+
+        comparison_df = (
+            model_prompt_summary(
+                rows
+            )
+        )
+
+        st.dataframe(
+            comparison_df,
+            hide_index=True,
+            use_container_width=True,
+        )
+
+        st.subheader(
+            "Human review progress"
+        )
+
+        review_df = pd.DataFrame(
+            [
+                {
                     "review_status":
-                        decision,
-                    "reviewed_at":
-                        datetime.now(
-                            timezone.utc
-                        ).isoformat(),
-                    "source_model":
-                        row.get(
-                            "source_model"
-                        ),
-                    "prompt_variant":
-                        row.get(
-                            "prompt_variant"
-                        ),
-                    "generation_temperature":
-                        row.get(
-                            "generation_temperature"
-                        ),
-                    "claim_span":
-                        row.get(
-                            "claim_span"
-                        ),
-                    "machine_annotations":
-                        row.get(
-                            "semantic_annotations",
-                            [],
-                        ),
-                    "reviewed_annotations":
-                        reviewed_annotations,
-                    "review_note":
-                        note.strip(),
-                }
-
-                save_review(
-                    review
-                )
-
-                st.success(
-                    "Review saved to "
-                    f"{REVIEWS_PATH}"
-                )
-
-                st.rerun()
-
-            except Exception as exc:
-                st.error(
-                    str(exc)
-                )
-
-    token_telemetry = (
-        load_token_telemetry(
-            selected_claim_id
-        )
-    )
-
-    if (
-        token_telemetry
-        and token_telemetry.get(
-            "claim_id"
-        )
-        == selected_claim_id
-    ):
-        st.divider()
-
-        render_token_telemetry(
-            telemetry=
-                token_telemetry,
-        )
-
-    st.divider()
-
-    review_export = (
-        reviews_as_jsonl()
-    )
-
-    st.download_button(
-        "Download review ledger",
-        data=review_export,
-        file_name=(
-            "semantic_reviews.jsonl"
-        ),
-        mime=(
-            "application/x-ndjson"
-        ),
-        disabled=(
-            not review_export
-        ),
-    )
-
-
-with semantic_tab:
-    summary = (
-        build_discovery_summary(
-            rows,
-            reviews,
-        )
-    )
-
-    metric_a, metric_b, metric_c, metric_d = (
-        st.columns(4)
-    )
-
-    metric_a.metric(
-        "Claims",
-        summary[
-            "n_claims"
-        ],
-    )
-
-    metric_b.metric(
-        "Annotations",
-        summary[
-            "n_annotations"
-        ],
-    )
-
-    metric_c.metric(
-        "Source runs",
-        summary[
-            "n_source_runs"
-        ],
-    )
-
-    metric_d.metric(
-        "Classifier successes",
-        summary[
-            "n_classifier_success"
-        ],
-    )
-
-    left, right = (
-        st.columns(2)
-    )
-
-    with left:
-        st.subheader(
-            "Proposed claim kinds"
-        )
-
-        kind_df = pd.DataFrame(
-            [
-                {
-                    "claim_kind":
                         key,
                     "count":
                         value,
                 }
                 for key, value
                 in summary[
-                    "kind_counts"
+                    "review_counts"
                 ].most_common()
             ]
         )
 
         st.dataframe(
-            kind_df,
+            review_df,
             hide_index=True,
             use_container_width=True,
         )
 
-        if not kind_df.empty:
+        if not review_df.empty:
             st.bar_chart(
-                kind_df.set_index(
-                    "claim_kind"
+                review_df.set_index(
+                    "review_status"
                 )
             )
 
-    with right:
-        st.subheader(
-            "Support status"
+        st.caption(
+            "Discovery-batch counts are descriptive only. "
+            "They are not stable estimates of model behavior."
         )
-
-        support_df = pd.DataFrame(
-            [
-                {
-                    "support_status":
-                        key,
-                    "count":
-                        value,
-                }
-                for key, value
-                in summary[
-                    "support_counts"
-                ].most_common()
-            ]
-        )
-
-        st.dataframe(
-            support_df,
-            hide_index=True,
-            use_container_width=True,
-        )
-
-        if not support_df.empty:
-            st.bar_chart(
-                support_df.set_index(
-                    "support_status"
-                )
-            )
-
-    st.subheader(
-        "New / out-of-ontology labels"
-    )
-
-    if summary[
-        "unknown_counts"
-    ]:
-        unknown_df = pd.DataFrame(
-            [
-                {
-                    "claim_kind":
-                        key,
-                    "count":
-                        value,
-                }
-                for key, value
-                in summary[
-                    "unknown_counts"
-                ].most_common()
-            ]
-        )
-
-        st.dataframe(
-            unknown_df,
-            hide_index=True,
-            use_container_width=True,
-        )
-    else:
-        st.success(
-            "No out-of-ontology labels in this batch."
-        )
-
-    st.subheader(
-        "Model / prompt comparison"
-    )
-
-    comparison_df = (
-        model_prompt_summary(
-            rows
-        )
-    )
-
-    st.dataframe(
-        comparison_df,
-        hide_index=True,
-        use_container_width=True,
-    )
-
-    st.subheader(
-        "Human review progress"
-    )
-
-    review_df = pd.DataFrame(
-        [
-            {
-                "review_status":
-                    key,
-                "count":
-                    value,
-            }
-            for key, value
-            in summary[
-                "review_counts"
-            ].most_common()
-        ]
-    )
-
-    st.dataframe(
-        review_df,
-        hide_index=True,
-        use_container_width=True,
-    )
-
-    if not review_df.empty:
-        st.bar_chart(
-            review_df.set_index(
-                "review_status"
-            )
-        )
-
-    st.caption(
-        "Discovery-batch counts are descriptive only. "
-        "They are not stable estimates of model behavior."
-    )
 
 
 with token_tab:

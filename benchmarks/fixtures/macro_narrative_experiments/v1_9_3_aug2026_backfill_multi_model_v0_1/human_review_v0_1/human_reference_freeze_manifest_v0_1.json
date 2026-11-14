@@ -1,0 +1,25 @@
+{
+  "schema_version": "human_macro_semantic_reference_freeze_v0_1",
+  "status": "source_verified_frozen",
+  "experiment_id": "v1_9_3_aug2026_backfill_multi_model_v0_1",
+  "source_packet_path": "benchmarks/results/macro_narrative_reviews/v1_9_3_aug2026_backfill_multi_model_v0_1/blind_review_v0_1/blind_review_packet.md",
+  "source_packet_sha256": "6d1a2163ff7394ef5dcfbaf18e983608f6c537ed9cbdd8d312821b28a1a1e9ed",
+  "selected_fred_claims_sha256": "61d5f5e3ba96dac604d8e1f1c9a706d2c2e31d255068ff9059e1b4efbd99f97d",
+  "narrative_prompt_sha256": "b8238532480e83e86dadbb3eed173977d2ad40919867e3d9f0d8fbbf6292217a",
+  "reference_file": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/human_review_v0_1/human_macro_semantic_reference_v0_1.json",
+  "reference_sha256": "3ab03564c7c052488d61cd0daa77dda1173084ed87757d421fdf9bd6d02a81d6",
+  "readable_review_file": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/human_review_v0_1/human_review_reference.md",
+  "readable_review_sha256": "cabeb0c468038a16b60408f464a6e9ec30b13964c59d641f5bae7ca2214c8267",
+  "narratives": 3,
+  "commentary_sentences": 11,
+  "semantic_annotations": 36,
+  "blind_mapping_accessed": false,
+  "model_analysis_or_telemetry_accessed": false,
+  "review_method": "collaborative_human_assisted_review",
+  "limitations": [
+    "The model mapping file remained unopened. However, recurring stylistic fingerprints made Narrative A and Narrative B recognizable to the reviewer during review. The ranking should therefore be treated as partially, not fully, blinded.",
+    "Compatibility layer generated after the canonical human review was independently frozen."
+  ],
+  "source_new_reference_file": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/human_review_v0_1/human_review_reference.json",
+  "source_new_reference_sha256": "7159c94546f36612766d39d782749e9083339a7d6761a6a565a3ff853719f093"
+}

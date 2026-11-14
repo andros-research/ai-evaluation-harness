@@ -1,0 +1,43 @@
+{
+  "schema_version": "semantic_classifier_config_v0_1",
+  "config_id": "compact_balanced_v0_2_1",
+  "guide_path": "docs/v1_9_semantic_annotation_guide_compact_v0_2_1.md",
+  "reasoning_effort": "low",
+  "few_shot_example_ids": [
+    "mistral_semantic_conservative_t0__commentary_01",
+    "llama3_semantic_analytical_t0__commentary_03",
+    "llama3_semantic_analytical_t0__commentary_02",
+    "llama3_semantic_analytical_t0__commentary_05"
+  ],
+  "development_basis": {
+    "source": "v1.9.2 expanded 23-case semantic classifier benchmark",
+    "primary_failure_modes": [
+      "scope_generalization",
+      "magnitude_judgment",
+      "exhaustive_multi_label_decomposition"
+    ],
+    "development_demonstration_ids": [
+      "llama3_semantic_analytical_t0__commentary_03",
+      "llama3_semantic_analytical_t0__commentary_02"
+    ],
+    "non_demonstration_development_case_count": 21
+  },
+  "design_principles": [
+    "identify claim kinds before judging evidential support",
+    "judge evidential support separately for each semantic commitment",
+    "judge assertion strength separately for each semantic commitment",
+    "perform an exhaustive category-by-category rescan before final output",
+    "preserve multi-label decompositions rather than collapsing them into generic interpretations",
+    "include an empirical-only counterexample to discourage systematic over-labeling"
+  ],
+  "patch_focus": {
+    "parent_config": "compact_balanced_v0_2",
+    "change": "assertion_strength_locality_and_precedence",
+    "ontology_changed": false,
+    "few_shots_changed": false,
+    "targeted_failure_modes": [
+      "asserted_vs_qualified_inference",
+      "qualified_inference_vs_qualified_possibility"
+    ]
+  }
+}

@@ -1,0 +1,386 @@
+{
+  "schema_version": "human_macro_semantic_reference_v0_1",
+  "experiment_id": "v1_9_3_aug2026_backfill_multi_model_v0_1",
+  "reference_scope": "commentary_sentences",
+  "frozen_source": {
+    "blind_review_packet_path": "benchmarks/results/macro_narrative_reviews/v1_9_3_aug2026_backfill_multi_model_v0_1/blind_review_v0_1/blind_review_packet.md",
+    "blind_review_packet_sha256": "6d1a2163ff7394ef5dcfbaf18e983608f6c537ed9cbdd8d312821b28a1a1e9ed",
+    "selected_fred_claims_sha256": "61d5f5e3ba96dac604d8e1f1c9a706d2c2e31d255068ff9059e1b4efbd99f97d",
+    "narrative_prompt_sha256": "b8238532480e83e86dadbb3eed173977d2ad40919867e3d9f0d8fbbf6292217a"
+  },
+  "review_provenance": {
+    "method": "collaborative_human_assisted_review",
+    "status": "frozen",
+    "limitations": [
+      "The model mapping file remained unopened. However, recurring stylistic fingerprints made Narrative A and Narrative B recognizable to the reviewer during review. The ranking should therefore be treated as partially, not fully, blinded.",
+      "Compatibility representation derived from the newer frozen human-review schema."
+    ],
+    "human_preference": [
+      "NARRATIVE_C",
+      "NARRATIVE_A",
+      "NARRATIVE_B"
+    ],
+    "model_identity_mapping_accessed": false,
+    "hidden_model_analysis_or_token_telemetry_accessed": false,
+    "source_reference_file": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/human_review_v0_1/human_review_reference.json",
+    "source_reference_sha256": "7159c94546f36612766d39d782749e9083339a7d6761a6a565a3ff853719f093"
+  },
+  "ontology": {
+    "source_guide": "docs/v1_9_semantic_annotation_guide_compact_v0_2_1.md",
+    "config_id": "compact_balanced_v0_2_1",
+    "source": "human_review"
+  },
+  "operational_notes": {
+    "generation_arms_planned": 4,
+    "completed_narratives": 3,
+    "noncompletion_arms": [
+      "gpt_oss_20b_high"
+    ],
+    "reason": "Frozen generation token cap."
+  },
+  "narratives": [
+    {
+      "blind_label": "NARRATIVE_A",
+      "commentary_sentences": [
+        {
+          "sentence_id": "A_S01",
+          "claim_span": "The CPI year-over-year rate has risen, indicating a modest uptick in headline inflation.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "CPI year-over-year rate has risen",
+              "rationale": "Directly supported by the supplied CPI comparison."
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "modest uptick",
+              "rationale": "The supplied endpoints establish direction and size, but not the evaluative characterization 'modest'."
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S02",
+          "claim_span": "Meanwhile, the unemployment rate has slipped, suggesting continued labor market resilience.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "unemployment rate has slipped",
+              "rationale": "Directly supported by the supplied unemployment comparison."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "labor market resilience",
+              "rationale": "One unemployment-rate comparison does not establish the condition of the broader labor market."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "continued resilience",
+              "rationale": "The supplied evidence does not establish persistence."
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S03",
+          "claim_span": "The federal funds rate has fallen, reflecting accommodative policy, yet the 10-year Treasury yield has risen, implying that bond investors are demanding higher returns, possibly due to expectations of future inflation or fiscal dynamics.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "federal funds rate has fallen",
+              "rationale": "Directly supported by the supplied fed-funds comparison."
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "reflecting accommodative policy",
+              "rationale": "A lower effective federal funds rate does not by itself establish the policy interpretation."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "10-year Treasury yield has risen",
+              "rationale": "Directly supported by the supplied 10-year comparison."
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "bond investors are demanding higher returns",
+              "rationale": "The yield move alone does not establish investor motivation."
+            },
+            {
+              "claim_kind": "causal_explanation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "expectations of future inflation",
+              "rationale": "Possible explanation, but not established by the four claims."
+            },
+            {
+              "claim_kind": "causal_explanation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "fiscal dynamics",
+              "rationale": "Possible explanation, but no fiscal evidence was supplied."
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S04",
+          "claim_span": "These mixed signals point to a complex interplay between monetary policy, inflation expectations, and labor market conditions.",
+          "annotations": [
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "mixed signals / broader macro configuration",
+              "rationale": "The supplied observations can motivate synthesis, but do not establish the broader state."
+            },
+            {
+              "claim_kind": "causal_explanation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "complex interplay between policy, inflation expectations, and labor conditions",
+              "rationale": "The relationships among these factors are not established by the selected comparisons."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "blind_label": "NARRATIVE_B",
+      "commentary_sentences": [
+        {
+          "sentence_id": "B_S01",
+          "claim_span": "The recent data suggests a mixed bag of economic indicators.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "qualified_inference",
+              "proposition": "mixed bag of economic indicators",
+              "rationale": "A reasonable synthesis of differently directed supplied observations, though analytically generic."
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S02",
+          "claim_span": "While inflation continues to rise, the unemployment rate has decreased, indicating a potentially improving labor market.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "inflation increased",
+              "rationale": "The CPI year-over-year rate increased across the supplied endpoints."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "inflation continues to rise",
+              "rationale": "Two endpoints do not establish a continuing trajectory."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "unemployment rate decreased",
+              "rationale": "Directly supported by the supplied comparison."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "potentially improving labor market",
+              "rationale": "One unemployment-rate comparison does not establish broader labor-market improvement."
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S03",
+          "claim_span": "The effective federal funds rate has also decreased, which could be a sign of monetary policy easing.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "effective federal funds rate decreased",
+              "rationale": "Directly supported by the supplied comparison."
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "monetary policy easing",
+              "rationale": "Reasonably hedged, but policy intent is not established."
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S04",
+          "claim_span": "However, the 10-year Treasury yield has increased, which may indicate growing concerns about inflation and the economy's growth prospects.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "10-year Treasury yield increased",
+              "rationale": "Directly supported by the supplied comparison."
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "concerns about inflation and growth prospects",
+              "rationale": "The yield move does not establish the market's motivation."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "growing concerns",
+              "rationale": "The evidence does not establish that such concerns have been increasing over time."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "blind_label": "NARRATIVE_C",
+      "commentary_sentences": [
+        {
+          "sentence_id": "C_S01",
+          "claim_span": "The CPI rise signals that inflationary pressures are still present, while the drop in the unemployment rate suggests labor market resilience.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "CPI rise",
+              "rationale": "Directly supported by the CPI comparison."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "inflationary pressures are present",
+              "rationale": "Broader inflationary pressure is an interpretation beyond the supplied CPI comparison."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "inflationary pressures are still present",
+              "rationale": "The word 'still' asserts persistence not established by the supplied evidence."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "unemployment rate dropped",
+              "rationale": "Directly supported by the unemployment comparison."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "labor market resilience",
+              "rationale": "The unemployment comparison alone does not establish the broader labor-market condition."
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S02",
+          "claim_span": "The concurrent decline in the federal funds rate indicates accommodative monetary policy, yet the higher 10-year yield may reflect expectations of future tightening or fiscal concerns.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "federal funds rate declined",
+              "rationale": "Directly supported by the supplied comparison."
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "accommodative monetary policy",
+              "rationale": "The policy characterization is stronger than the evidence supports."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "10-year yield is higher",
+              "rationale": "Directly supported by the supplied comparison."
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "expectations of future tightening",
+              "rationale": "A plausible market interpretation, but not established."
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "fiscal concerns",
+              "rationale": "A plausible interpretation, but no fiscal evidence was supplied."
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S03",
+          "claim_span": "These mixed signals could lead to a cautious stance by investors, balancing concerns over inflation against the backdrop of a still-strong labor market.",
+          "annotations": [
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "cautious stance by investors",
+              "rationale": "Investor positioning or stance is not established."
+            },
+            {
+              "claim_kind": "market_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_possibility",
+              "proposition": "investor concerns over inflation",
+              "rationale": "The supplied claims do not establish investor concerns."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "still-strong labor market",
+              "rationale": "The unemployment-rate decline does not establish the broader labor market as still strong."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "narratives": 3,
+    "commentary_sentences": 11,
+    "semantic_annotations": 36,
+    "commentary_sentences_by_narrative": {
+      "NARRATIVE_A": 4,
+      "NARRATIVE_B": 4,
+      "NARRATIVE_C": 3
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "schema_version": "macro_narrative_experiment_v0_1",
+  "experiment_id": "v1_9_3_aug2026_backfill_multi_model_v0_1",
+  "label": "August 2026 · retrospective backfill",
+  "observation_date": "2026-08-01",
+  "execution_mode": "retrospective_backfill",
+  "status": "experiment_frozen_ready_for_generation",
+  "selected_claim_count": 4,
+  "selected_claims_path": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/inputs/selected_fred_claims.json",
+  "selected_claims_sha256": "61d5f5e3ba96dac604d8e1f1c9a706d2c2e31d255068ff9059e1b4efbd99f97d",
+  "reference_experiment_id": "v1_9_3_sep2026_multi_model_v0_1",
+  "planned_arms": [
+    "llama3_8b_bf16",
+    "gpt_oss_20b_low",
+    "gpt_oss_20b_medium",
+    "gpt_oss_20b_high"
+  ],
+  "review_policy": {
+    "generation_count_per_arm": 1,
+    "human_review_before_telemetry": true,
+    "human_review_blinded_to_arm": true,
+    "semantic_classifier": "compact_balanced_v0_2_1",
+    "semantic_classifier_reasoning_effort": "low",
+    "classifier_applied_after_human_review": true
+  },
+  "created_at": "2026-11-07T20:15:37.866108+00:00",
+  "purpose": "Retrospective August 2026 backfill using the frozen v1.9.3 September multi-model generation contract.",
+  "input": {
+    "source_claims_path": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/inputs/selected_fred_claims.json",
+    "frozen_claims_file": "inputs/selected_fred_claims.json",
+    "claims_sha256": "61d5f5e3ba96dac604d8e1f1c9a706d2c2e31d255068ff9059e1b4efbd99f97d",
+    "claim_count": 4,
+    "provenance_file": "inputs/august_backfill_provenance.json",
+    "retrieval_policy": "historical_recovery_from_frozen_fixtures",
+    "current_fred_retrieval_used": false
+  },
+  "prompt": {
+    "variant": "semantic_analytical",
+    "file": "inputs/narrative_prompt.txt",
+    "sha256": "b8238532480e83e86dadbb3eed173977d2ad40919867e3d9f0d8fbbf6292217a",
+    "characters": 3318,
+    "builder": "benchmarks/generate_fred_narrative_from_claims.py",
+    "builder_sha256": "3f6d62d79ca6a7fb903af2be92ebcbb36e4b084b1885fef8d11a0cb8aba70e12"
+  },
+  "generation_arms": [
+    {
+      "arm_id": "llama3_8b_bf16",
+      "model": "meta-llama/Meta-Llama-3-8B-Instruct",
+      "reasoning_effort": null,
+      "dtype": "bfloat16",
+      "do_sample": false,
+      "max_new_tokens": 512
+    },
+    {
+      "arm_id": "gpt_oss_20b_low",
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "low",
+      "dtype": "mxfp4",
+      "do_sample": false,
+      "max_new_tokens": 4096
+    },
+    {
+      "arm_id": "gpt_oss_20b_medium",
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "medium",
+      "dtype": "mxfp4",
+      "do_sample": false,
+      "max_new_tokens": 4096
+    },
+    {
+      "arm_id": "gpt_oss_20b_high",
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "high",
+      "dtype": "mxfp4",
+      "do_sample": false,
+      "max_new_tokens": 4096
+    }
+  ],
+  "generation_contract_reference": {
+    "experiment_id": "v1_9_3_sep2026_multi_model_v0_1",
+    "manifest_sha256": "0a9fc246e22139368d43ecad7ad9ea7e94b447013aa84ae4098a6b822b988770",
+    "same_prompt_variant": true,
+    "same_prompt_builder_sha256": true,
+    "gpt_oss_system_date": "2026-11-02"
+  }
+}

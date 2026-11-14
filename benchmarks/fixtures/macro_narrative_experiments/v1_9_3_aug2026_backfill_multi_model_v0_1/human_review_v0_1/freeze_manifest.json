@@ -1,0 +1,18 @@
+{
+  "schema_version": "macro_human_review_freeze_manifest_v0_1",
+  "experiment_id": "v1_9_3_aug2026_backfill_multi_model_v0_1",
+  "reference_file": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/human_review_v0_1/human_review_reference.json",
+  "reference_sha256": "7159c94546f36612766d39d782749e9083339a7d6761a6a565a3ff853719f093",
+  "reference_markdown_file": "benchmarks/fixtures/macro_narrative_experiments/v1_9_3_aug2026_backfill_multi_model_v0_1/human_review_v0_1/human_review_reference.md",
+  "reference_markdown_sha256": "cabeb0c468038a16b60408f464a6e9ec30b13964c59d641f5bae7ca2214c8267",
+  "source_blind_packet_sha256": "6d1a2163ff7394ef5dcfbaf18e983608f6c537ed9cbdd8d312821b28a1a1e9ed",
+  "mapping_file_exists": true,
+  "mapping_file_opened": false,
+  "overall_ranking": [
+    "NARRATIVE_C",
+    "NARRATIVE_A",
+    "NARRATIVE_B"
+  ],
+  "blinding_status": "partially_unblinded_by_style",
+  "frozen_at": "2026-11-07T21:42:36.927282+00:00"
+}

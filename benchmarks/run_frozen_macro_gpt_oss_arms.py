@@ -168,7 +168,9 @@ def extract_channels(
             skip_special_tokens=False,
         ).strip()
 
-        content_start = message_pos + 1
+        content_start = (
+            message_pos + 1
+        )
 
         endings = []
 
@@ -208,11 +210,263 @@ def extract_channels(
                     content_ids,
                     skip_special_tokens=True,
                 ),
+
+            "start_token_index":
+                content_start,
+
+            "end_token_index_exclusive":
+                content_end,
         })
 
         i = content_end + 1
 
     return channels
+
+
+def freeze_harmony_date(
+    tokenizer,
+    system_date: str,
+) -> str:
+    """
+    Freeze GPT-OSS's runtime-generated current date
+    in memory only.
+    """
+
+    template = tokenizer.chat_template
+
+    needle = (
+        'strftime_now("%Y-%m-%d")'
+    )
+
+    if needle not in template:
+        raise RuntimeError(
+            "Expected GPT-OSS strftime_now "
+            "expression not found."
+        )
+
+    return template.replace(
+        needle,
+        f'"{system_date}"',
+        1,
+    )
+
+
+def channel_labels_from_channels(
+    generated_token_count: int,
+    channels: list[dict],
+):
+    labels = [
+        "control"
+    ] * generated_token_count
+
+    for channel in channels:
+
+        start = channel.get(
+            "start_token_index"
+        )
+
+        end = channel.get(
+            "end_token_index_exclusive"
+        )
+
+        if (
+            start is None
+            or end is None
+        ):
+            continue
+
+        for i in range(
+            int(start),
+            min(
+                int(end),
+                generated_token_count,
+            ),
+        ):
+            labels[i] = channel[
+                "channel"
+            ]
+
+    return labels
+
+
+def build_token_telemetry(
+    tokenizer,
+    generated_ids,
+    logits_steps,
+    channel_labels,
+):
+    """
+    Reduce generation-time logits to compact
+    per-token telemetry.
+
+    Full vocabulary-sized logit vectors are not
+    persisted.
+    """
+
+    ids = generated_ids.tolist()
+
+    if len(ids) != len(
+        logits_steps
+    ):
+        raise RuntimeError(
+            "Generated-token / logits "
+            "length mismatch."
+        )
+
+    records = []
+
+    for index, (
+        token_id,
+        step,
+    ) in enumerate(
+        zip(
+            ids,
+            logits_steps,
+        )
+    ):
+
+        logits = (
+            step[0].float()
+        )
+
+        logprobs = (
+            torch.log_softmax(
+                logits,
+                dim=-1,
+            )
+        )
+
+        probs = torch.exp(
+            logprobs
+        )
+
+        chosen_prob = float(
+            probs[token_id].item()
+        )
+
+        chosen_logprob = float(
+            logprobs[
+                token_id
+            ].item()
+        )
+
+        entropy = float(
+            -(
+                probs
+                * logprobs
+            ).sum().item()
+        )
+
+        rank = int(
+            (
+                logits
+                > logits[token_id]
+            ).sum().item()
+        ) + 1
+
+        top_probs, top_ids = (
+            torch.topk(
+                probs,
+                k=10,
+            )
+        )
+
+        top_probs = (
+            top_probs.tolist()
+        )
+
+        top_ids = (
+            top_ids.tolist()
+        )
+
+        top_k = []
+
+        for candidate_rank, (
+            candidate_id,
+            candidate_prob,
+        ) in enumerate(
+            zip(
+                top_ids,
+                top_probs,
+            ),
+            start=1,
+        ):
+
+            top_k.append({
+                "rank":
+                    candidate_rank,
+
+                "token_id":
+                    int(
+                        candidate_id
+                    ),
+
+                "token_text":
+                    tokenizer.decode(
+                        [
+                            candidate_id
+                        ],
+                        clean_up_tokenization_spaces=False,
+                    ),
+
+                "probability":
+                    float(
+                        candidate_prob
+                    ),
+            })
+
+        top1 = float(
+            top_probs[0]
+        )
+
+        top2 = float(
+            top_probs[1]
+        )
+
+        records.append({
+            "generation_token_index":
+                index,
+
+            "channel":
+                channel_labels[
+                    index
+                ],
+
+            "token_id":
+                int(token_id),
+
+            "token_text":
+                tokenizer.decode(
+                    [token_id],
+                    clean_up_tokenization_spaces=False,
+                ),
+
+            "probability":
+                chosen_prob,
+
+            "logprob":
+                chosen_logprob,
+
+            "entropy_nats":
+                entropy,
+
+            "rank":
+                rank,
+
+            "top1_probability":
+                top1,
+
+            "top2_probability":
+                top2,
+
+            "top1_top2_gap":
+                top1 - top2,
+
+            "top_k":
+                top_k,
+        })
+
+    return records
 
 
 def main() -> None:
@@ -222,6 +476,15 @@ def main() -> None:
     parser.add_argument(
         "--experiment-id",
         required=True,
+    )
+
+    parser.add_argument(
+        "--system-date",
+        required=True,
+        help=(
+            "YYYY-MM-DD date frozen into "
+            "the GPT-OSS Harmony system prompt."
+        ),
     )
 
     args = parser.parse_args()
@@ -385,6 +648,18 @@ def main() -> None:
     )
 
     print("Loading GPT-OSS 20B...")
+
+    tokenizer.chat_template = (
+        freeze_harmony_date(
+            tokenizer,
+            args.system_date,
+        )
+    )
+
+    print(
+        "Frozen Harmony system date:",
+        args.system_date,
+    )
 
     model = (
         AutoModelForCausalLM
@@ -558,6 +833,8 @@ def main() -> None:
                 max_new_tokens=
                     arm["max_new_tokens"],
                 do_sample=False,
+                return_dict_in_generate=True,
+                output_logits=True,
             )
 
         torch.cuda.synchronize()
@@ -567,10 +844,12 @@ def main() -> None:
             - start
         )
 
-        generated_ids = output[
-            0,
-            prompt_tokens:
-        ]
+        generated_ids = (
+            output.sequences[
+                0,
+                prompt_tokens:
+            ]
+        )
 
         channels = extract_channels(
             tokenizer,
@@ -638,9 +917,103 @@ def main() -> None:
             encoding="utf-8",
         )
 
+        channel_labels = (
+            channel_labels_from_channels(
+                len(generated_ids),
+                channels,
+            )
+        )
+
+        print(
+            "Computing compact token telemetry..."
+        )
+
+        telemetry_records = (
+            build_token_telemetry(
+                tokenizer,
+                generated_ids,
+                output.logits,
+                channel_labels,
+            )
+        )
+
+        telemetry_payload = {
+            "schema_version":
+                "gpt_oss_token_telemetry_v0_1",
+
+            "experiment_id":
+                args.experiment_id,
+
+            "arm_id":
+                arm_id,
+
+            "reasoning_effort":
+                effort,
+
+            "telemetry_mode":
+                "generation_time_raw_logits",
+
+            "system_date":
+                args.system_date,
+
+            "rendered_harmony_sha256":
+                rendered_sha,
+
+            "generated_token_count":
+                len(
+                    generated_ids
+                ),
+
+            "full_raw_logit_vectors_persisted":
+                False,
+
+            "review_visibility":
+                "research_only_not_for_blind_annotation",
+
+            "tokens":
+                telemetry_records,
+        }
+
+        telemetry_path = (
+            arm_dir
+            / "token_telemetry.json"
+        )
+
+        write_json(
+            telemetry_path,
+            telemetry_payload,
+        )
+
+        telemetry_sha = (
+            sha256_bytes(
+                telemetry_path.read_bytes()
+            )
+        )
+
+        (
+            arm_dir
+            / "token_telemetry.sha256"
+        ).write_text(
+            telemetry_sha
+            + "  token_telemetry.json\n",
+            encoding="utf-8",
+        )
+
         metadata = {
             "schema_version":
-                "gpt_oss_macro_generation_v0_1",
+                "gpt_oss_macro_generation_v0_2",
+
+            "system_date":
+                args.system_date,
+
+            "token_telemetry_file":
+                "token_telemetry.json",
+
+            "token_telemetry_sha256":
+                telemetry_sha,
+
+            "full_raw_logit_vectors_persisted":
+                False,
 
             "experiment_id":
                 args.experiment_id,
@@ -764,6 +1137,17 @@ def main() -> None:
                 "WARNING: no final channel "
                 "was produced."
             )
+
+        print(
+            "Telemetry SHA-256:",
+            telemetry_sha,
+        )
+
+        del telemetry_records
+        del telemetry_payload
+        del output
+
+        torch.cuda.empty_cache()
 
     print()
     print("=" * 80)

@@ -1,0 +1,42 @@
+{
+  "schema_version": "macro_mapping_reveal_v0_1",
+  "experiment_id": "v1_9_3_aug2026_backfill_multi_model_v0_1",
+  "revealed_at": "2026-11-07T21:44:41.910482+00:00",
+  "blind_mapping": {
+    "NARRATIVE_A": "gpt_oss_20b_medium",
+    "NARRATIVE_B": "llama3_8b_bf16",
+    "NARRATIVE_C": "gpt_oss_20b_low"
+  },
+  "blind_ranking": [
+    "NARRATIVE_C",
+    "NARRATIVE_A",
+    "NARRATIVE_B"
+  ],
+  "model_ranking": [
+    "gpt_oss_20b_low",
+    "gpt_oss_20b_medium",
+    "llama3_8b_bf16"
+  ],
+  "noncompleted_arms": [
+    {
+      "source_id": "gpt_oss_20b_high",
+      "reached_token_cap": true,
+      "analysis_token_count": 4093,
+      "final_token_count": 0
+    }
+  ],
+  "blinding_status": "partially_unblinded_by_style",
+  "comparison_note": {
+    "august": [
+      "gpt_oss_20b_low",
+      "gpt_oss_20b_medium",
+      "llama3_8b_bf16"
+    ],
+    "september": [
+      "gpt_oss_20b_medium",
+      "llama3_8b_bf16",
+      "gpt_oss_20b_low"
+    ],
+    "observation": "Stylistic fingerprints were stable enough to make two identities recognizable, while the human usefulness ranking changed across the two macro states."
+  }
+}
