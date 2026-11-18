@@ -422,6 +422,217 @@ def _model_table(
 
 
 
+
+# policy_state_panel_v0_1
+def _load_policy_state(
+    experiment_id: str,
+):
+    exp = get_experiment(
+        experiment_id
+    )
+
+    path = exp.get(
+        "policy_state_path"
+    )
+
+    if path is None:
+        return None
+
+    path = Path(
+        path
+    )
+
+    if not path.exists():
+        return None
+
+    return _load_json(
+        path
+    )
+
+
+def _render_policy_state(
+    experiment_id: str,
+):
+    state = _load_policy_state(
+        experiment_id
+    )
+
+    if not state:
+        return
+
+    st.subheader(
+        "Policy state"
+    )
+
+    period = state.get(
+        "observation_period",
+        "—",
+    )
+
+    as_of = state.get(
+        "as_of_date",
+        "—",
+    )
+
+    st.caption(
+        "Event-aware monetary-policy representation "
+        f"for {period}, as of {as_of}. "
+        "The frozen narrative experiment retains its "
+        "original monthly-average FEDFUNDS evidence "
+        "for reproducibility."
+    )
+
+    rate = state[
+        "policy_rate"
+    ]
+
+    latest = rate[
+        "latest"
+    ]
+
+    prior = rate[
+        "prior_regime"
+    ]
+
+    transition = rate[
+        "last_transition"
+    ]
+
+    target = state[
+        "target_range"
+    ]
+
+    fomc = state[
+        "latest_fomc_action"
+    ]
+
+    c1, c2, c3, c4, c5 = (
+        st.columns(5)
+    )
+
+    c1.metric(
+        "EFFR latest",
+        f"{latest['value']:.2f}%",
+    )
+
+    c2.metric(
+        "Last move",
+        f"{transition['delta_bp']:+g} bp",
+    )
+
+    c3.metric(
+        "Effective",
+        transition[
+            "effective_date"
+        ],
+    )
+
+    c4.metric(
+        "Target range",
+        (
+            f"{target['lower']:.2f}"
+            "–"
+            f"{target['upper']:.2f}%"
+        ),
+    )
+
+    c5.metric(
+        "Latest FOMC",
+        (
+            f"{fomc['action'].upper()} · "
+            f"{fomc['meeting_date']}"
+        ),
+    )
+
+    with st.expander(
+        "Policy-state details",
+        expanded=False,
+    ):
+        rows = [
+            {
+                "Field":
+                    "Latest EFFR",
+
+                "Value":
+                    f"{latest['value']:.2f}%",
+
+                "Date":
+                    latest["date"],
+            },
+            {
+                "Field":
+                    "Prior regime EFFR",
+
+                "Value":
+                    f"{prior['value']:.2f}%",
+
+                "Date":
+                    prior["date"],
+            },
+            {
+                "Field":
+                    "Discrete transition",
+
+                "Value":
+                    (
+                        f"{transition['delta_bp']:+g} bp"
+                    ),
+
+                "Date":
+                    transition[
+                        "effective_date"
+                    ],
+            },
+            {
+                "Field":
+                    "Target range",
+
+                "Value":
+                    (
+                        f"{target['lower']:.2f}"
+                        "–"
+                        f"{target['upper']:.2f}%"
+                    ),
+
+                "Date":
+                    target[
+                        "effective_date"
+                    ],
+            },
+            {
+                "Field":
+                    "Latest FOMC action",
+
+                "Value":
+                    fomc[
+                        "action"
+                    ].upper(),
+
+                "Date":
+                    fomc[
+                        "meeting_date"
+                    ],
+            },
+        ]
+
+        st.dataframe(
+            pd.DataFrame(
+                rows
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.caption(
+            "Primary policy signal: "
+            + state[
+                "representation_policy"
+            ][
+                "primary_policy_signal"
+            ]
+        )
+
+
 def _render_macro_state(experiment_id: str):
     claims = _load_selected_claims(experiment_id)
 
@@ -555,6 +766,11 @@ def _render_macro_state(experiment_id: str):
             hide_index=True,
         )
 
+
+
+    _render_policy_state(
+        experiment_id
+    )
 
 
 def _prior_experiment_id(

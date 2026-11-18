@@ -12,6 +12,7 @@ EVIDENCE_KINDS = {
     "prior_comparison",
     "period_change",
     "availability_note",
+    "policy_state",
 }
 
 AVAILABILITY_STATUSES = {
@@ -279,6 +280,61 @@ def validate_macro_evidence(
                         f"{prefix}: {field} "
                         "must be null for "
                         "period_change"
+                    )
+
+        elif kind == "policy_state":
+            if availability != "available":
+                errors.append(
+                    f"{prefix}: policy_state "
+                    "must be available"
+                )
+
+            for field in (
+                "current_value",
+                "prior_value",
+                "delta_value",
+            ):
+                if not _is_number(
+                    record.get(field)
+                ):
+                    errors.append(
+                        f"{prefix}: {field} "
+                        "must be numeric for "
+                        "policy_state"
+                    )
+
+            if (
+                record.get("direction")
+                not in DIRECTIONS
+            ):
+                errors.append(
+                    f"{prefix}: invalid direction"
+                )
+
+            supporting = record.get(
+                "supporting_values",
+                {},
+            )
+
+            required_policy_fields = (
+                "latest_effr_date",
+                "prior_regime_date",
+                "transition_effective_date",
+                "transition_delta_bp",
+                "target_lower",
+                "target_upper",
+                "fomc_meeting_date",
+                "fomc_action",
+                "fomc_delta_bp",
+                "as_of_date",
+                "observation_period",
+            )
+
+            for field in required_policy_fields:
+                if field not in supporting:
+                    errors.append(
+                        f"{prefix}: missing "
+                        f"policy field {field!r}"
                     )
 
         elif kind == "availability_note":

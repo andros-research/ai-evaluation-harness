@@ -1,0 +1,19 @@
+{
+  "families": [
+    "commodities",
+    "credit",
+    "equities",
+    "fx",
+    "inflation_pricing",
+    "rates"
+  ],
+  "family_count": 6,
+  "note": "Series definitions only. No real observations are included yet.",
+  "observations_frozen": 0,
+  "registry_file": "series_registry.json",
+  "registry_id": "fred_cross_asset_core_v0_1",
+  "registry_sha256": "e6c767ba4857b82d0203d0cc5fe61049e1c740228cdba22782a0219ee47071ae",
+  "schema_version": "market_state_series_registry_freeze_v0_1",
+  "series_count": 13,
+  "status": "frozen"
+}

@@ -210,6 +210,13 @@ EXPERIMENTS[
     "telemetry_layout":
         "generation_dir",
 
+    "policy_state_path": (
+        ROOT
+        / "benchmarks/fixtures/"
+        "macro_policy_state_2026_10_v0_1/"
+        "policy_state.json"
+    ),
+
     "arm_order": [
         "gpt_oss_20b_low",
         "gpt_oss_20b_medium",
