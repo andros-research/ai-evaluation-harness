@@ -1,0 +1,68 @@
+{
+  "schema_version": "macro_narrative_experiment_v0_2",
+  "experiment_id": "v1_9_3_oct2026_multi_model_v0_1",
+  "purpose": "First v1.9.3 paired multi-model macro narrative experiment",
+  "input": {
+    "source_claims_path": "benchmarks/fixtures/macro_snapshot_2026_10_v0_2/fred_claims/selected_fred_claims.json",
+    "frozen_claims_file": "inputs/selected_fred_claims.json",
+    "claims_sha256": "3ff6acff4a43658d4440048b3750a12cbb3733e6021a897e6b352071567cac8a",
+    "claim_count": 5,
+    "source_snapshot_manifest": "benchmarks/fixtures/macro_snapshot_2026_10_v0_2/snapshot_manifest.json",
+    "source_snapshot_manifest_sha256": "a28df6d841d25b0a8f5f93d3d7faa3d4190d9bfd52b34aa7516eebaaea5a671c",
+    "source_evidence_path": "benchmarks/fixtures/macro_snapshot_2026_10_v0_2/macro_evidence.json",
+    "frozen_evidence_file": "inputs/macro_evidence.json",
+    "evidence_sha256": "726bb06e1d1dd5864cae55d1ce0afb01c50615cb989cbb7fa6ac555dc12e427f",
+    "evidence_schema_version": "macro_evidence_v0_2",
+    "evidence_record_count": 6
+  },
+  "prompt": {
+    "variant": "semantic_analytical_mixed_v0_1",
+    "file": "inputs/narrative_prompt.txt",
+    "sha256": "45d16dacddccc53f71dee0d1e3bd200d52220739f75c743d962e836a35c64f1e",
+    "characters": 4416,
+    "builder": "benchmarks/generate_fred_narrative_from_claims.py",
+    "builder_sha256": "ef33befdda57d8149f0a1200a19b9d3eb62bd66861410da1cc185084212deefa"
+  },
+  "generation_arms": [
+    {
+      "arm_id": "llama3_8b_bf16",
+      "model": "meta-llama/Meta-Llama-3-8B-Instruct",
+      "reasoning_effort": null,
+      "dtype": "bfloat16",
+      "do_sample": false,
+      "max_new_tokens": 512
+    },
+    {
+      "arm_id": "gpt_oss_20b_low",
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "low",
+      "dtype": "mxfp4",
+      "do_sample": false,
+      "max_new_tokens": 4096
+    },
+    {
+      "arm_id": "gpt_oss_20b_medium",
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "medium",
+      "dtype": "mxfp4",
+      "do_sample": false,
+      "max_new_tokens": 4096
+    },
+    {
+      "arm_id": "gpt_oss_20b_high",
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "high",
+      "dtype": "mxfp4",
+      "do_sample": false,
+      "max_new_tokens": 4096
+    }
+  ],
+  "review_policy": {
+    "generation_count_per_arm": 1,
+    "human_review_before_telemetry": true,
+    "human_review_blinded_to_arm": true,
+    "semantic_classifier": "compact_balanced_v0_2_1",
+    "semantic_classifier_reasoning_effort": "low",
+    "classifier_applied_after_human_review": true
+  }
+}

@@ -67,6 +67,7 @@ SUPPORTED_PROMPT_VARIANTS = [
     "hardened",
     "semantic_conservative",
     "semantic_analytical",
+    "semantic_analytical_mixed_v0_1",
 ]
 DEFAULT_TEMPERATURE = 0.0
 
@@ -131,6 +132,7 @@ def render_claim_bullet(claim: dict) -> str:
 def build_llm_prompt(
     selected_claims: list[dict],
     prompt_variant: str,
+    evidence_context: dict | None = None,
 ) -> str:
     """Build an LLM prompt using the requested contract-strength variant."""
     claim_blocks: list[str] = []
@@ -305,6 +307,147 @@ Output requirements:
 Selected claims:
 
 {claims_text}
+"""
+
+    if prompt_variant == "semantic_analytical_mixed_v0_1":
+        mixed_blocks = []
+
+        for claim in selected_claims:
+            supporting_values = claim.get(
+                "supporting_values",
+                {},
+            )
+
+            mixed_blocks.append(
+                "\n".join([
+                    f"claim_id: {claim.get('claim_id')}",
+                    f"claim_type: {claim.get('claim_type')}",
+                    f"claim_text: {claim.get('claim_text')}",
+                    f"source_series: {claim.get('source_series')}",
+                    f"metric_name: {claim.get('metric_name')}",
+                    f"comparison_window: {claim.get('comparison_window')}",
+                    f"current_value: {claim.get('current_value')}",
+                    f"prior_value: {claim.get('prior_value')}",
+                    f"delta_value: {claim.get('delta_value')}",
+                    f"direction: {claim.get('direction')}",
+                    (
+                        "supporting_values: "
+                        f"{json.dumps(supporting_values, sort_keys=True)}"
+                    ),
+                ])
+            )
+
+        mixed_claims_text = (
+            "\n\n---\n\n".join(
+                mixed_blocks
+            )
+        )
+
+        limitations = []
+
+        if isinstance(
+            evidence_context,
+            dict,
+        ):
+            for record in evidence_context.get(
+                "records",
+                [],
+            ):
+                if (
+                    record.get(
+                        "availability_status"
+                    )
+                    != "available"
+                ):
+                    limitations.append({
+                        "metric_name":
+                            record.get(
+                                "metric_name"
+                            ),
+                        "comparison_window":
+                            record.get(
+                                "comparison_window"
+                            ),
+                        "availability_status":
+                            record.get(
+                                "availability_status"
+                            ),
+                        "source_note":
+                            record.get(
+                                "source_note"
+                            ),
+                    })
+
+        limitations_text = (
+            json.dumps(
+                limitations,
+                indent=2,
+                ensure_ascii=False,
+            )
+            if limitations
+            else "[]"
+        )
+
+        return f"""You are generating a concise macro narrative from selected source-grounded claims.
+
+Output requirements:
+
+1. Write markdown only.
+
+2. Begin with exactly this title:
+
+# FRED Macro Narrative
+
+3. Then include exactly this section heading:
+
+## Claim-Cited Summary
+
+4. Write exactly {expected_bullet_count} bullets.
+
+5. Write one bullet for each selected claim.
+
+6. Preserve each claim's measurement horizon and claim type.
+
+7. For claim_type = prior_comparison:
+   - state the direction
+   - state the prior value
+   - state the current value
+   - state the delta magnitude
+
+8. For claim_type = period_change:
+   - state the supplied period change
+   - state its comparison window
+   - do not invent a prior level or a second delta
+
+9. End each bullet with exactly one citation using:
+
+   [CLAIMS: <exact claim_id>]
+
+10. After the claim-cited bullets, include:
+
+## Commentary
+
+11. Write 2 to 4 concise sentences of natural macro analysis.
+
+12. Clearly distinguish direct observation from interpretation.
+
+13. Different comparison horizons are intentional. Do not treat 1m and 12m quantities as though they are equivalent measurements.
+
+14. Evidence limitations below are part of the supplied evidence. Do not reconstruct, infer, approximate, or silently replace unavailable observations.
+
+15. Do not present a causal explanation, market interpretation, or broader-condition interpretation as established fact unless the supplied evidence establishes it.
+
+16. Do not introduce numeric facts that are not present in the selected claims.
+
+17. Do not include claim IDs or [CLAIMS: ...] citations in the Commentary section.
+
+Selected claims:
+
+{mixed_claims_text}
+
+Evidence limitations:
+
+{limitations_text}
 """
 
     if prompt_variant == "hardened":

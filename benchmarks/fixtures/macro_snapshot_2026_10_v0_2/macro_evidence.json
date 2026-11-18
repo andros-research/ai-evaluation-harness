@@ -1,0 +1,146 @@
+{
+  "observation_date": "2026-10-01",
+  "records": [
+    {
+      "availability_status": "available",
+      "comparison_window": "1m",
+      "current_value": 0.4,
+      "delta_value": null,
+      "direction": "up",
+      "display_name": "Headline CPI m/m",
+      "evidence_id": "oct2026__headline_cpi_mom",
+      "evidence_kind": "period_change",
+      "metric_name": "cpi_headline_mom",
+      "prior_value": null,
+      "source_note": "Seasonally adjusted change from September 2026 to October 2026.",
+      "source_observation_date": "2026-10-01",
+      "source_series": "CPI-U",
+      "source_type": "bls",
+      "supporting_values": {
+        "change_percent": 0.4,
+        "period": "2026-10",
+        "seasonal_adjustment": "seasonally_adjusted"
+      },
+      "units": "percent"
+    },
+    {
+      "availability_status": "available",
+      "comparison_window": "1m",
+      "current_value": 0.3,
+      "delta_value": null,
+      "direction": "up",
+      "display_name": "Core CPI m/m",
+      "evidence_id": "oct2026__core_cpi_mom",
+      "evidence_kind": "period_change",
+      "metric_name": "cpi_core_mom",
+      "prior_value": null,
+      "source_note": "Seasonally adjusted change from September 2026 to October 2026.",
+      "source_observation_date": "2026-10-01",
+      "source_series": "CPI-U less food and energy",
+      "source_type": "bls",
+      "supporting_values": {
+        "change_percent": 0.3,
+        "period": "2026-10",
+        "seasonal_adjustment": "seasonally_adjusted"
+      },
+      "units": "percent"
+    },
+    {
+      "availability_status": "unavailable_source_gap",
+      "comparison_window": "12m",
+      "current_value": null,
+      "delta_value": null,
+      "direction": null,
+      "display_name": "Headline CPI YoY",
+      "evidence_id": "oct2026__cpi_yoy_unavailable",
+      "evidence_kind": "availability_note",
+      "metric_name": "cpi_yoy",
+      "prior_value": null,
+      "source_note": "BLS did not collect survey data for October 2025 during the lapse in appropriations. The required prior observation is unavailable, so the October 2026 12-month all-items CPI change cannot be published.",
+      "source_observation_date": "2026-10-01",
+      "source_series": "CPI-U",
+      "source_type": "bls",
+      "supporting_values": {
+        "missing_period": "2025-10",
+        "required_for": "2026-10 12m comparison"
+      },
+      "units": "percent"
+    },
+    {
+      "availability_status": "available",
+      "comparison_window": "1m",
+      "current_value": 4.1,
+      "delta_value": -0.1,
+      "direction": "down",
+      "display_name": "Unemployment",
+      "evidence_id": "oct2026__unrate_1m",
+      "evidence_kind": "prior_comparison",
+      "metric_name": "unrate",
+      "prior_value": 4.2,
+      "source_note": null,
+      "source_observation_date": "2026-10-01",
+      "source_series": "UNRATE",
+      "source_type": "fred",
+      "supporting_values": {
+        "current_date": "2026-10-01",
+        "current_value": 4.1,
+        "delta_value": -0.1,
+        "prior_date": "2026-09-01",
+        "prior_value": 4.2,
+        "units": "percentage points"
+      },
+      "units": "percentage points"
+    },
+    {
+      "availability_status": "available",
+      "comparison_window": "1m",
+      "current_value": 3.88,
+      "delta_value": 0.13,
+      "direction": "up",
+      "display_name": "Fed funds",
+      "evidence_id": "oct2026__fedfunds_1m",
+      "evidence_kind": "prior_comparison",
+      "metric_name": "fedfunds",
+      "prior_value": 3.75,
+      "source_note": "Monthly average of daily figures.",
+      "source_observation_date": "2026-10-01",
+      "source_series": "FEDFUNDS",
+      "source_type": "fred",
+      "supporting_values": {
+        "current_date": "2026-10-01",
+        "current_value": 3.88,
+        "delta_value": 0.13,
+        "prior_date": "2026-09-01",
+        "prior_value": 3.75,
+        "units": "percentage points"
+      },
+      "units": "percentage points"
+    },
+    {
+      "availability_status": "available",
+      "comparison_window": "1m",
+      "current_value": 5.13,
+      "delta_value": 0.14,
+      "direction": "up",
+      "display_name": "10Y Treasury",
+      "evidence_id": "oct2026__gs10_1m",
+      "evidence_kind": "prior_comparison",
+      "metric_name": "gs10",
+      "prior_value": 4.99,
+      "source_note": "Monthly average of business days.",
+      "source_observation_date": "2026-10-01",
+      "source_series": "GS10",
+      "source_type": "fred",
+      "supporting_values": {
+        "current_date": "2026-10-01",
+        "current_value": 5.13,
+        "delta_value": 0.14,
+        "prior_date": "2026-09-01",
+        "prior_value": 4.99,
+        "units": "percentage points"
+      },
+      "units": "percentage points"
+    }
+  ],
+  "schema_version": "macro_evidence_v0_2"
+}

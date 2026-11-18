@@ -1,0 +1,26 @@
+{
+  "schema_version": "macro_human_reference_freeze_v0_1",
+  "status": "frozen",
+  "experiment_id": "v1_9_3_oct2026_multi_model_v0_1",
+  "source_packet_path": "benchmarks/results/macro_narrative_reviews/v1_9_3_oct2026_multi_model_v0_1/blind_review_v0_1/blind_review_packet.md",
+  "source_packet_sha256": "1652cc34db00f464d7e7f0d94811251070b16b85e5c41d5f1b979431e1b2d064",
+  "selected_fred_claims_sha256": "3ff6acff4a43658d4440048b3750a12cbb3733e6021a897e6b352071567cac8a",
+  "narrative_prompt_sha256": "45d16dacddccc53f71dee0d1e3bd200d52220739f75c743d962e836a35c64f1e",
+  "reference_file": "human_macro_semantic_reference_v0_1.json",
+  "reference_sha256": "03fdf1e63b0e188771a364d4845fd57b173c8f528a0cb4ac21c775251510eb47",
+  "readable_review_file": "human_macro_semantic_reference_v0_1.md",
+  "readable_review_sha256": "49207d99b6f11832486aaf17cf9f1febd920a7f4e2149822415d741a83efabfa",
+  "narratives": 3,
+  "commentary_sentences": 11,
+  "semantic_annotations": 29,
+  "blind_mapping_accessed": false,
+  "model_analysis_or_telemetry_accessed": false,
+  "review_method": "collaborative_human_assisted_review_with_blind_model_identity",
+  "limitations": [
+    "Model identity mapping was not accessed before freeze.",
+    "Hidden analysis and token telemetry were not inspected before freeze.",
+    "Summary bullets were assessed qualitatively but were not included as classifier targets.",
+    "The packet header incorrectly refers to September 2026 evidence; the narratives and claims themselves are October 2026.",
+    "The monthly-average EFFR comparison is numerically valid but can be economically misleading as a policy-state representation."
+  ]
+}

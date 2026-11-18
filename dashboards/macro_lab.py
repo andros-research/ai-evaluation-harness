@@ -258,45 +258,43 @@ def _fmt_number(value, digits=3):
     return f"{value:.{digits}f}"
 
 
-def _claim_label(claim):
-    series = (
-        claim.get("source_series")
-        or claim.get("series_id")
-        or claim.get("metric_name")
+def _claim_label(
+    claim: dict,
+) -> str:
+    metric = str(
+        claim.get("metric_name")
         or ""
-    )
+    ).strip().lower()
 
     labels = {
-        "CPIAUCSL": "CPI YoY",
-        "UNRATE": "Unemployment",
-        "DFF": "Fed funds",
-        "GS10": "10Y Treasury",
+        "cpi_yoy":
+            "CPI YoY",
+
+        "cpi_headline_mom":
+            "Headline CPI m/m",
+
+        "cpi_core_mom":
+            "Core CPI m/m",
+
+        "unrate":
+            "Unemployment",
+
+        "fedfunds":
+            "Fed funds",
+
+        "gs10":
+            "10Y Treasury",
     }
 
-    for key, label in labels.items():
-        if key in str(series):
-            return label
+    if metric in labels:
+        return labels[metric]
 
-    text = (
-        claim.get("claim_text")
-        or claim.get("text")
-        or ""
-    ).lower()
-
-    if "cpi" in text or "inflation" in text:
-        return "CPI YoY"
-
-    if "unemployment" in text:
-        return "Unemployment"
-
-    if "federal funds" in text:
-        return "Fed funds"
-
-    if "10-year" in text or "10-year" in text:
-        return "10Y Treasury"
-
-    return str(series) or "Macro series"
-
+    return (
+        claim.get("source_series_name")
+        or claim.get("source_series")
+        or metric
+        or "Unknown series"
+    )
 
 def _claim_value(claim, key):
     if key in claim:
@@ -436,60 +434,80 @@ def _render_macro_state(experiment_id: str):
         )
         return
 
-    cols = st.columns(
-        min(4, len(claims))
-    )
+    # Scalable macro-state cards.
+    # Keep four cards per row for readability,
+    # but render every frozen state variable.
+    cards_per_row = 4
 
-    for col, claim in zip(
-        cols,
-        claims[:4],
+    for row_start in range(
+        0,
+        len(claims),
+        cards_per_row,
     ):
-        label = _claim_label(claim)
+        row_claims = claims[
+            row_start:
+            row_start + cards_per_row
+        ]
 
-        current = _claim_value(
-            claim,
-            "current_value",
+        cols = st.columns(
+            cards_per_row
         )
 
-        delta = _claim_value(
-            claim,
-            "delta_value",
-        )
-
-        units = (
-            claim.get("units")
-            or claim.get(
-                "supporting_values",
-                {},
-            ).get("units")
-            or ""
-        )
-
-        if current is None:
-            value = "—"
-        else:
-            value = f"{current:g}"
-
-        if units:
-            value = f"{value} {units}"
-
-        if delta is None:
-            delta_display = None
-        else:
-            delta_display = (
-                f"{delta:+g}"
-                + (
-                    f" {units}"
-                    if units
-                    else ""
-                )
+        for col, claim in zip(
+            cols,
+            row_claims,
+        ):
+            label = _claim_label(
+                claim
             )
 
-        col.metric(
-            label,
-            value,
-            delta_display,
-        )
+            current = _claim_value(
+                claim,
+                "current_value",
+            )
+
+            delta = _claim_value(
+                claim,
+                "delta_value",
+            )
+
+            units = (
+                claim.get("units")
+                or claim.get(
+                    "supporting_values",
+                    {},
+                ).get("units")
+                or ""
+            )
+
+            if current is None:
+                value = "—"
+            else:
+                value = f"{current:g}"
+
+            if units:
+                value = (
+                    f"{value} {units}"
+                )
+
+            if delta is None:
+                delta_display = None
+            else:
+                delta_display = (
+                    f"{delta:+g}"
+                    + (
+                        f" {units}"
+                        if units
+                        else ""
+                    )
+                )
+
+            col.metric(
+                label,
+                value,
+                delta_display,
+            )
+
 
     with st.expander(
         "Frozen deterministic claims",
@@ -596,31 +614,44 @@ def _longitudinal_rows(
         )
     )
 
-    current_by_label = {
-        _claim_label(claim):
+    def identity(
+        claim: dict,
+    ) -> str:
+        return str(
+            claim.get("metric_name")
+            or claim.get("source_series")
+            or ""
+        ).strip().lower()
+
+    current_by_metric = {
+        identity(claim):
             claim
         for claim
         in current_claims
+        if identity(claim)
     }
 
-    prior_by_label = {
-        _claim_label(claim):
+    prior_by_metric = {
+        identity(claim):
             claim
         for claim
         in prior_claims
+        if identity(claim)
     }
 
     rows = []
 
-    for label, current_claim in (
-        current_by_label.items()
+    for metric_id, current_claim in (
+        current_by_metric.items()
     ):
         prior_claim = (
-            prior_by_label.get(
-                label
+            prior_by_metric.get(
+                metric_id
             )
         )
 
+        # New metrics are not forced into a
+        # comparison with some other series.
         if prior_claim is None:
             continue
 
@@ -651,7 +682,12 @@ def _longitudinal_rows(
 
         rows.append({
             "Series":
-                label,
+                _claim_label(
+                    current_claim
+                ),
+
+            "Metric":
+                metric_id,
 
             "Prior observation":
                 prior_value,
@@ -664,7 +700,6 @@ def _longitudinal_rows(
         })
 
     return prior_id, rows
-
 
 def _render_longitudinal_delta(
     experiment_id: str,

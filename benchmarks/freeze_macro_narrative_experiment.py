@@ -17,6 +17,10 @@ from benchmarks.generate_fred_narrative_from_claims import (
     validate_selected_claims,
 )
 
+from benchmarks.macro_evidence_contract_v0_2 import (
+    load_macro_evidence,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_ROOT = (
@@ -45,6 +49,18 @@ def main() -> None:
     )
 
     parser.add_argument(
+        "--evidence-path",
+        type=Path,
+        default=None,
+        help=(
+            "Optional macro_evidence_v0_2 file. "
+            "When supplied it is frozen with the "
+            "experiment and exposed to mixed-evidence "
+            "prompt variants."
+        ),
+    )
+
+    parser.add_argument(
         "--experiment-id",
         required=True,
     )
@@ -65,6 +81,26 @@ def main() -> None:
 
     claims_path = args.claims_path.resolve()
 
+    evidence_path = (
+        args.evidence_path.resolve()
+        if args.evidence_path
+        else None
+    )
+
+    evidence_context = None
+    evidence_bytes = None
+
+    if evidence_path is not None:
+        evidence_context = (
+            load_macro_evidence(
+                evidence_path
+            )
+        )
+
+        evidence_bytes = (
+            evidence_path.read_bytes()
+        )
+
     selected_claims = load_selected_claims(
         claims_path
     )
@@ -76,6 +112,7 @@ def main() -> None:
     prompt = build_llm_prompt(
         selected_claims,
         args.prompt_variant,
+        evidence_context=evidence_context,
     )
 
     experiment_dir = (
@@ -111,6 +148,18 @@ def main() -> None:
         claims_bytes
     )
 
+    frozen_evidence_path = None
+
+    if evidence_bytes is not None:
+        frozen_evidence_path = (
+            inputs_dir
+            / "macro_evidence.json"
+        )
+
+        frozen_evidence_path.write_bytes(
+            evidence_bytes
+        )
+
     prompt_path = (
         inputs_dir
         / "narrative_prompt.txt"
@@ -142,7 +191,11 @@ def main() -> None:
 
     manifest = {
         "schema_version":
-            "macro_narrative_experiment_v0_1",
+            (
+                "macro_narrative_experiment_v0_2"
+                if evidence_context is not None
+                else "macro_narrative_experiment_v0_1"
+            ),
 
         "experiment_id":
             args.experiment_id,
@@ -303,6 +356,36 @@ def main() -> None:
                 True,
         },
     }
+
+    if evidence_context is not None:
+        manifest["input"].update({
+            "source_evidence_path":
+                str(
+                    evidence_path.relative_to(
+                        ROOT
+                    )
+                ),
+
+            "frozen_evidence_file":
+                "inputs/macro_evidence.json",
+
+            "evidence_sha256":
+                sha256_bytes(
+                    evidence_bytes
+                ),
+
+            "evidence_schema_version":
+                evidence_context[
+                    "schema_version"
+                ],
+
+            "evidence_record_count":
+                len(
+                    evidence_context[
+                        "records"
+                    ]
+                ),
+        })
 
     manifest_path = (
         experiment_dir

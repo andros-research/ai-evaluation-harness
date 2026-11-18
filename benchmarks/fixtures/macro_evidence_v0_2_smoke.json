@@ -1,0 +1,60 @@
+{
+  "schema_version": "macro_evidence_v0_2",
+  "observation_date": "2099-01-01",
+  "records": [
+    {
+      "evidence_id": "smoke__prior",
+      "evidence_kind": "prior_comparison",
+      "metric_name": "example_rate",
+      "display_name": "Example rate",
+      "source_type": "synthetic",
+      "source_series": "EXAMPLE1",
+      "source_observation_date": "2099-01-01",
+      "comparison_window": "1m",
+      "availability_status": "available",
+      "current_value": 4.2,
+      "prior_value": 4.0,
+      "delta_value": 0.2,
+      "direction": "up",
+      "units": "percentage points",
+      "source_note": null,
+      "supporting_values": {}
+    },
+    {
+      "evidence_id": "smoke__period_change",
+      "evidence_kind": "period_change",
+      "metric_name": "example_monthly_change",
+      "display_name": "Example monthly change",
+      "source_type": "synthetic",
+      "source_series": "EXAMPLE2",
+      "source_observation_date": "2099-01-01",
+      "comparison_window": "1m",
+      "availability_status": "available",
+      "current_value": 0.4,
+      "prior_value": null,
+      "delta_value": null,
+      "direction": "up",
+      "units": "percent",
+      "source_note": null,
+      "supporting_values": {}
+    },
+    {
+      "evidence_id": "smoke__unavailable",
+      "evidence_kind": "availability_note",
+      "metric_name": "example_yoy",
+      "display_name": "Example YoY",
+      "source_type": "synthetic",
+      "source_series": "EXAMPLE3",
+      "source_observation_date": "2099-01-01",
+      "comparison_window": "12m",
+      "availability_status": "unavailable_source_gap",
+      "current_value": null,
+      "prior_value": null,
+      "delta_value": null,
+      "direction": null,
+      "units": "percent",
+      "source_note": "Required prior-period source observation is unavailable.",
+      "supporting_values": {}
+    }
+  ]
+}

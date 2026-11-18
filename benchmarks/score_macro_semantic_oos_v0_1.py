@@ -99,9 +99,18 @@ def main():
         raise RuntimeError("Frozen human reference checksum changed")
     human = read_json(REFERENCE)
     manifest = read_json(FREEZE_MANIFEST)
-    if (manifest["status"] != "source_verified_frozen"
-            or manifest["reference_sha256"] != EXPECTED_REFERENCE_SHA):
-        raise RuntimeError("Human freeze manifest does not match")
+    if (
+        manifest.get("status")
+        not in {
+            "source_verified_frozen",
+            "frozen",
+        }
+        or manifest["reference_sha256"]
+        != EXPECTED_REFERENCE_SHA
+    ):
+        raise RuntimeError(
+            "Human freeze manifest does not match"
+        )
     plan_raw = INPUT_FILE.read_bytes()
     plan = json.loads(plan_raw)
     generation = read_json(GENERATION)

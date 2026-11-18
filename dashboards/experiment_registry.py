@@ -5,13 +5,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-DEFAULT_EXPERIMENT_ID = (
+SEPTEMBER_EXPERIMENT_ID = (
     "v1_9_3_sep2026_multi_model_v0_1"
+)
+
+OCTOBER_EXPERIMENT_ID = (
+    "v1_9_3_oct2026_multi_model_v0_1"
+)
+
+DEFAULT_EXPERIMENT_ID = (
+    OCTOBER_EXPERIMENT_ID
 )
 
 
 EXPERIMENTS = {
-    DEFAULT_EXPERIMENT_ID: {
+    SEPTEMBER_EXPERIMENT_ID: {
         "label": "September 2026",
         "observation_date": "2026-09-01",
 
@@ -161,6 +169,107 @@ EXPERIMENTS = {
                 "human review."
             ),
         },
+    },
+}
+
+
+
+EXPERIMENTS[
+    OCTOBER_EXPERIMENT_ID
+] = {
+    "label":
+        "October 2026",
+
+    "observation_date":
+        "2026-10-01",
+
+    "fixture_root": (
+        ROOT
+        / "benchmarks/fixtures/"
+        "macro_narrative_experiments/"
+        "v1_9_3_oct2026_multi_model_v0_1"
+    ),
+
+    "gpt_result_root": (
+        ROOT
+        / "benchmarks/results/"
+        "macro_narrative_experiments/"
+        "v1_9_3_oct2026_multi_model_v0_1"
+    ),
+
+    "gpt_telemetry_root": (
+        ROOT
+        / "benchmarks/results/"
+        "macro_narrative_experiments/"
+        "v1_9_3_oct2026_multi_model_v0_1"
+    ),
+
+    "gpt_telemetry_layout":
+        "generation_dir",
+
+    "telemetry_layout":
+        "generation_dir",
+
+    "arm_order": [
+        "gpt_oss_20b_low",
+        "gpt_oss_20b_medium",
+        "llama3_8b_bf16",
+        "gpt_oss_20b_high",
+    ],
+
+    "model_arms": {
+        "gpt_oss_20b_low": {
+            "human_rank": 1,
+        },
+
+        "gpt_oss_20b_medium": {
+            "human_rank": 2,
+        },
+
+        "llama3_8b_bf16": {
+            "human_rank": 3,
+
+            "run_root": (
+                ROOT
+                / "benchmarks/results/"
+                "native_fred_generation/"
+                "v1_9_3_oct2026_"
+                "llama3_8b_bf16_001"
+            ),
+        },
+
+        "gpt_oss_20b_high": {
+            "human_rank": None,
+        },
+    },
+
+    "semantic_evaluation": {
+        "strict_triple_recall":
+            17 / 29,
+
+        "strict_triple_precision":
+            17 / 24,
+
+        "claim_kind_recall":
+            21 / 29,
+
+        "claim_kind_precision":
+            21 / 24,
+
+        "protocol_valid":
+            11,
+
+        "protocol_total":
+            11,
+
+        "note": (
+            "Mixed-evidence October evaluation. "
+            "The frozen v0.2.1 classifier remained "
+            "stable under heterogeneous evidence "
+            "shapes and an explicit source-data gap. "
+            "Scope generalization remains the main "
+            "recognition weakness."
+        ),
     },
 }
 

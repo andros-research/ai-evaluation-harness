@@ -1,0 +1,42 @@
+{
+  "frozen_at": "2026-11-14T12:37:28.842546+00:00",
+  "observation_date": "2026-10-01",
+  "policy": "Values manually frozen from official BLS/FRED publications after source verification. No unavailable CPI YoY value was reconstructed.",
+  "schema_version": "macro_source_provenance_v0_1",
+  "sources": [
+    {
+      "release_date": "2026-11-10",
+      "source": "BLS CPI October 2026",
+      "supports": [
+        "headline CPI +0.4% m/m SA",
+        "core CPI +0.3% m/m SA",
+        "October 2026 CPI YoY availability gap"
+      ],
+      "url": "https://www.bls.gov/news.release/cpi.htm"
+    },
+    {
+      "source": "FRED UNRATE",
+      "supports": [
+        "September 2026 4.2%",
+        "October 2026 4.1%"
+      ],
+      "url": "https://fred.stlouisfed.org/series/UNRATE"
+    },
+    {
+      "source": "FRED FEDFUNDS",
+      "supports": [
+        "September 2026 3.75%",
+        "October 2026 3.88%"
+      ],
+      "url": "https://fred.stlouisfed.org/series/FEDFUNDS"
+    },
+    {
+      "source": "FRED GS10",
+      "supports": [
+        "September 2026 4.99%",
+        "October 2026 5.13%"
+      ],
+      "url": "https://fred.stlouisfed.org/series/GS10"
+    }
+  ]
+}

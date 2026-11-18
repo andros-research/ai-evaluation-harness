@@ -1,0 +1,18 @@
+{
+  "availability_note_count": 1,
+  "comparison_windows": [
+    "1m",
+    "12m availability-only"
+  ],
+  "evidence_record_count": 6,
+  "files_sha256": {
+    "fred_claims/selected_fred_claims.json": "3ff6acff4a43658d4440048b3750a12cbb3733e6021a897e6b352071567cac8a",
+    "macro_evidence.json": "726bb06e1d1dd5864cae55d1ce0afb01c50615cb989cbb7fa6ac555dc12e427f",
+    "source_provenance.json": "f487a105cdcc2647131c3035e8e39e1399f9cb52501dd5eb5daac51a45444488"
+  },
+  "frozen_at_utc": "2026-11-14T12:37:28.842546+00:00",
+  "observation_month": "2026-10-01",
+  "schema_version": "macro_snapshot_manifest_v0_2",
+  "selected_claim_count": 5,
+  "vintage_policy": "Current published values at freeze; explicit source-gap state preserved."
+}

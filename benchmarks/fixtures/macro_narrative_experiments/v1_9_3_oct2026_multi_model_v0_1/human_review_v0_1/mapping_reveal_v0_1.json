@@ -1,0 +1,46 @@
+{
+  "schema_version": "macro_mapping_reveal_v0_1",
+  "experiment_id": "v1_9_3_oct2026_multi_model_v0_1",
+  "revealed_at": "2026-11-17T23:55:26.953743+00:00",
+  "blind_mapping": {
+    "NARRATIVE_A": "gpt_oss_20b_low",
+    "NARRATIVE_B": "llama3_8b_bf16",
+    "NARRATIVE_C": "gpt_oss_20b_medium"
+  },
+  "source_mapping": {
+    "NARRATIVE_A": {
+      "source_id": "gpt_oss_20b_low",
+      "narrative_sha256": "7b2e60939b0571f9fa903f29899280faf88e1a79d09197edc911b74bae2e9af8"
+    },
+    "NARRATIVE_B": {
+      "source_id": "llama3_8b_bf16",
+      "narrative_sha256": "9bbfc852298af70907b075c80faff5d4c883d2a3079c917e1e1fbe3eab54df91"
+    },
+    "NARRATIVE_C": {
+      "source_id": "gpt_oss_20b_medium",
+      "narrative_sha256": "430ab94de5d2ab3ad7e25257dc307a6d3fbf3f1e67f001125e09a4bb5e5a3e31"
+    }
+  },
+  "blind_ranking": [
+    "NARRATIVE_A",
+    "NARRATIVE_C",
+    "NARRATIVE_B"
+  ],
+  "model_ranking": [
+    "gpt_oss_20b_low",
+    "gpt_oss_20b_medium",
+    "llama3_8b_bf16"
+  ],
+  "noncompleted_arms": [
+    "gpt_oss_20b_high"
+  ],
+  "blinding_status": {
+    "human_reference_frozen_before_reveal": true,
+    "human_reference_sha256": "03fdf1e63b0e188771a364d4845fd57b173c8f528a0cb4ac21c775251510eb47",
+    "mapping_accessed_after_freeze": true
+  },
+  "comparison_note": {
+    "observation": "October 2026",
+    "result": "GPT-OSS low > GPT-OSS medium > Llama 3 8B BF16; GPT-OSS high noncompletion."
+  }
+}

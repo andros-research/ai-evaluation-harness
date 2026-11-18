@@ -1,0 +1,343 @@
+{
+  "schema_version": "macro_human_semantic_reference_v0_1",
+  "experiment_id": "v1_9_3_oct2026_multi_model_v0_1",
+  "reference_scope": "Human semantic review of all commentary sentences in the three completed blind narratives.",
+  "frozen_source": {
+    "blind_review_packet_path": "benchmarks/results/macro_narrative_reviews/v1_9_3_oct2026_multi_model_v0_1/blind_review_v0_1/blind_review_packet.md",
+    "blind_review_packet_sha256": "1652cc34db00f464d7e7f0d94811251070b16b85e5c41d5f1b979431e1b2d064",
+    "selected_fred_claims_sha256": "3ff6acff4a43658d4440048b3750a12cbb3733e6021a897e6b352071567cac8a",
+    "narrative_prompt_sha256": "45d16dacddccc53f71dee0d1e3bd200d52220739f75c743d962e836a35c64f1e"
+  },
+  "review_provenance": {
+    "method": "collaborative_human_assisted_review_with_blind_model_identity",
+    "status": "frozen",
+    "limitations": [
+      "Model identity mapping was not accessed before freeze.",
+      "Hidden analysis and token telemetry were not inspected before freeze.",
+      "Summary bullets were assessed qualitatively but were not included as classifier targets.",
+      "The packet header incorrectly refers to September 2026 evidence; the narratives and claims themselves are October 2026.",
+      "The monthly-average EFFR comparison is numerically valid but can be economically misleading as a policy-state representation."
+    ],
+    "human_preference": [
+      "NARRATIVE_A",
+      "NARRATIVE_C",
+      "NARRATIVE_B"
+    ],
+    "model_identity_mapping_accessed": false,
+    "hidden_model_analysis_or_token_telemetry_accessed": false
+  },
+  "ontology": {
+    "source_guide": "docs/v1_9_semantic_annotation_guide_compact_v0_2_1.md",
+    "config_id": "compact_balanced_v0_2_1",
+    "source": "frozen_v0_2_1_ontology"
+  },
+  "operational_notes": {
+    "generation_arms_planned": 4,
+    "completed_narratives": 3,
+    "noncompletion_arms": 1,
+    "reason": "One generation exhausted the 4096-token generation budget without producing a final channel."
+  },
+  "narratives": [
+    {
+      "blind_label": "NARRATIVE_A",
+      "human_rank": 1,
+      "assessment": "Preferred narrative. Coherent and useful, but contains unsupported persistence, labor-market, and policy/scope extensions.",
+      "commentary_sentences": [
+        {
+          "sentence_id": "A_S01",
+          "claim_span": "Headline and core inflation both rose modestly in October, indicating persistent price pressures.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "Headline and core CPI both increased in October.",
+              "rationale": "The supplied monthly CPI records show +0.4% headline and +0.3% core."
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The CPI increases were modest.",
+              "rationale": "The evidence supplies the monthly changes but no threshold defining a modest move."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The CPI observations characterize broader price pressures.",
+              "rationale": "Two CPI monthly changes do not by themselves establish the broader condition of price pressures."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Price pressures are persistent.",
+              "rationale": "Persistent asserts continuity across time that one monthly observation does not establish."
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S02",
+          "claim_span": "The unemployment rate fell slightly, suggesting a tightening labor market.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The unemployment rate decreased.",
+              "rationale": "The supplied comparison is 4.2% to 4.1%."
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The unemployment decline was slight.",
+              "rationale": "The 0.1 percentage-point move is observed, but no magnitude threshold is supplied."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The unemployment decline indicates a tightening labor market.",
+              "rationale": "One unemployment-rate observation does not establish broader labor-market tightening."
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S03",
+          "claim_span": "Meanwhile, the federal funds rate and 10-year Treasury yield both advanced, reflecting a shift toward higher short-term and long-term borrowing costs.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The monthly-average effective federal funds rate increased.",
+              "rationale": "The frozen comparison is 3.75% to 3.88%."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The monthly-average 10-year Treasury yield increased.",
+              "rationale": "The frozen comparison is 4.99% to 5.13%."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The two rate observations represent a broader shift toward higher short- and long-term borrowing costs.",
+              "rationale": "EFFR and the 10-year Treasury yield are specific rates; broader borrowing costs are not directly supplied."
+            }
+          ]
+        },
+        {
+          "sentence_id": "A_S04",
+          "claim_span": "These observations point to a combination of inflationary and monetary tightening dynamics.",
+          "annotations": [
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The supplied observations establish broader inflationary dynamics.",
+              "rationale": "The evidence is too narrow to establish a broader inflation regime."
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The supplied observations indicate monetary tightening dynamics.",
+              "rationale": "The monthly-average EFFR increase does not establish an October policy tightening action, and the Treasury yield is not itself the policy rate."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "blind_label": "NARRATIVE_B",
+      "human_rank": 3,
+      "assessment": "Weakest narrative. Introduces unsupported inflation moderation, an unemployment trend, and a tightening-policy interpretation.",
+      "commentary_sentences": [
+        {
+          "sentence_id": "B_S01",
+          "claim_span": "The October inflation data shows a slight moderation in price pressures, with headline CPI increasing 0.4 percent and core CPI increasing 0.3 percent.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "Headline CPI increased 0.4% and core CPI increased 0.3% in October.",
+              "rationale": "Both monthly changes are directly supplied."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "Price pressures moderated.",
+              "rationale": "Moderation requires comparison with an earlier inflation pace; no such prior monthly CPI change is supplied."
+            },
+            {
+              "claim_kind": "magnitude_judgment",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The moderation was slight.",
+              "rationale": "Neither moderation nor a magnitude threshold for slight is established."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "The CPI observations characterize broader price pressures.",
+              "rationale": "The statement generalizes from two CPI monthly changes to broader conditions."
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S02",
+          "claim_span": "The unemployment rate continued its downward trend, decreasing by 0.1 percentage point to 4.1 percent.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The unemployment rate decreased by 0.1 percentage point to 4.1%.",
+              "rationale": "The frozen comparison is 4.2% to 4.1%."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "asserted",
+              "proposition": "Unemployment continued a downward trend.",
+              "rationale": "A single September-to-October comparison does not establish a continuing trend."
+            }
+          ]
+        },
+        {
+          "sentence_id": "B_S03",
+          "claim_span": "The effective federal funds rate and 10-year Treasury yield also increased, indicating a tightening monetary policy stance.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The monthly-average effective federal funds rate increased.",
+              "rationale": "The frozen comparison is 3.75% to 3.88%."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The monthly-average 10-year Treasury yield increased.",
+              "rationale": "The frozen comparison is 4.99% to 5.13%."
+            },
+            {
+              "claim_kind": "policy_interpretation",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The two increases indicate a tighter monetary-policy stance.",
+              "rationale": "The evidence does not establish an October policy tightening action; the 10-year Treasury yield is market-determined and the EFFR comparison is a monthly average."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "blind_label": "NARRATIVE_C",
+      "human_rank": 2,
+      "assessment": "Second-ranked. Less ambitious and less useful than A, but still introduces unsupported persistence, labor tightening, and broad rate generalization.",
+      "commentary_sentences": [
+        {
+          "sentence_id": "C_S01",
+          "claim_span": "Headline and core CPI both increased by 0.4 and 0.3 percent respectively in October.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "Headline and core CPI increased 0.4% and 0.3% respectively.",
+              "rationale": "Both monthly changes are directly supplied."
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S02",
+          "claim_span": "The unemployment rate fell from 4.2 to 4.1 percent.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The unemployment rate decreased.",
+              "rationale": "The frozen comparison is 4.2% to 4.1%."
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S03",
+          "claim_span": "These movements suggest persistent inflationary pressures and a tightening labor market.",
+          "annotations": [
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The CPI observations indicate broader inflationary pressure.",
+              "rationale": "Two monthly CPI changes alone do not establish the broader inflation condition."
+            },
+            {
+              "claim_kind": "temporal_pattern",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "Inflationary pressures are persistent.",
+              "rationale": "Persistence requires evidence over multiple periods."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The unemployment decline indicates a tightening labor market.",
+              "rationale": "A single unemployment-rate move does not establish broader labor-market tightening."
+            }
+          ]
+        },
+        {
+          "sentence_id": "C_S04",
+          "claim_span": "The rise in the federal funds rate and 10-year Treasury yield indicates a shift toward higher interest rates.",
+          "annotations": [
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The monthly-average effective federal funds rate increased.",
+              "rationale": "The frozen comparison is 3.75% to 3.88%."
+            },
+            {
+              "claim_kind": "empirical_comparison",
+              "support_status": "supported",
+              "assertion_strength": "asserted",
+              "proposition": "The monthly-average 10-year Treasury yield increased.",
+              "rationale": "The frozen comparison is 4.99% to 5.13%."
+            },
+            {
+              "claim_kind": "scope_generalization",
+              "support_status": "insufficient_evidence",
+              "assertion_strength": "qualified_inference",
+              "proposition": "The two observed rate increases represent a broader shift toward higher interest rates.",
+              "rationale": "Two specific rates do not establish the direction of interest rates generally."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "narratives": 3,
+    "commentary_sentences": 11,
+    "semantic_annotations": 29,
+    "commentary_sentences_by_narrative": {
+      "NARRATIVE_A": 4,
+      "NARRATIVE_B": 3,
+      "NARRATIVE_C": 4
+    }
+  },
+  "frozen_at": "2026-11-17T01:34:56.077914+00:00"
+}

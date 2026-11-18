@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Frozen out-of-sample semantic proposals for the September v1.9.3 macro lab.
+"""Frozen out-of-sample semantic proposals for a v1.9.3 macro experiment.
 
 Commands:
-  prepare: CPU/host; project 12 unlabeled targets from the frozen human review.
+  prepare: CPU/host; project unlabeled targets from the frozen human review.
   generate: NVIDIA container; run GPT-OSS low on exactly those prepared targets.
 
 No human gold annotations or model-identity mapping enter the target prompts.
@@ -125,21 +125,141 @@ def build_unchanged_developer_prompt(cfg: dict) -> str:
     ])
 
 
-def make_frozen_evidence(claims: list[dict]) -> dict:
-    """Use the already frozen FRED selected claims, not hand-entered numbers."""
-    if len(claims) != 4:
-        raise RuntimeError(f"Expected four selected FRED claims, got {len(claims)}")
+def make_frozen_evidence(
+    claims: list[dict],
+) -> dict:
+    """
+    Build classifier evidence from the frozen
+    experiment inputs.
+
+    Historical experiments without macro_evidence.json
+    retain the original selected-claims contract.
+    Mixed-evidence experiments additionally expose the
+    frozen evidence records, including availability notes.
+    """
+
+    if not claims:
+        raise RuntimeError(
+            "Frozen experiment has no selected claims."
+        )
+
+    selected = [
+        {
+            key: claim.get(key)
+            for key in (
+                "claim_id",
+                "claim_text",
+                "claim_type",
+                "source_type",
+                "source_series",
+                "metric_name",
+                "comparison_window",
+                "current_value",
+                "prior_value",
+                "delta_value",
+                "direction",
+                "supporting_values",
+            )
+        }
+        for claim in claims
+    ]
+
+    evidence_path = (
+        EXP_DIR
+        / "inputs"
+        / "macro_evidence.json"
+    )
+
+    if evidence_path.exists():
+        macro = load_json(
+            evidence_path
+        )
+
+        if (
+            macro.get("schema_version")
+            != "macro_evidence_v0_2"
+        ):
+            raise RuntimeError(
+                "Unexpected macro evidence schema: "
+                f"{macro.get('schema_version')!r}"
+            )
+
+        records = macro.get(
+            "records"
+        )
+
+        if not isinstance(
+            records,
+            list,
+        ):
+            raise RuntimeError(
+                "macro_evidence records must be a list"
+            )
+
+        return {
+            "source_type":
+                "macro_evidence_v0_2",
+
+            "observation_date":
+                macro.get(
+                    "observation_date"
+                ),
+
+            "comparison_windows":
+                sorted({
+                    record.get(
+                        "comparison_window"
+                    )
+                    for record in records
+                    if record.get(
+                        "comparison_window"
+                    )
+                }),
+
+            "evidence_policy":
+                (
+                    "Frozen macro evidence and selected "
+                    "claims; only supplied evidence counts. "
+                    "Unavailable observations must not be "
+                    "reconstructed."
+                ),
+
+            "selected_claims":
+                selected,
+
+            "evidence_records":
+                records,
+        }
+
+    windows = sorted({
+        claim.get(
+            "comparison_window"
+        )
+        for claim in claims
+        if claim.get(
+            "comparison_window"
+        )
+    })
+
     return {
-        "source_type": "fred",
-        "comparison_window": "12m",
-        "evidence_policy": "Frozen selected FRED claims; only supplied evidence counts.",
-        "selected_claims": [
-            {key: claim[key] for key in (
-                "claim_id", "claim_text", "source_series", "metric_name",
-                "comparison_window", "current_value", "prior_value",
-                "delta_value", "direction", "supporting_values"
-            )} for claim in claims
-        ],
+        "source_type":
+            "fred",
+
+        "comparison_window":
+            (
+                windows[0]
+                if len(windows) == 1
+                else windows
+            ),
+
+        "evidence_policy":
+            (
+                "Frozen selected FRED claims; "
+                "only supplied evidence counts."
+            ),
+
+        "selected_claims":
+            selected,
     }
 
 
@@ -153,8 +273,18 @@ def prepare() -> None:
         raise RuntimeError(f"Reference SHA mismatch: {ref_sha}")
     ref = json.loads(ref_bytes)
     manifest = load_json(REFERENCE_MANIFEST)
-    if manifest["status"] != "source_verified_frozen" or manifest["reference_sha256"] != ref_sha:
-        raise RuntimeError("Human reference freeze manifest mismatch")
+    if (
+        manifest.get("status")
+        not in {
+            "source_verified_frozen",
+            "frozen",
+        }
+        or manifest["reference_sha256"]
+        != ref_sha
+    ):
+        raise RuntimeError(
+            "Human reference freeze manifest mismatch"
+        )
     if ref["experiment_id"] != EXPERIMENT:
         raise RuntimeError("Wrong reference experiment")
 
