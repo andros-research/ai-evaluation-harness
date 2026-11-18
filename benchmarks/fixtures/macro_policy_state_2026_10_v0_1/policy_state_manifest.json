@@ -1,0 +1,11 @@
+{
+  "as_of_date": "2026-10-30",
+  "frozen_at": "2026-11-18T01:57:04.706941+00:00",
+  "historical_experiment_mutated": false,
+  "note": "First event-aware policy-state fixture. The frozen October narrative experiment remains unchanged.",
+  "observation_period": "2026-10",
+  "policy_state_file": "policy_state.json",
+  "policy_state_sha256": "d999f628f9fdd4eac94bdd9173325e0a42d20830fcce84924065f106e2ceb4d1",
+  "schema_version": "macro_policy_state_freeze_v0_1",
+  "status": "frozen"
+}

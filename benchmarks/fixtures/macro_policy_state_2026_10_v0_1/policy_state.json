@@ -1,0 +1,73 @@
+{
+  "as_of_date": "2026-10-30",
+  "latest_fomc_action": {
+    "action": "hold",
+    "delta_bp": 0,
+    "meeting_date": "2026-10-28",
+    "target_lower": 3.75,
+    "target_range_unchanged": true,
+    "target_upper": 4.0
+  },
+  "observation_period": "2026-10",
+  "policy_rate": {
+    "aggregation_policy": "point_level_no_monthly_average",
+    "display_name": "Effective Federal Funds Rate",
+    "frequency": "daily",
+    "last_transition": {
+      "delta_bp": 25,
+      "direction": "up",
+      "effective_date": "2026-09-17"
+    },
+    "latest": {
+      "date": "2026-10-30",
+      "value": 3.88
+    },
+    "measure_id": "effr",
+    "prior_regime": {
+      "date": "2026-09-16",
+      "value": 3.63
+    },
+    "source_series": "DFF",
+    "units": "percent"
+  },
+  "provenance": [
+    {
+      "series": "DFF",
+      "source_type": "fred",
+      "supports": [
+        "EFFR 3.63 percent on 2026-09-16",
+        "EFFR 3.88 percent from 2026-09-17 through October"
+      ],
+      "url": "https://fred.stlouisfed.org/series/DFF"
+    },
+    {
+      "document": "September 16, 2026 FOMC statement and implementation note",
+      "source_type": "federal_reserve",
+      "supports": [
+        "25 bp hike to 3.75-4.00 percent",
+        "effective September 17, 2026"
+      ],
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm"
+    },
+    {
+      "document": "October 28, 2026 FOMC statement",
+      "source_type": "federal_reserve",
+      "supports": [
+        "Target range held at 3.75-4.00 percent"
+      ],
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm"
+    }
+  ],
+  "representation_policy": {
+    "monthly_average_role": "Permitted as a derived statistic but not as the primary representation of policy-state change.",
+    "primary_policy_signal": "Latest point EFFR plus discrete policy transition and FOMC action."
+  },
+  "schema_version": "macro_policy_state_v0_1",
+  "target_range": {
+    "confirmed_unchanged_date": "2026-10-28",
+    "effective_date": "2026-09-17",
+    "lower": 3.75,
+    "units": "percent",
+    "upper": 4.0
+  }
+}
