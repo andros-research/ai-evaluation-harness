@@ -1,0 +1,11 @@
+{
+  "breakeven_method": "same-date nominal minus real Treasury curve",
+  "primary_rate_source": "U.S. Department of the Treasury",
+  "registry_file": "series_registry.json",
+  "registry_id": "cross_asset_core_v0_2",
+  "registry_sha256": "0b8a836a0f44469dec0553bf08e89ade7903f0cb0002d0827a32bdc68bd8ceb5",
+  "schema_version": "market_state_series_registry_freeze_v0_2",
+  "series_count": 13,
+  "status": "frozen",
+  "supersedes_registry": "fred_cross_asset_core_v0_1"
+}

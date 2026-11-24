@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 from macro_lab import render_macro_lab
+from cross_asset_lab import render_cross_asset_lab
 from macro_claim_inspector import (
     render_macro_claim_inspector,
 )
@@ -1601,6 +1602,7 @@ macro_tab, inspector_tab, token_tab, semantic_tab = (
 
 with macro_tab:
     render_macro_lab()
+    render_cross_asset_lab()
 
 
 with inspector_tab:

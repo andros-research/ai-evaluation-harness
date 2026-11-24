@@ -41,7 +41,7 @@ FEATURE_POINTER = (
     / "latest_run.json"
 )
 
-OUTPUT_ROOT = (
+DEFAULT_OUTPUT_ROOT = (
     ROOT
     / "benchmarks"
     / "results"
@@ -706,7 +706,17 @@ def main():
         default=None,
     )
 
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=DEFAULT_OUTPUT_ROOT,
+    )
+
     args = parser.parse_args()
+
+    output_root = (
+        args.output_root.resolve()
+    )
 
     if args.state is None:
         state_pointer = json.loads(
@@ -858,7 +868,7 @@ def main():
     )
 
     output_dir = (
-        OUTPUT_ROOT
+        output_root
         / state[
             "state_id"
         ]
@@ -914,7 +924,7 @@ def main():
     )
 
     write_json(
-        OUTPUT_ROOT
+        output_root
         / "latest_run.json",
         {
             "source_state_id":
