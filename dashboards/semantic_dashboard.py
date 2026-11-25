@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 from macro_lab import render_macro_lab
 from cross_asset_lab import render_cross_asset_lab
+from quant_lab import render_quant_lab
 from macro_claim_inspector import (
     render_macro_claim_inspector,
 )
@@ -1590,9 +1591,10 @@ if not rows:
     st.stop()
 
 
-macro_tab, inspector_tab, token_tab, semantic_tab = (
+macro_tab, quant_tab, inspector_tab, token_tab, semantic_tab = (
     st.tabs([
         "Macro Lab",
+        "Quant Lab",
         "Claim Inspector",
         "Token Analytics",
         "Semantic Discovery",
@@ -1603,6 +1605,11 @@ macro_tab, inspector_tab, token_tab, semantic_tab = (
 with macro_tab:
     render_macro_lab()
     render_cross_asset_lab()
+
+
+with quant_tab:
+
+    render_quant_lab()
 
 
 with inspector_tab:
