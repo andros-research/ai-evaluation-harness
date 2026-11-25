@@ -248,27 +248,42 @@ def _render_state_summary(
         "source_state_id"
     ]
 
-    manifest_path = (
+    market_state_root = (
         ROOT
         / "benchmarks"
         / "results"
         / "market_states"
-        / "fred_cross_asset_core_v0_1"
-        / state_id
-        / "market_state_manifest.json"
     )
 
     observation_count = None
 
-    if manifest_path.exists():
+    manifest_candidates = list(
+        market_state_root.glob(
+            f"*/{state_id}/"
+            "market_state_manifest.json"
+        )
+    )
+
+    if len(
+        manifest_candidates
+    ) == 1:
         manifest = _load_json(
-            manifest_path
+            manifest_candidates[0]
         )
 
         observation_count = (
             manifest.get(
                 "observation_count"
             )
+        )
+
+    elif len(
+        manifest_candidates
+    ) > 1:
+        raise RuntimeError(
+            "Multiple market-state manifests "
+            f"found for {state_id}: "
+            f"{manifest_candidates}"
         )
 
     c1, c2, c3, c4 = (
@@ -312,6 +327,304 @@ def _render_state_summary(
         "Frozen high-frequency state · "
         f"{state_id} · "
         f"as of {state['as_of_timestamp']}"
+    )
+
+
+_HORIZON_COLUMNS = [
+    "1 obs",
+    "5 obs",
+    "20 obs",
+    "63 obs",
+    "252 obs",
+]
+
+
+# Economic direction used only for dashboard coloring.
+#
+# For these series, a positive move is rendered green.
+_POSITIVE_GREEN = {
+    "sp500",
+    "wti",
+    "eurusd",
+}
+
+
+# For these series, a positive move is rendered red.
+#
+# Includes USD/JPY because a positive return means
+# USD stronger / JPY weaker; therefore a negative
+# return is the green direction.
+_POSITIVE_RED = {
+    "ust_2y",
+    "ust_5y",
+    "ust_10y",
+    "ust_30y",
+    "tips_5y_real",
+    "tips_10y_real",
+    "breakeven_5y",
+    "breakeven_10y",
+    "hy_oas",
+    "usdjpy",
+}
+
+
+def _numeric_cell(
+    value,
+):
+    if value is None:
+        return None
+
+    if isinstance(
+        value,
+        (int, float),
+    ):
+        return float(value)
+
+    match = re.search(
+        r"[-+]?\d+(?:\.\d+)?",
+        str(value),
+    )
+
+    if match is None:
+        return None
+
+    return float(
+        match.group(0)
+    )
+
+
+def _direction_style(
+    series_id,
+    value,
+    intensity,
+):
+    if (
+        value is None
+        or abs(value) < 1e-12
+    ):
+        return ""
+
+    if series_id not in (
+        _POSITIVE_GREEN
+        | _POSITIVE_RED
+    ):
+        return ""
+
+    intensity = max(
+        0.0,
+        min(
+            float(intensity),
+            1.0,
+        ),
+    )
+
+    # Keep subtle enough that text remains easy
+    # to read in the dark dashboard.
+    alpha = (
+        0.06
+        + 0.34
+        * intensity
+    )
+
+    positive_is_green = (
+        series_id
+        in _POSITIVE_GREEN
+    )
+
+    green = (
+        (value > 0)
+        == positive_is_green
+    )
+
+    if green:
+        rgb = "46, 160, 67"
+    else:
+        rgb = "248, 81, 73"
+
+    return (
+        "background-color: "
+        f"rgba({rgb}, {alpha:.3f});"
+    )
+
+
+def _style_fast_market_state(
+    df,
+    series_ids,
+):
+    def style_row(
+        row,
+    ):
+        styles = [
+            ""
+            for _ in row.index
+        ]
+
+        series_id = (
+            series_ids[
+                int(row.name)
+            ]
+        )
+
+        # ----------------------------------
+        # Observation-horizon heat strip.
+        #
+        # Magnitude is normalized WITHIN
+        # each series row only.
+        # ----------------------------------
+
+        horizon_values = {}
+
+        for col in _HORIZON_COLUMNS:
+            if col not in row.index:
+                continue
+
+            horizon_values[col] = (
+                _numeric_cell(
+                    row[col]
+                )
+            )
+
+        magnitudes = [
+            abs(value)
+            for value
+            in horizon_values.values()
+            if value is not None
+        ]
+
+        row_max = (
+            max(magnitudes)
+            if magnitudes
+            else 0.0
+        )
+
+        for (
+            col,
+            value,
+        ) in horizon_values.items():
+            if (
+                value is None
+                or row_max == 0
+            ):
+                continue
+
+            intensity = (
+                abs(value)
+                / row_max
+            )
+
+            styles[
+                row.index.get_loc(
+                    col
+                )
+            ] = _direction_style(
+                series_id,
+                value,
+                intensity,
+            )
+
+        # ----------------------------------
+        # Z20:
+        # standardized intensity, capped at
+        # |3| for visual purposes.
+        # ----------------------------------
+
+        if "Z20" in row.index:
+            z20 = _numeric_cell(
+                row["Z20"]
+            )
+
+            if z20 is not None:
+                styles[
+                    row.index.get_loc(
+                        "Z20"
+                    )
+                ] = _direction_style(
+                    series_id,
+                    z20,
+                    min(
+                        abs(z20)
+                        / 3.0,
+                        1.0,
+                    ),
+                )
+
+        # ----------------------------------
+        # Pct252:
+        # 50 = neutral.
+        # Distance toward 0 or 100 increases
+        # visual intensity.
+        # ----------------------------------
+
+        if "Pct252" in row.index:
+            pct252 = _numeric_cell(
+                row[
+                    "Pct252"
+                ]
+            )
+
+            if pct252 is not None:
+                centered = (
+                    pct252
+                    - 50.0
+                )
+
+                styles[
+                    row.index.get_loc(
+                        "Pct252"
+                    )
+                ] = _direction_style(
+                    series_id,
+                    centered,
+                    min(
+                        abs(centered)
+                        / 50.0,
+                        1.0,
+                    ),
+                )
+
+        # ----------------------------------
+        # Age:
+        # amber staleness scale.
+        # 0d remains neutral.
+        # 7d+ reaches maximum intensity.
+        # ----------------------------------
+
+        if "Age" in row.index:
+            age_days = _numeric_cell(
+                row["Age"]
+            )
+
+            if (
+                age_days is not None
+                and age_days > 0
+            ):
+                intensity = min(
+                    age_days
+                    / 7.0,
+                    1.0,
+                )
+
+                alpha = (
+                    0.05
+                    + 0.30
+                    * intensity
+                )
+
+                styles[
+                    row.index.get_loc(
+                        "Age"
+                    )
+                ] = (
+                    "background-color: "
+                    "rgba(210, 153, 34, "
+                    f"{alpha:.3f});"
+                )
+
+        return styles
+
+    return df.style.apply(
+        style_row,
+        axis=1,
     )
 
 
@@ -416,12 +729,42 @@ def _render_series_state(
                 ),
         })
 
+    df = pd.DataFrame(
+        rows
+    )
+
+    series_ids = [
+        row[
+            "series_id"
+        ]
+        for row in state[
+            "series_state"
+        ]
+    ]
+
+    styled = (
+        _style_fast_market_state(
+            df,
+            series_ids,
+        )
+    )
+
     st.dataframe(
-        pd.DataFrame(
-            rows
-        ),
+        styled,
         hide_index=True,
         use_container_width=True,
+    )
+
+    st.caption(
+        "Heatmap: horizon intensity is normalized "
+        "within each series across 1/5/20/63/252 "
+        "observations. Rates, real yields, "
+        "breakevens and HY OAS: +bp red / -bp green. "
+        "S&P 500, WTI and EUR/USD: +% green / -% red. "
+        "USD/JPY: -% green / +% red. "
+        "Z20 intensity is capped at |3|; "
+        "Pct252 is centered at 50; "
+        "Age uses an amber staleness scale."
     )
 
 

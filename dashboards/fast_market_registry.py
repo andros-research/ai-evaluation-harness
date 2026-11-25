@@ -9,8 +9,12 @@ NOV17_EXPERIMENT_ID = (
     "v1_9_3_cross_asset_state_20261117_v0_1"
 )
 
+NOV23_EXPERIMENT_ID = (
+    "v1_9_3_cross_asset_state_20261123_v0_2"
+)
+
 DEFAULT_FAST_MARKET_EXPERIMENT_ID = (
-    NOV17_EXPERIMENT_ID
+    NOV23_EXPERIMENT_ID
 )
 
 
@@ -79,6 +83,18 @@ def _experiment(
 
 
 FAST_MARKET_EXPERIMENTS = {
+    NOV23_EXPERIMENT_ID:
+        _experiment(
+            experiment_id=
+                NOV23_EXPERIMENT_ID,
+
+            label=
+                "November 23, 2026",
+
+            observation_date=
+                "2026-11-23",
+        ),
+
     NOV17_EXPERIMENT_ID:
         _experiment(
             experiment_id=
